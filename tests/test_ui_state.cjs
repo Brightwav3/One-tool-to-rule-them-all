@@ -132,5 +132,6 @@ assert.doesNotMatch(indexHtml, /\.empty-glyph\{[^}]*background:/);
 assert.match(mainJs, /backgroundColor:\s*'#f2f2f4'/);
 assert.match(indexHtml, /\.body\{[^}]*padding-top:44px/);
 assert.match(indexHtml, /\.topbar\{[^}]*position:absolute;top:0;left:0;right:0/);
+assert.match(indexHtml, /\.work\{margin:8px;border:0;border-radius:0 14px 0 0/);
 
 console.log('UI action-state regression tests passed');

@@ -4,6 +4,8 @@
 
 **Files in. The format you actually wanted out. Nothing leaves your machine.**
 
+[Download the Windows installer](https://github.com/Brightwav3/One-tool-to-rule-them-all/releases/download/v2.0.1/OneTool-Web-Setup-2.0.1.exe)
+
 One Tool is a local-first Electron app and conversion backend. The desktop UI, queue, history, JSON API,
 conversion engines, and agent-facing command-line tools all run on your machine. No cloud service is
 required and files are never uploaded.

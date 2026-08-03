@@ -423,7 +423,7 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .work[data-resizing="true"]{overflow:visible;transition:none!important}
 #app[data-inspector="false"] .panel-resize{display:none}
 body.is-resizing-panel{cursor:ew-resize;user-select:none}
-.panel-top{flex:none;height:44px}
+.panel-top{flex:none;height:44px;-webkit-app-region:drag}
 .i-sec{flex:none;padding:var(--space-4) 18px;border-bottom:1px solid var(--border-subtle)}
 .i-sec b{display:block;font-size:var(--text-base);font-weight:var(--weight-medium);line-height:var(--leading-snug)}
 .i-sec .sub{display:block;font-size:var(--text-sm);color:var(--text-secondary);margin-top:var(--space-1)}
@@ -659,31 +659,6 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
   </div>
   <div id="contextMenu" class="context-menu t-dropdown" data-origin="top-left" role="menu" aria-hidden="true"></div>
 
-  <header class="topbar">
-    <nav class="nav" aria-label="Primary">
-      <button class="navbtn press active" data-page="queue">Queue</button>
-      <button class="navbtn press" data-page="helpers">Helpers<span class="navdot" id="helperDot" hidden></span></button>
-      <button class="navbtn press" data-page="history">History</button>
-    </nav>
-    <div class="searchwrap">
-      <div class="tiphost theme-host">
-        <button id="themeToggle" class="theme-toggle press" aria-label="Change theme" aria-pressed="false">
-          <span id="themeLogo" class="theme-logo" aria-hidden="true"></span>
-        </button>
-        <span class="tip">Change theme</span>
-      </div>
-      <button class="search press" id="searchBtn" aria-label="Open command palette">
-        <span aria-hidden="true">&#8981;</span><span class="label">Search conversions, files, helpers</span><span class="kbd" data-shortcut="palette">&#8984;K</span>
-      </button>
-    </div>
-    <div class="tiphost">
-      <button class="insp-toggle press on" id="inspToggle" aria-pressed="true" aria-label="Hide inspector">
-        <span aria-hidden="true" style="display:block;width:15px;height:12px;border:1.5px solid currentColor;border-radius:var(--radius-xs);border-right-width:5px"></span>
-      </button>
-      <span class="tip" id="inspTip">Hide inspector <span class="kbd" data-shortcut="inspector">&#8679;I</span></span>
-    </div>
-  </header>
-
   <!-- Legacy malformed header fragment kept only as source reference. -->
   <!--
   <header class="legacy-topbar">
@@ -713,6 +688,31 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 
   <div class="body">
     <div class="left">
+
+      <header class="topbar">
+        <nav class="nav" aria-label="Primary">
+          <button class="navbtn press active" data-page="queue">Queue</button>
+          <button class="navbtn press" data-page="helpers">Helpers<span class="navdot" id="helperDot" hidden></span></button>
+          <button class="navbtn press" data-page="history">History</button>
+        </nav>
+        <div class="searchwrap">
+          <div class="tiphost theme-host">
+            <button id="themeToggle" class="theme-toggle press" aria-label="Change theme" aria-pressed="false">
+              <span id="themeLogo" class="theme-logo" aria-hidden="true"></span>
+            </button>
+            <span class="tip">Change theme</span>
+          </div>
+          <button class="search press" id="searchBtn" aria-label="Open command palette">
+            <span aria-hidden="true">&#8981;</span><span class="label">Search conversions, files, helpers</span><span class="kbd" data-shortcut="palette">&#8984;K</span>
+          </button>
+        </div>
+        <div class="tiphost">
+          <button class="insp-toggle press on" id="inspToggle" aria-pressed="true" aria-label="Hide inspector">
+            <span aria-hidden="true" style="display:block;width:15px;height:12px;border:1.5px solid currentColor;border-radius:var(--radius-xs);border-right-width:5px"></span>
+          </button>
+          <span class="tip" id="inspTip">Hide inspector <span class="kbd" data-shortcut="inspector">&#8679;I</span></span>
+        </div>
+      </header>
 
       <template data-legacy-topbar>
         <nav class="nav" aria-label="Primary">

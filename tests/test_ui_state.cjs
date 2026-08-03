@@ -131,11 +131,12 @@ assert.match(indexHtml, /<path d="M24 10v18"\/>\s*<path d="M17 21l7 7 7-7"\/>\s*
 assert.doesNotMatch(indexHtml, /\.empty-glyph\{[^}]*background:/);
 assert.match(mainJs, /backgroundColor:\s*'#f2f2f4'/);
 assert.match(indexHtml, /\.topbar\{[^}]*position:relative;z-index:12/);
-assert.match(indexHtml, /id="contextMenu"[^>]*><\/div>\s*<header class="topbar">/s);
+assert.match(indexHtml, /<div class="body">\s*<div class="left">\s*<header class="topbar">/s);
 assert.strictEqual((indexHtml.match(/<header class="topbar">/g) || []).length, 1);
 const activeTopbar = indexHtml.match(/<header class="topbar">([\s\S]*?)<\/header>/)?.[1] || '';
 assert.doesNotMatch(activeTopbar, /Ă|âŚ/);
 assert.match(indexHtml, /\.nav\{display:flex;[^}]*flex:none/);
+assert.match(indexHtml, /\.panel-top\{flex:none;height:44px;-webkit-app-region:drag\}/);
 assert.match(indexHtml, /\.work-resize\{right:-9px\}/);
 assert.match(indexHtml, /\.work-resize::after\{right:8px\}/);
 assert.match(indexHtml, /document\.querySelector\('\[data-panel-resize\]'\)/);

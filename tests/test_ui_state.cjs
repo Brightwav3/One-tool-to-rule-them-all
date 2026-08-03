@@ -170,7 +170,7 @@ assert.match(fidelioW, /fill:rgb\(234,234,234\)/);
 assert.doesNotMatch(indexHtml, /<span class="kbd">⌘K<\/span>/);
 assert.doesNotMatch(indexHtml, /<span class="kbd">⌥I<\/span>/);
 assert.match(indexHtml, /<div class="empty-glyph">\s*<svg[^>]*viewBox="0 0 48 48"[^>]*aria-label="Drop files here"/s);
-assert.match(indexHtml, /<path d="M24 10v18"\/>\s*<path d="M17 21l7 7 7-7"\/>\s*<path d="M12 32v4a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2v-4"\/>/);
+assert.match(indexHtml, /<g class="ia-drop"><path d="M24 10v18"\/><path d="M17 21l7 7 7-7"\/><\/g>\s*<path class="ia-tray" d="M12 32v4a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2v-4"\/>/);
 assert.doesNotMatch(indexHtml, /\.empty-glyph\{[^}]*background:/);
 assert.match(mainJs, /backgroundColor:\s*'#f2f2f4'/);
 assert.match(indexHtml, /\.topbar\{[^}]*position:relative;z-index:12/);

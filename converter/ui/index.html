@@ -135,12 +135,12 @@ button{border:0;background:none;color:inherit;cursor:pointer}
 /* ---------- motion primitives ---------- */
 .press{transition:transform var(--d-quick) var(--ease),background-color var(--d-quick) var(--ease),box-shadow var(--d-quick) var(--ease),color var(--d-quick) var(--ease)}
 .press:active:not([disabled]){transform:scale(.97)}
-/* Decorative glyphs (chevrons, tile labels) render below the system's 12px floor.
-   They are scaled rather than adding a fifth size to the ramp. */
-.chev{display:inline-block;font-size:var(--text-xs);transform:scale(.7);color:var(--text-tertiary);
+/* The chevron is a drawn path rather than a text glyph, so it turns through its
+   own centre instead of the font's baseline box, and needs no corrective scale. */
+.chev{display:inline-grid;place-items:center;width:12px;height:12px;flex:none;color:var(--text-tertiary);
   transition:transform var(--d-fast) var(--ease)}
-/* icon morph — the chevron rotates through its own axis rather than swapping glyphs */
-.chev[data-flipped="true"]{transform:scale(.7) rotate(180deg)}
+.chev svg{display:block}
+.chev[data-flipped="true"]{transform:rotate(180deg)}
 .row{transition:background-color var(--d-fast) var(--ease),opacity var(--d-fast) var(--ease)}
 .row:hover{background:var(--surface-hover)}
 .bar-fill{transition:width var(--d-fast) linear}
@@ -188,6 +188,7 @@ button{border:0;background:none;color:inherit;cursor:pointer}
 .app{height:100%;min-width:760px;display:flex;flex-direction:column;position:relative}
 
 .topbar{height:44px;flex:none;display:flex;align-items:center;gap:var(--space-4);padding:0 var(--space-4);-webkit-app-region:drag;user-select:none;position:relative;z-index:12;
+  container:topbar / inline-size;
   transition:padding-right var(--d-slow) var(--ease)}
 /* when the inspector is closed the window controls sit over the bar's right end,
    so the bar yields the space; when it is open they sit over the panel instead */
@@ -208,9 +209,21 @@ body.is-mac .topbar{padding-left:82px}
 .theme-toggle.is-spinning .theme-logo{animation:theme-spin 520ms var(--ease) both}
 @keyframes theme-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .theme-host .tip{left:0;right:auto}
-.search{display:flex;align-items:center;gap:var(--gap-inline);width:330px;max-width:100%;min-width:0;height:28px;padding:0 10px;border-radius:var(--radius-nav);background:var(--surface-hover);font-size:var(--text-sm);color:var(--text-tertiary);transition:background-color var(--d-quick) var(--ease)}
+.search{display:flex;align-items:center;gap:var(--gap-inline);width:330px;max-width:100%;min-width:0;height:28px;padding:0 10px;border-radius:var(--radius-nav);background:var(--surface-hover);font-size:var(--text-sm);color:var(--text-tertiary);
+  transition:background-color var(--d-quick) var(--ease),width var(--d-fast) var(--ease),padding var(--d-fast) var(--ease)}
 .search:hover{background:var(--surface-active)}
-.search .label{flex:1;text-align:left}
+/* The label never wraps: a second line would grow the control past the bar's
+   fixed height. It truncates while there is still something worth reading, and
+   below that the control collapses to its glyph rather than showing a sliver.
+   The query is on the bar, not the viewport, because the inspector's width is
+   what squeezes this — the window can be wide while the bar is narrow. */
+.search .label{flex:1;min-width:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search .kbd,.search > [aria-hidden="true"]{flex:none}
+@container topbar (max-width:560px){.search .kbd{display:none}}
+@container topbar (max-width:400px){
+  .search{width:28px;padding:0;justify-content:center}
+  .search .label{display:none}
+}
 .kbd{font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-medium);padding:2px 5px;border-radius:var(--radius-xs);background:var(--surface-active);color:var(--text-tertiary)}
 .tiphost{position:relative}
 .insp-toggle{width:30px;height:26px;display:grid;place-items:center;border-radius:var(--radius-nav);color:var(--text-secondary)}
@@ -259,23 +272,27 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .link{color:var(--text-accent);font-weight:var(--weight-medium);text-decoration:underline;text-underline-offset:2px}
 
 /* ---------- queue ---------- */
-.q-wrap{flex:1;min-height:0;padding:var(--space-4) var(--space-5) 0;display:flex;flex-direction:column;overflow:hidden;position:relative}
-.q-head{flex:none;display:flex;align-items:flex-start;gap:var(--space-3)}
-.q-head .grow{flex:1;min-width:0}
+.q-wrap{flex:1;min-height:0;padding:var(--space-4) var(--space-5) 0;display:flex;flex-direction:column;overflow:hidden;position:relative;
+  container:queue / inline-size}
+/* The heading and the destination sit side by side until that would break the
+   heading across every word; then the destination drops to its own line. */
+.q-head{flex:none;display:flex;align-items:flex-start;gap:var(--space-3);flex-wrap:wrap}
+.q-head .grow{flex:1 1 240px;min-width:0}
+@container queue (max-width:520px){.q-head .dest{flex:1 1 100%}}
 .dest{display:flex;align-items:center;gap:var(--gap-inline);padding:var(--space-1) var(--space-2) var(--space-1) var(--space-1);border-radius:var(--radius-nav);background:var(--surface-sunken);font-size:var(--text-sm);position:relative}
 .dest .k{font-weight:var(--weight-medium);color:var(--text-secondary)}
 .dest .v{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--text-secondary)}
 .dest-trigger{display:flex;align-items:center;gap:var(--gap-inline);min-width:0;padding:var(--space-1) var(--space-2);border-radius:var(--radius-xs);text-align:left}
 .dest-trigger:hover{background:var(--surface-active)}
 .dest-trigger .v{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dest-trigger .chev{color:var(--text-tertiary);font-size:10px;transition:transform var(--d-quick) var(--ease)}
+.dest-trigger .chev{color:var(--text-tertiary);transition:transform var(--d-quick) var(--ease)}
 .dest-trigger[aria-expanded="true"] .chev{transform:rotate(180deg)}
 .path-menu{position:absolute;top:calc(100% + 8px);right:0;width:330px;padding:var(--space-1);z-index:18;border:1px solid var(--border-subtle);border-radius:var(--radius-nav);background:var(--surface-card);box-shadow:var(--shadow-popover);transform-origin:top right}
 .path-menu .menu-title{display:block;padding:var(--space-2) var(--space-2) var(--space-1);font-size:var(--text-xs);font-weight:var(--weight-medium);letter-spacing:.04em;text-transform:uppercase;color:var(--text-tertiary)}
 .path-row{display:flex;align-items:center;gap:var(--space-1);min-height:34px;border-radius:var(--radius-xs)}
 .path-row:hover{background:var(--surface-hover)}
 .path-row .path-pick{flex:1;min-width:0;display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2);text-align:left}
-.path-row .path-pick .check{width:12px;flex:none;color:var(--text-accent);font-size:var(--text-xs);text-align:center}
+.path-row .path-pick .check{width:12px;height:12px;flex:none;display:grid;place-items:center;color:var(--text-accent);box-shadow:none}
 .path-row .path-pick .path-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--text-secondary)}
 .path-row .forget-path{width:26px;height:26px;flex:none;margin-right:3px;border-radius:var(--radius-xs);color:var(--text-disabled);opacity:0;font-size:15px;line-height:1}
 .path-row:hover .forget-path,.path-row .forget-path:focus-visible{opacity:1}
@@ -290,24 +307,51 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .q-row.selected:hover{background:var(--accent-soft)}
 .q-row.dim{opacity:.8}
 .q-row.open{z-index:6}
-.thumb{width:34px;height:44px;flex:none;border-radius:var(--radius-xs);border:1px solid var(--border-subtle);background:repeating-linear-gradient(135deg,var(--gray-200) 0 4px,transparent 4px 8px),var(--surface-sunken);display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-medium);color:var(--text-tertiary);overflow:hidden}
+.thumb{width:34px;height:44px;flex:none;display:block}
+.thumb svg{display:block;width:100%;height:100%;overflow:visible}
 .file-folder{width:48px;height:48px;flex:none;display:grid;place-items:center;padding:0;border:0;border-radius:8px;background:transparent;cursor:pointer}
 .file-folder .folder{display:block;width:48px;height:48px}
 .folder .fdr-front,.folder .fdr-sheet{transform-box:fill-box;transform-origin:50% 100%;transition:transform .36s cubic-bezier(.34,1.32,.52,1)}
 .folder:hover .fdr-front{transform:scaleY(.72) rotate(4deg)}
 .folder:hover .fdr-sheet{transform:translateY(-11px)}
 @media (prefers-reduced-motion:reduce){.folder .fdr-front,.folder .fdr-sheet{transition:none}}
-/* the tile label sits below the system's 12px floor, so it is scaled rather than
-   introducing a fifth type size */
-.thumb > span{display:block;transform:scale(.55);transform-origin:bottom center;white-space:nowrap}
-.f-copy{flex:1;min-width:0}
+/* One motion vocabulary. Every custom icon part rides the same spring the folder
+   flap uses, so a 16px menu glyph and the 48px folder read as one family. */
+.ic{display:block;overflow:visible}
+.ic [class*="ia-"]{transform-box:fill-box;transform-origin:50% 50%;transition:transform var(--d-medium) var(--ease-bounce)}
+.ic .ia-flap,.ic .ia-page2{transform-origin:50% 100%}
+:is(.thumb,.ctx-item,.file-folder,.empty-drop):hover .ia-flap{transform:scaleY(.72) rotate(4deg)}
+:is(.thumb,.ctx-item):hover .ia-sheet{transform:translateY(-5px)}
+.ctx-item:hover .ia-up{transform:translate(-3px,-3px)}
+.ctx-item:hover .ia-spin,.btn:hover .ia-spin{transform:rotate(360deg)}
+.ctx-item:hover .ia-swapA{transform:translateY(-4px)}
+.ctx-item:hover .ia-swapB{transform:translateY(4px)}
+:is(.ctx-item,.rm,.forget-path,.btn):hover .ia-xa{transform:rotate(90deg)}
+:is(.ctx-item,.rm,.forget-path,.btn):hover .ia-xb{transform:rotate(-90deg)}
+.ctx-item:hover .ia-ring{transform:scale(.62)}
+.thumb:hover .ia-corner{transform:translate(2px,-2px)}
+.thumb:hover .ia-page2{transform:translate(-4px,-3px) rotate(-7deg);transform-origin:0% 100%}
+.thumb:hover .ia-drop{transform:translateY(3px)}
+.empty-drop:hover .ia-drop,.empty-drop.over .ia-drop{transform:translateY(5px)}
+.empty-drop:hover .ia-tray,.empty-drop.over .ia-tray{transform:scaleX(1.12)}
+/* one tick everywhere "done" is shown; it draws only where the tick marks an
+   event, so a re-render of a settled row does not replay the stroke */
+.ic-tick.draw path{stroke-dasharray:22;stroke-dashoffset:22;animation:tick-draw var(--d-fast) var(--ease) both}
+@media (prefers-reduced-motion:reduce){.ic [class*="ia-"]{transition:none}.ic-tick.draw path{stroke-dasharray:none;stroke-dashoffset:0;animation:none}}
+/* The filename is the row's subject, so it is the last thing to give up space.
+   As the row narrows it sheds, in order: the reveal button (still in the context
+   menu and the inspector), then the progress track (the status text carries the
+   same information in words). */
+.f-copy{flex:1 1 120px;min-width:0}
+@container queue (max-width:470px){.q-row .file-folder{display:none}}
+@container queue (max-width:380px){.q-row .prog{width:auto;flex:0 1 96px}.q-row .prog-track{display:none}}
 .f-name{font-size:var(--text-base);font-weight:var(--weight-medium);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .f-meta{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--text-secondary);margin-top:var(--space-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pill-wrap{display:inline-flex;flex:none;position:relative}
 .pill{display:inline-flex;align-items:center;gap:var(--space-2);height:26px;padding:0 10px;border-radius:var(--radius-pill);font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-medium);background:var(--surface-sunken);color:var(--text-secondary)}
 .pill:hover{background:var(--surface-active)}
 .pill .chev{opacity:.7;color:currentColor}
-.pill.open .chev{transform:scale(.7) rotate(180deg)}
+.pill.open .chev{transform:rotate(180deg)}
 .q-row.selected .pill{background:var(--gray-0);color:var(--text-accent)}
 .pill.blocked{background:var(--warning-soft);color:var(--amber-600)}
 .pill.open{background:var(--accent);color:var(--text-inverse)}
@@ -322,10 +366,10 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .status.failed{color:var(--danger-hover)}
 .tick{width:14px;height:14px;display:grid;place-items:center;border-radius:var(--radius-pill);background:var(--success);color:var(--text-inverse)}
 .tick svg{display:block}
-.rm{width:22px;flex:none;text-align:center;color:var(--text-disabled);font-size:var(--text-base);line-height:1}
+.rm{width:22px;height:22px;flex:none;display:grid;place-items:center;color:var(--text-disabled);line-height:1}
 .rm:hover{color:var(--text-primary)}
 .dropmore{flex:none;display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-4);font-size:var(--text-sm);color:var(--text-secondary);text-align:left;border:0;width:100%}
-.dropmore .plus{width:34px;text-align:center;color:var(--accent);font-size:var(--text-base)}
+.dropmore .plus{width:34px;display:grid;place-items:center;color:var(--accent)}
 .dropmore .k{margin-left:auto;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--text-tertiary)}
 .q-fill{flex:1;min-height:0}
 .q-list.over,.empty-drop.over{border-color:var(--accent);background:var(--accent-soft)}
@@ -358,7 +402,7 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .opt{width:100%;display:flex;align-items:center;gap:var(--space-2);min-height:34px;padding:var(--pad-control-y) var(--space-2);border-radius:var(--radius-nav);text-align:left}
 .opt:hover:not([disabled]){background:var(--surface-hover)}
 .opt.current{background:var(--accent-soft)}
-.opt .ck{width:12px;flex:none;text-align:center;font-size:var(--text-xs);color:var(--text-accent)}
+.opt .ck{width:12px;height:12px;flex:none;display:grid;place-items:center;color:var(--text-accent)}
 .opt .nm{flex:1;font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-medium)}
 .opt .st{font-size:var(--text-xs);color:var(--text-tertiary)}
 .opt .st.ready{color:var(--green-600)}
@@ -499,8 +543,8 @@ body.is-resizing-panel{cursor:ew-resize;user-select:none}
 .canvas-inspector .file-folder{width:48px;height:48px;flex:none;margin:-3px 0 0 -2px}.canvas-inspector .file-folder .folder{position:static;width:48px;height:48px;margin:0}.canvas-inspector .file-folder .folder:before,.canvas-inspector .file-folder .folder:after{content:none}
 #app .panel{background:var(--bg)}
 @media (max-width:640px){.app{min-width:0}.left{display:none}.panel[data-open="true"]{width:100%!important}}
-.i-thumb{width:44px;height:60px;flex:none;border-radius:var(--radius-xs);border:1px solid var(--border-subtle);background:repeating-linear-gradient(135deg,var(--gray-200) 0 5px,transparent 5px 10px),var(--surface-sunken);display:flex;align-items:flex-end;justify-content:center;padding-bottom:var(--space-1);font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-medium);color:var(--text-tertiary);overflow:hidden}
-.i-thumb>span{display:block;transform:scale(.7);transform-origin:bottom center;white-space:nowrap}
+.i-thumb{width:44px;height:56px;flex:none;display:block}
+.i-thumb svg{display:block;width:100%;height:100%;overflow:visible}
 .i-route{display:inline-flex;align-items:center;margin-top:var(--space-2);height:22px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-medium);background:var(--accent-soft);color:var(--text-accent)}
 .i-body{flex:1;min-height:0;padding:var(--space-4) 18px;display:flex;flex-direction:column;gap:var(--space-4);overflow:auto}
 .i-foot{flex:none;padding:var(--space-3) 18px var(--space-4);border-top:1px solid var(--border-subtle);display:flex;flex-direction:column;gap:var(--space-2)}
@@ -624,7 +668,9 @@ body.is-resizing-panel{cursor:ew-resize;user-select:none}
 .context-menu .ctx-item{width:100%;display:flex;align-items:center;gap:var(--space-3);min-height:32px;padding:var(--space-2);border-radius:var(--radius-xs);font-size:var(--text-sm);text-align:left}
 .context-menu .ctx-item:hover,.context-menu .ctx-item:focus-visible{background:var(--surface-hover)}
 .context-menu .ctx-item.danger{color:var(--danger-hover)}
-.context-menu .ctx-icon{width:15px;flex:none;color:var(--text-tertiary);text-align:center;font-family:var(--font-mono);font-size:var(--text-xs)}
+.context-menu .ctx-icon{width:16px;height:16px;flex:none;display:grid;place-items:center;color:var(--text-tertiary)}
+.context-menu .ctx-item.danger .ctx-icon{color:currentColor}
+.context-menu .ctx-item[disabled] .ctx-icon{opacity:.45}
 .context-menu .ctx-sep{height:1px;margin:var(--space-1) 0;background:var(--border-subtle)}
 @media (prefers-reduced-motion:reduce){.t-dropdown{transition:none!important}}
 
@@ -660,7 +706,6 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 .q-row.dim{opacity:.8}
 .f-name{font-size:13px;font-weight:600}
 .f-meta{font-size:12px;color:var(--t2);margin-top:3px}
-.thumb{border-color:var(--sep);background:repeating-linear-gradient(135deg,var(--quiet2) 0 4px,transparent 4px 8px),var(--bg)}
 .pill{font-size:11.5px;height:26px;padding:0 10px;background:var(--quiet2);color:var(--t2)}
 .q-row.selected .pill{background:var(--surface);color:var(--acc-text)}
 .pill.blocked{background:var(--warn-tint);color:var(--warn-t)}
@@ -671,7 +716,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 .status.done{color:var(--ok-t)}
 .status.blocked{color:var(--warn-t)}
 .dropmore{padding:12px 14px;color:var(--t2);font-size:12.5px}
-.dropmore .plus{font-size:15px;color:var(--acc-text)}
+.dropmore .plus{color:var(--acc-text)}
 .dropmore .k{font-size:11px;color:var(--t3)}
 .empty{padding:36px}
 .empty-inner{max-width:560px}
@@ -850,7 +895,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
           <div class="archive-body"><div class="archive-file"><span class="archive-lock">⌑</span><span class="archive-name" id="archiveName">archive.zip</span></div><label for="archivePassword">Archive password</label><input id="archivePassword" type="password" data-live="true" placeholder="Enter password"><p class="archive-help">Used only for this conversion. The password is never saved.</p><p class="archive-error" id="archiveError" hidden></p></div>
           <footer class="archive-foot"><button class="archive-cancel press" data-act="close-archive">Cancel</button><button class="archive-unlock press" data-act="unlock-archive">Unlock archive</button></footer>
         </div></div>
-        <div class="toast" id="toast"><span class="m" id="toastMark">✓</span><span style="min-width:0"><b id="toastTitle"></b><span class="sub" id="toastSub"></span></span></div>
+        <div class="toast" id="toast"><span class="m" id="toastMark"></span><span style="min-width:0"><b id="toastTitle"></b><span class="sub" id="toastSub"></span></span></div>
       </div>
       <div class="work-resize panel-resize" data-panel-resize role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
     </div>
@@ -1149,7 +1194,54 @@ function render(force=false) {
 }
 
 /* ---------- queue ---------- */
-function thumbLabel(f) { return f?.kind === 'image' ? 'IMG' : f?.kind === 'comic' ? 'p.1' : (f?.from || 'FILE'); }
+/* ---------- icons ----------
+   Every custom glyph is built here rather than pasted into markup, so each call
+   site inherits the same geometry, stroke weight and hover behaviour. Parts named
+   ia-* are the moving pieces; the CSS above owns what they do. */
+const STROKE = 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
+const ICON = {
+  select: `<svg class="ic" width="16" height="16" viewBox="0 0 24 24" ${STROKE}><circle class="ia-ring" cx="12" cy="12" r="8"/></svg>`,
+  /* the two arrows part on hover — the gesture is "these swap", not "these spin" */
+  route: `<svg class="ic" width="16" height="16" viewBox="0 0 24 24" ${STROKE}><g class="ia-swapA"><path d="M4 9h13"/><path d="M14 6l3 3-3 3"/></g><g class="ia-swapB"><path d="M20 15H7"/><path d="M10 12l-3 3 3 3"/></g></svg>`,
+  /* the same folder as the 48px reveal button, at menu scale, with the same flap */
+  reveal: `<svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M2 6.5A2.5 2.5 0 0 1 4.5 4h4a2 2 0 0 1 1.4.6L11.5 6H20a2 2 0 0 1 2 2v.5H2Z" fill="#2563EB"/><rect class="ia-sheet" x="5" y="12" width="14" height="5" rx="1" fill="#EFF6FF"/><path class="ia-flap" d="M2 9.5A2 2 0 0 1 4 7.5h16a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9.5Z" fill="#3B82F6"/></svg>`,
+  /* the back sheet moves, so it reads as duplicating away rather than pasting on */
+  copy: `<svg class="ic" width="16" height="16" viewBox="0 0 24 24" ${STROKE}><rect x="8" y="8" width="12" height="12" rx="2"/><path class="ia-up" d="M16 5.5A1.5 1.5 0 0 0 14.5 4h-8A2.5 2.5 0 0 0 4 6.5v8A1.5 1.5 0 0 0 5.5 16"/></svg>`,
+  again: `<svg class="ic" width="16" height="16" viewBox="0 0 24 24" ${STROKE}><g class="ia-spin"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></g></svg>`,
+  remove: `<svg class="ic" width="16" height="16" viewBox="0 0 24 24" ${STROKE}><path class="ia-xa" d="M6 6l12 12"/><path class="ia-xb" d="M18 6L6 18"/></svg>`,
+  alert: `<svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 6.5v6"/><path d="M12 16.6v.2" stroke-width="3"/></svg>`,
+  external: `<svg class="ic" width="16" height="16" viewBox="0 0 24 24" ${STROKE}><path d="M14 4h6v6"/><path class="ia-up" d="M20 4l-8 8"/><path d="M18 14v4.5A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/></svg>`,
+};
+/* A full turn says "reordered", a half turn says "opened" — same glyph, two jobs. */
+function chevron(size = 12, part = '') {
+  return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 16 16" ${STROKE}><path class="${part}" d="M4 6.5L8 10.5 12 6.5"/></svg>`;
+}
+function tickIcon(size = 12, cls = '') {
+  return `<svg class="ic ic-tick ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 L10 17.5 L19.5 7"/></svg>`;
+}
+/* Format is carried by a filled pill inside the page rather than by mono text
+   scaled below the type ramp, and each family keeps its own token colour. */
+function thumbKind(f) {
+  if (f?.kind === 'image') return {label: 'IMG', tint: 'var(--success)', pages: false, photo: true};
+  if (f?.kind === 'comic') return {label: 'CBZ', tint: 'var(--warning)', pages: true, photo: false};
+  return {label: String(f?.from || 'FILE').toUpperCase().slice(0, 4), tint: 'var(--accent)', pages: (f?.units || 0) > 1, photo: false};
+}
+function fileThumb(f, cls = 'thumb') {
+  const k = thumbKind(f);
+  const back = k.pages ? `<rect class="ia-page2" x="5" y="5" width="34" height="48" rx="3" style="fill:var(--surface-sunken);stroke:var(--border-subtle)" stroke-width="1.2"/>` : '';
+  const body = k.photo
+    ? `<circle cx="13" cy="14" r="3.5" style="fill:var(--border-default)"/><path class="ia-drop" d="M4 30l8-9 7 8 5-4 11 10v10H4V30Z" style="fill:var(--border-default)" opacity=".55"/>`
+    : `<path d="M8 12h20M8 18h20M8 24h13" style="stroke:var(--border-default)" stroke-width="1.4" stroke-linecap="round"/>`;
+  const corner = k.pages || k.photo ? '' : `<path class="ia-corner" d="M27 1h1l7 7v1h-6a2 2 0 0 1-2-2V1Z" style="fill:var(--surface-sunken);stroke:var(--border-default)" stroke-width="1.2"/>`;
+  return `<span class="${cls}" aria-hidden="true"><svg viewBox="0 0 44 56" role="img" aria-label="${esc(k.label)} file">
+    ${back}
+    <rect x="1" y="1" width="34" height="48" rx="3" style="fill:var(--surface-card);stroke:var(--border-default)" stroke-width="1.2"/>
+    ${body}
+    ${corner}
+    <rect x="6" y="33" width="24" height="12" rx="2.5" style="fill:${k.tint}"/>
+    <text x="18" y="42" text-anchor="middle" font-size="8" font-family="var(--font-mono)" style="fill:var(--text-inverse)">${esc(k.label)}</text>
+  </svg></span>`;
+}
 function folderIcon(path, revealKind='queue') {
   const isOutput = revealKind === 'output' || revealKind === 'history';
   const label = isOutput ? 'Open output location' : 'Open source location';
@@ -1199,9 +1291,9 @@ function folderMenuHtml() {
   const rows = outputFolders.map(folder => `
     <div class="path-row">
       <button class="path-pick press" data-act="select-folder" data-folder="${esc(folder)}" role="menuitem">
-        <span class="check">${folder === outputFolder ? '✓' : ''}</span><span class="path-label" title="${esc(folder)}">${esc(folder)}</span>
+        <span class="check">${folder === outputFolder ? tickIcon(11) : ''}</span><span class="path-label" title="${esc(folder)}">${esc(folder)}</span>
       </button>
-      <button class="forget-path press" data-act="forget-folder" data-folder="${esc(folder)}" aria-label="Remove ${esc(folder)} from recent folders">×</button>
+      <button class="forget-path press" data-act="forget-folder" data-folder="${esc(folder)}" aria-label="Remove ${esc(folder)} from recent folders">${ICON.remove}</button>
     </div>`).join('');
   return `<div id="folderMenu" class="path-menu t-dropdown ${folderMenuState === 'open' ? 'is-open' : 'is-closing'}" data-origin="top-right" role="menu" aria-hidden="${folderMenuState !== 'open'}">
     <span class="menu-title">Recent folders</span>
@@ -1213,7 +1305,7 @@ function destinationHtml() {
   const folder = commonFolder();
   return `<div class="dest">
     <button class="dest-trigger press" data-act="toggle-folder-menu" aria-haspopup="menu" aria-expanded="${folderMenuState === 'open'}">
-      <span class="k">Save to</span><span class="v" title="${esc(folder)}">${esc(folder)}</span><span class="chev" aria-hidden="true">▾</span>
+      <span class="k">Save to</span><span class="v" title="${esc(folder)}">${esc(folder)}</span><span class="chev" aria-hidden="true">${chevron()}</span>
     </button>
     <button class="link press" data-act="folder">Change</button>
     ${folderMenuHtml()}
@@ -1233,10 +1325,9 @@ function renderQueue() {
     pages.queue.innerHTML = `
       <div class="empty">
         <div class="empty-inner empty-drop" id="dropZone" style="padding:var(--space-8)">
-          <div class="empty-glyph"><svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Drop files here">
-            <path d="M24 10v18"/>
-            <path d="M17 21l7 7 7-7"/>
-            <path d="M12 32v4a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2v-4"/>
+          <div class="empty-glyph"><svg class="ic" width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Drop files here">
+            <g class="ia-drop"><path d="M24 10v18"/><path d="M17 21l7 7 7-7"/></g>
+            <path class="ia-tray" d="M12 32v4a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2v-4"/>
           </svg></div>
           <h1>Drop the files. We'll work out the rest.</h1>
           <p>Each file is routed to the converter that handles it — change any route before you convert. Nothing leaves this machine.</p>
@@ -1267,7 +1358,7 @@ function renderQueue() {
       <div class="q-list" id="dropZone">
         ${pendingAdd ? skeletonHtml() : ''}
         ${files.map(queueRow).join('')}
-        <button class="dropmore row press" data-act="add"><span class="plus" aria-hidden="true">＋</span>Drop more files here · <span class="link">Choose files</span><span class="k" data-shortcut="open">${shortcutLabel('open')}</span></button>
+        <button class="dropmore row press" data-act="add"><span class="plus" aria-hidden="true"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" ${STROKE}><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>Drop more files here · <span class="link">Choose files</span><span class="k" data-shortcut="open">${shortcutLabel('open')}</span></button>
         <div class="q-fill"></div>
       </div>
     </div>
@@ -1277,7 +1368,7 @@ function renderQueue() {
       <button class="${OneToolActionState.actionButtonClass(actionStatus)}" data-act="convert" ${ready && !busy && actionStatus === 'idle' ? '' : 'disabled'}>
         <span data-on="${actionStatus === 'idle' && !busy}">${esc(goLabel)}<span class="kbd" style="background:rgba(255,255,255,.16);color:rgba(255,255,255,.72)">⏎</span></span>
         <span data-on="${Boolean(actionStatus === 'pending' || busy)}"><span class="spin"></span>Converting…</span>
-        <span data-on="${actionStatus === 'success'}">✓ Converted all</span>
+        <span data-on="${actionStatus === 'success'}">${tickIcon(13, 'draw')}Converted all</span>
       </button>
     </div>`;
   wireDrop($('dropZone'));
@@ -1290,20 +1381,21 @@ function queueRow(f) {
   const isNew = freshRows.has(f.id), errored = freshError.has(f.id);
   const delay = isNew ? ` style="animation-delay:${Math.min(files.indexOf(f), 5) * 50}ms"` : '';
   return `<div class="q-row row ${selected ? 'selected' : ''} ${selectedQueueIds.size && !multiSelected ? 'dim' : ''} ${open ? 'open' : ''} ${isNew ? 'is-new' : ''} ${errored ? 'is-error' : ''}" data-act="select-row" data-context="queue-file" data-multi-selected="${multiSelected}" data-id="${esc(f.id)}"${delay}>
-    ${folderIcon(f.out, 'output')}
+    ${fileThumb(f)}
     <div class="f-copy"><div class="f-name" title="${esc(f.name)}">${esc(f.name)}</div><div class="f-meta">${esc(metaLine(f))}</div></div>
     <span class="pill-wrap">
-      <button class="pill press ${blocked ? 'blocked' : ''} ${open ? 'open' : ''}" data-act="toggle-picker" data-id="${esc(f.id)}" aria-expanded="${open}">${esc(f.from)} → ${esc(f.to || 'Choose')}<span class="chev" aria-hidden="true">▼</span></button>
+      <button class="pill press ${blocked ? 'blocked' : ''} ${open ? 'open' : ''}" data-act="toggle-picker" data-id="${esc(f.id)}" aria-expanded="${open}">${esc(f.from)} → ${esc(f.to || 'Choose')}<span class="chev" aria-hidden="true">${chevron()}</span></button>
       ${routePopover(f, open)}
     </span>
     <div class="prog">
       <div class="prog-track"><div class="${barClass} bar-fill" style="width:${p}%"></div></div>
       <div class="prog-foot">
-        ${f.status === 'done' ? `<span class="tick ${freshDone.has(f.id) ? 'is-fresh' : ''}" aria-hidden="true"><svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 L10 17.5 L19.5 7"/></svg></span>` : ''}
+        ${f.status === 'done' ? `<span class="tick ${freshDone.has(f.id) ? 'is-fresh' : ''}" aria-hidden="true">${tickIcon(9)}</span>` : ''}
         <span class="status ${sc} ${indeterminate(f) ? 'indeterminate' : ''}">${esc(statusText(f))}</span>
       </div>
     </div>
-    <button class="rm press" data-act="remove" data-id="${esc(f.id)}" aria-label="Remove ${esc(f.name)}">×</button>
+    ${folderIcon(f.out, 'output')}
+    <button class="rm press" data-act="remove" data-id="${esc(f.id)}" aria-label="Remove ${esc(f.name)}">${ICON.remove}</button>
   </div>`;
 }
 
@@ -1311,7 +1403,7 @@ function routePopover(f, open) {
   const candidates = routeCandidates(f);
   const body = candidates.length
     ? candidates.map(t => `<button class="opt press ${t.id === f.conv ? 'current' : ''}" data-act="choose-route" data-id="${esc(f.id)}" data-converter="${esc(t.id)}" ${t.state === 'soon' ? 'disabled' : ''}>
-        <span class="ck">${t.id === f.conv ? '✓' : ''}</span><span class="nm">${esc(t.to)}</span><span class="st ${routeStateClass(t)}">${routeStateLabel(t)}</span></button>`).join('')
+        <span class="ck">${t.id === f.conv ? tickIcon(11) : ''}</span><span class="nm">${esc(t.to)}</span><span class="st ${routeStateClass(t)}">${routeStateLabel(t)}</span></button>`).join('')
     : `<p style="margin:0;padding:var(--space-3);font-size:var(--text-sm);color:var(--text-tertiary)">No route from ${esc(f.from)}.</p>`;
   return `<span class="pop" data-open="${open}">
     <span class="pop-card">
@@ -1319,7 +1411,7 @@ function routePopover(f, open) {
       <span class="pop-body">${body}</span>
       <span class="pop-foot"><span class="note">Only formats ${esc(f.from)} can become.</span><button class="btn btn-accent btn-sm press" data-act="open-sheet" data-id="${esc(f.id)}">Browse all ${destCount()}</button></span>
     </span>
-    <span class="scope-card"><span class="eyebrow" style="flex:none">Scope</span><button class="scope press" data-act="cycle-scope">${esc(scopeLabel(f))}<span class="chev" aria-hidden="true">▾</span></button></span>
+    <span class="scope-card"><span class="eyebrow" style="flex:none">Scope</span><button class="scope press" data-act="cycle-scope">${esc(scopeLabel(f))}<span class="chev" aria-hidden="true">${chevron()}</span></button></span>
   </span>`;
 }
 
@@ -1382,14 +1474,14 @@ function renderHistory() {
     <div class="q-wrap x-wrap">
       <div class="q-head">
         <div class="grow"><h1>History</h1><p class="page-sub">Every file this tool has written, checked against where it was saved.</p></div>
-        <button class="btn btn-secondary press" data-act="history-sort">${esc(SORTS[histSort])}<span class="chev" aria-hidden="true">▾</span></button>
+        <button class="btn btn-secondary press" data-act="history-sort">${esc(SORTS[histSort])}<span class="chev" aria-hidden="true">${chevron(12, 'ia-spin')}</span></button>
       </div>
       <div class="chips">
         ${HIST_FILTERS.map(f => `<button class="chip press ${histFilter === f.id ? 'active' : ''}" data-act="history-filter" data-filter="${f.id}">${f.name}<span class="n">${historyRecords.filter(r => !r.deleted && histMatches(r, f.id)).length}</span></button>`).join('')}
       </div>
       <div class="x-list">
         <div class="x-head">
-          <button class="check press ${allOn ? 'on' : ''}" data-act="check-all" aria-label="Select all">${allOn ? '✓' : ''}</button>
+          <button class="check press ${allOn ? 'on' : ''}" data-act="check-all" aria-label="Select all">${allOn ? tickIcon(10) : ''}</button>
           <span style="width:26px;flex:none"></span>
           <span style="flex:1">File</span><span style="width:112px;flex:none">Conversion</span>
           <span style="width:66px;flex:none;text-align:right">Size</span><span style="width:132px;flex:none;text-align:right">Written</span>
@@ -1408,7 +1500,7 @@ function historyRow(r) {
   const state = histState(r), meta = HIST_STATE[state] || HIST_STATE.completed;
   const on = checked.has(r.id), selected = r.id === selectedHistory;
   return `<div class="x-row row" role="button" tabindex="0" data-act="select-history" data-context="history-file" data-multi-selected="${on}" data-id="${esc(r.id)}" ${selected ? 'data-selected="true"' : ''} ${state === 'missing' ? 'data-missing="true"' : ''}>
-    <button class="check press ${on ? 'on' : ''}" data-act="check-history" data-id="${esc(r.id)}" role="checkbox" aria-checked="${on}">${on ? '✓' : ''}</button>
+    <button class="check press ${on ? 'on' : ''}" data-act="check-history" data-id="${esc(r.id)}" role="checkbox" aria-checked="${on}">${on ? tickIcon(10) : ''}</button>
     <span class="x-tile">${folderIcon(r.outputPath, 'history')}</span>
     <span class="x-name"><span class="t">${esc(r.name || r.outputPath || 'Untitled output')}</span><span class="badge ${meta.cls}">${meta.label}</span></span>
     <span class="x-route">${esc(r.from || '')} → ${esc(r.to || '')}</span>
@@ -1433,16 +1525,17 @@ function panelFile() {
   <section class="canvas-inspector inspector" data-kind="${esc(f.from || 'file')}">
     <header class="section"><b>Editing ${index} of ${files.length} files</b><span class="sub">Changes apply to this file unless you say otherwise.</span></header>
     <div class="file">
-      ${folderIcon(f.sourcePath)}
+      ${fileThumb(f, 'i-thumb')}
       <div class="file-copy"><span class="file-name">${esc(f.name)}</span>
         <span style="display:block;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--text-secondary);margin-top:var(--space-2)">${esc(metaLine(f))}</span>
         <span class="i-route">${esc(f.from)} → ${esc(f.to || 'Choose')}</span></div>
+      ${folderIcon(f.sourcePath)}
     </div>
     <div class="body">
       ${inspectorFacts(f, tool)}
       ${primary.length ? `<div class="divider inspector-metadata">${primary.map(o => fieldHtml(f, o)).join('')}</div>` : '<p class="hint">This converter has no per-file settings.</p>'}
       ${extra.length ? `<div class="divider">
-        <button class="adv-toggle" data-act="toggle-advanced"><span class="chev" aria-hidden="true" data-flipped="${advanced}" style="transform:scale(.7) rotate(${advanced ? 180 : 90}deg)">▴</span>Conversion options</button>
+        <button class="adv-toggle" data-act="toggle-advanced"><span class="chev" aria-hidden="true" data-flipped="${advanced}" style="transform:rotate(${advanced ? 180 : 0}deg)">${chevron()}</span>Conversion options</button>
         <div class="adv ${advanced ? 'open' : ''}"><div class="adv-in"><div class="adv-pad">
           ${extra.map(o => fieldHtml(f, o)).join('')}
           <div class="switch-row"><span>Keep original filenames</span><button class="switch ${keepNames ? 'on' : ''}" data-act="toggle-names" aria-pressed="${keepNames}"><i></i></button></div>
@@ -1579,9 +1672,10 @@ function sheetHtml() {
   const catCount = c => dests.filter(d => d.tool.cat === c).length;
   return `
     <div class="sheet-head">
-      ${folderIcon(f.sourcePath)}
+      ${fileThumb(f)}
       <div style="flex:1;min-width:0"><div class="t">${esc(f.name)}</div><div class="m">${esc(metaLine(f))} · ${esc(f.from)} source</div></div>
-      <button class="btn btn-ghost btn-sm press" data-act="close-sheet" aria-label="Close">×</button>
+      ${folderIcon(f.sourcePath)}
+      <button class="btn btn-ghost btn-sm press" data-act="close-sheet" aria-label="Close">${ICON.remove}</button>
     </div>
     <div class="sheet-body">
       <div class="sheet-cats">${cats.map(c => `<button class="cat press ${c === active ? 'active' : ''}" data-act="sheet-category" data-category="${esc(c)}"><span style="flex:1">${esc(c)}</span><span class="n">${catCount(c)}</span></button>`).join('')}</div>
@@ -1593,7 +1687,7 @@ function sheetHtml() {
             const label = d.applicable ? routeStateLabel(t) : (t.state === 'soon' ? 'Not built yet' : `No route from ${f.from}`);
             const disabled = !d.applicable || t.state === 'soon';
             return `<button class="opt press ${current ? 'current' : ''}" data-act="sheet-pick" data-to="${esc(t.to)}" ${disabled ? 'disabled' : ''}>
-              <span class="ck">${current ? '✓' : ''}</span><span class="nm">${esc(t.to)}</span><span class="st ${d.applicable ? routeStateClass(t) : ''}">${esc(label)}</span></button>`;
+              <span class="ck">${current ? tickIcon(11) : ''}</span><span class="nm">${esc(t.to)}</span><span class="st ${d.applicable ? routeStateClass(t) : ''}">${esc(label)}</span></button>`;
           }).join('') : '<div class="page-empty">No destinations match.</div>'}
         </div>
       </div>
@@ -1601,7 +1695,7 @@ function sheetHtml() {
     <div class="sheet-foot">
       <div class="path">${esc(f.out || commonFolder())}</div>
       <span style="display:flex;align-items:center;gap:var(--space-2)"><span class="eyebrow">Scope</span>
-        <button class="scope press" data-act="cycle-scope">${esc(scopeLabel(f))}<span class="chev" aria-hidden="true">▾</span></button></span>
+        <button class="scope press" data-act="cycle-scope">${esc(scopeLabel(f))}<span class="chev" aria-hidden="true">${chevron()}</span></button></span>
       <button class="btn btn-primary press" data-act="apply-sheet">Use this route<span class="kbd" style="background:rgba(255,255,255,.16);color:rgba(255,255,255,.72)">⏎</span></button>
     </div>`;
 }
@@ -1638,7 +1732,7 @@ function showToast(title, ok=true, sub='') {
   clearTimeout(toastTimer);
   $('toastTitle').textContent = title;
   $('toastSub').textContent = sub;
-  $('toastMark').textContent = ok ? '✓' : '!';
+  $('toastMark').innerHTML = ok ? tickIcon(12, 'draw') : ICON.alert;
   $('toastMark').classList.toggle('bad', !ok);
   $('toast').dataset.open = 'true';
   toastTimer = setTimeout(() => { $('toast').dataset.open = 'false'; }, 4200);
@@ -1752,27 +1846,27 @@ function contextItem(label, action, icon, options={}) {
 }
 function contextItems(target) {
   if (target.type === 'queue-file') return [
-    contextItem('Select file', 'select-queue', '○'),
-    contextItem('Change output format', 'route-queue', '↔', {disabled: target.status === 'queued' || target.status === 'running'}),
-    contextItem('Show input in Explorer', 'reveal-source', '⌁', {disabled: !target.sourcePath}),
-    contextItem('Show output in Explorer', 'reveal-queue-output', '⌁', {disabled: !target.out || target.status !== 'done'}),
-    contextItem('Copy source path', 'copy-source', '⧉', {disabled: !target.sourcePath}),
+    contextItem('Select file', 'select-queue', ICON.select),
+    contextItem('Change output format', 'route-queue', ICON.route, {disabled: target.status === 'queued' || target.status === 'running'}),
+    contextItem('Show input in Explorer', 'reveal-source', ICON.reveal, {disabled: !target.sourcePath}),
+    contextItem('Show output in Explorer', 'reveal-queue-output', ICON.reveal, {disabled: !target.out || target.status !== 'done'}),
+    contextItem('Copy source path', 'copy-source', ICON.copy, {disabled: !target.sourcePath}),
     '<div class="ctx-sep" role="separator"></div>',
-    contextItem(target.ids.length > 1 ? `Remove ${target.ids.length} files from queue` : 'Remove from queue', 'remove-queue', '×', {danger: true}),
+    contextItem(target.ids.length > 1 ? `Remove ${target.ids.length} files from queue` : 'Remove from queue', 'remove-queue', ICON.remove, {danger: true}),
   ];
   if (target.type === 'history-file') return [
-    contextItem('Select output', 'select-history', '○'),
-    contextItem('Show input in Explorer', 'reveal-history-input', '⌁', {disabled: !target.sourcePath}),
-    contextItem('Show output in Explorer', 'reveal-output', '⌁', {disabled: target.state === 'missing'}),
-    contextItem('Copy output path', 'copy-output', '⧉', {disabled: !target.outputPath}),
-    contextItem(target.ids.length > 1 ? `Convert ${target.ids.length} again` : 'Convert again', 'requeue-history', '↻', {disabled: !target.sourcePath}),
+    contextItem('Select output', 'select-history', ICON.select),
+    contextItem('Show input in Explorer', 'reveal-history-input', ICON.reveal, {disabled: !target.sourcePath}),
+    contextItem('Show output in Explorer', 'reveal-output', ICON.reveal, {disabled: target.state === 'missing'}),
+    contextItem('Copy output path', 'copy-output', ICON.copy, {disabled: !target.outputPath}),
+    contextItem(target.ids.length > 1 ? `Convert ${target.ids.length} again` : 'Convert again', 'requeue-history', ICON.again, {disabled: !target.sourcePath}),
     '<div class="ctx-sep" role="separator"></div>',
-    contextItem(target.ids.length > 1 ? `Delete ${target.ids.length} from history` : 'Delete from history', 'delete-history', '×', {danger: true}),
+    contextItem(target.ids.length > 1 ? `Delete ${target.ids.length} from history` : 'Delete from history', 'delete-history', ICON.remove, {danger: true}),
   ];
   return [
-    contextItem('Select helper', 'select-helper', '○'),
-    contextItem('Check again', 'recheck-helper', '↻'),
-    target.url ? contextItem('Open official page', 'open-helper-url', '↗') : '',
+    contextItem('Select helper', 'select-helper', ICON.select),
+    contextItem('Check again', 'recheck-helper', ICON.again),
+    target.url ? contextItem('Open official page', 'open-helper-url', ICON.external) : '',
   ].filter(Boolean);
 }
 function contextTargetFromRow(row, x, y) {

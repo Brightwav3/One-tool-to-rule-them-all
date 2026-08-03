@@ -105,6 +105,38 @@ assert.match(indexHtml, /pointerdown/);
 assert.match(indexHtml, /remove-many/);
 assert.match(indexHtml, /data-act="requeue-one"[^>]*>Queue again</);
 assert.doesNotMatch(indexHtml, /data-act="requeue-one"[^>]*>Convert \$\{esc\(r\.sourceName/);
+assert.match(indexHtml, /history-inspector/);
+assert.match(indexHtml, /Output details/);
+assert.match(indexHtml, /Source file/);
+assert.match(indexHtml, /Password-protected archive/);
+assert.match(indexHtml, /data-act="unlock-archive"/);
+assert.match(indexHtml, /<section class="canvas-inspector inspector"/);
+assert.match(indexHtml, /<header class="section"><b>Editing \$\{index\} of \$\{files\.length\} files<\/b>/);
+assert.match(indexHtml, /<div class="file">/);
+assert.match(indexHtml, /<div class="body">/);
+assert.match(indexHtml, /<footer class="foot">/);
+assert.match(indexHtml, /\.canvas-inspector\.inspector\{width:100%;min-height:0;flex:1;display:flex;flex-direction:column;background:var\(--panel\);border:0[^}]*\}/);
+assert.doesNotMatch(indexHtml, /View contents/);
+const panelFileSource = indexHtml.slice(indexHtml.indexOf('function panelFile()'), indexHtml.indexOf('function outputName('));
+assert.match(panelFileSource, /\$\{folderIcon\(f\.sourcePath\)\}/);
+assert.doesNotMatch(panelFileSource, /\$\{folderIcon\(f\.out, 'output'\)\}/);
+assert.ok(panelFileSource.indexOf('<div class="status">') < panelFileSource.indexOf('<footer class="foot">'));
+assert.match(indexHtml, /\.canvas-inspector \.actions \.action\{flex:1\}/);
+assert.match(indexHtml, /\.canvas-inspector\{--panel:var\(--surface\);--line:var\(--sep\);color:var\(--t1\)\}/);
+assert.match(indexHtml, /\.canvas-inspector \.section,.canvas-inspector \.file,.canvas-inspector>\.body,.canvas-inspector \.foot\{background:var\(--surface\)\}/);
+assert.match(indexHtml, /\.canvas-inspector \.field input,.canvas-inspector \.option-select select\{background:var\(--surface\);color:var\(--t1\);box-shadow:inset 0 0 0 1px var\(--sep2\)\}/);
+assert.match(indexHtml, /\.canvas-inspector\.inspector\{color:var\(--t1\)\}/);
+assert.match(indexHtml, /\.canvas-inspector \.actions\{display:flex;width:100%;gap:8px\}/);
+assert.match(indexHtml, /\.canvas-inspector \.actions \.action\{flex:1 1 0;min-width:0\}/);
+assert.match(indexHtml, /\.canvas-inspector>\.body\{[^}]*display:flex;flex-direction:column[^}]*\}/);
+assert.match(indexHtml, /\.canvas-inspector \.scope\{display:block;min-height:0;padding:0\}/);
+assert.match(indexHtml, /\.canvas-inspector \.status\{margin-top:auto[^}]*\}/);
+assert.match(indexHtml, /\.canvas-inspector \.scope\{flex:none;flex-shrink:0\}/);
+assert.match(indexHtml, /\.canvas-inspector \.status\{flex:none;flex-shrink:0\}/);
+assert.match(indexHtml, /\.canvas-inspector\.inspector\{background:var\(--bg\)!important;border:0!important;box-shadow:none!important;border-radius:0!important\}/);
+assert.match(indexHtml, /#app \.panel\{background:var\(--bg\)\}/);
+assert.match(indexHtml, /<section class="canvas-inspector inspector batch-inspector">/);
+assert.match(indexHtml, /@media \(max-width:640px\)\{\.app\{min-width:0\}\.left\{display:none\}\.panel\[data-open="true"\]\{width:100%!important\}\}/);
 
 assert.deepEqual(selectionState.updateSelection({
   ids: ['a', 'b', 'c'], selected: [], anchorId: null, targetId: 'a',

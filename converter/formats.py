@@ -1016,8 +1016,16 @@ def zip_files(
     return len(paths)
 
 
-def extract_with_7zip(source: Path, target: Path) -> None:
-    run([which("7z", "7za", "7zz"), "x", str(source), f"-o{target}", "-y"], "7-Zip")
+def extract_with_7zip(source: Path, target: Path, password: str = "") -> None:
+    command = [which("7z", "7za", "7zz"), "x", str(source), f"-o{target}", "-y"]
+    if password:
+        command.append(f"-p{password}")
+    try:
+        run(command, "7-Zip")
+    except ValueError as exc:
+        if re.search(r"wrong password|can not open encrypted archive|data error|encrypted", str(exc), re.I):
+            raise ValueError("Archive password required") from exc
+        raise
 
 
 # --------------------------------------------------------------------------- #
@@ -1026,6 +1034,14 @@ def extract_with_7zip(source: Path, target: Path) -> None:
 
 
 def cbz_to_epub_convert(source: Path, out: Path, opts: dict, progress) -> int:
+    if opts.get("password"):
+        with tempfile.TemporaryDirectory(prefix="onetool-cbz-epub-") as tmp:
+            room = Path(tmp)
+            extract_with_7zip(source, room, opts["password"])
+            pages = images_in(room)
+            if not pages:
+                raise ValueError("the archive holds no readable comic pages")
+            return cbz_to_epub.convert_paths(pages, out, opts.get("title") or source.stem, opts.get("creator") or "Unknown", progress=progress)
     return cbz_to_epub.convert(
         source, out, opts.get("title") or None, opts.get("creator") or "Unknown", progress=progress
     )
@@ -1068,6 +1084,12 @@ def images_to_pdf_convert(pages: list[Path], out: Path, opts: dict, progress, ph
 def cbz_to_pdf_convert(source: Path, out: Path, opts: dict, progress) -> int:
     with tempfile.TemporaryDirectory(prefix="onetool-cbz-pdf-") as tmp:
         room = Path(tmp)
+        if opts.get("password"):
+            extract_with_7zip(source, room, opts["password"])
+            pages = images_in(room)
+            if not pages:
+                raise ValueError("the archive holds no readable comic pages")
+            return _direct_pdf_from_paths(pages, out, opts, progress)
         with zipfile.ZipFile(source, "r") as archive:
             names = [image.name for image in cbz_to_epub.list_images(archive)]
             if not names:
@@ -1078,7 +1100,7 @@ def cbz_to_pdf_convert(source: Path, out: Path, opts: dict, progress) -> int:
 def cbr_to_epub_convert(source: Path, out: Path, opts: dict, progress) -> int:
     with tempfile.TemporaryDirectory(prefix="onetool-cbr-") as tmp:
         room = Path(tmp)
-        extract_with_7zip(source, room)
+        extract_with_7zip(source, room, opts["password"]) if opts.get("password") else extract_with_7zip(source, room)
         pages = images_in(room)
         if not pages:
             raise ValueError("the archive holds no readable comic pages")
@@ -1094,7 +1116,7 @@ def cbr_to_epub_convert(source: Path, out: Path, opts: dict, progress) -> int:
 def cbr_to_pdf_convert(source: Path, out: Path, opts: dict, progress) -> int:
     with tempfile.TemporaryDirectory(prefix="onetool-cbr-pdf-") as tmp:
         room = Path(tmp)
-        extract_with_7zip(source, room)
+        extract_with_7zip(source, room, opts["password"]) if opts.get("password") else extract_with_7zip(source, room)
         pages = images_in(room)
         if not pages:
             raise ValueError("the archive holds no readable comic pages")
@@ -1558,7 +1580,7 @@ def repack_convert(source: Path, out: Path, opts: dict, progress) -> int:
     progress(0, 0)
     with tempfile.TemporaryDirectory(prefix="onetool-pack-") as tmp:
         room = Path(tmp)
-        extract_with_7zip(source, room)
+        extract_with_7zip(source, room, opts["password"]) if opts.get("password") else extract_with_7zip(source, room)
         members = [p for p in room.rglob("*") if p.is_file()]
         if not members:
             raise ValueError("the archive is empty")

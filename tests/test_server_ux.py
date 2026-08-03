@@ -20,6 +20,14 @@ class ServerUxTests(unittest.TestCase):
             archive.writestr("page-1.jpg", b"not-an-image")
         return source
 
+    def test_inspector_renders_format_aware_facts_and_controls(self):
+        source = (ROOT / "converter" / "ui" / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn("inspector-facts", source)
+        self.assertIn("optionControl", source)
+        self.assertIn("data-act=\"update-field\"", source)
+        self.assertIn("document.addEventListener('change'", source)
+
     def test_route_changes_only_the_selected_job_and_updates_output_extension(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

@@ -153,6 +153,11 @@ class SettingsStore:
 _dialog_requests: "queue.Queue[tuple[str, dict, queue.Queue]]" = queue.Queue()
 
 
+def public_options(options: dict[str, str]) -> dict[str, str]:
+    """Keep one-time secrets out of renderer snapshots and history files."""
+    return {key: value for key, value in options.items() if key != "password"}
+
+
 def ask_main_thread(kind: str, **kwargs):
     reply: "queue.Queue" = queue.Queue(maxsize=1)
     _dialog_requests.put((kind, kwargs, reply))
@@ -277,7 +282,7 @@ class Job:
             "base": self.base,
             "sourceSize": self.source_size,
             "sourceExt": self.source.suffix.casefold(),
-            "opts": self.opts,
+            "opts": public_options(self.opts),
             "out": self.out,
             "status": self.status,
             "units": self.units,
@@ -330,6 +335,10 @@ class Converter:
                 job.out = value
             else:
                 job.opts[key] = value
+                if key == "password":
+                    job.status = "idle"
+                    job.error_title = ""
+                    job.error = ""
 
     def route(self, job_id: str, converter_id: str) -> None:
         with self.lock:
@@ -522,7 +531,7 @@ class Converter:
                 "size": job["size"],
                 "finishedAt": finished_at,
                 "state": "completed" if job["status"] == "done" else "uncompleted",
-                "options": job["opts"],
+                "options": public_options(job["opts"]),
                 "error": job["error"],
             })
         done = sum(1 for j in jobs if j["status"] == "done")

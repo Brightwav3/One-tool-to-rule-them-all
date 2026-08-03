@@ -130,8 +130,12 @@ assert.match(indexHtml, /<div class="empty-glyph">\s*<svg[^>]*viewBox="0 0 48 48
 assert.match(indexHtml, /<path d="M24 10v18"\/>\s*<path d="M17 21l7 7 7-7"\/>\s*<path d="M12 32v4a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2v-4"\/>/);
 assert.doesNotMatch(indexHtml, /\.empty-glyph\{[^}]*background:/);
 assert.match(mainJs, /backgroundColor:\s*'#f2f2f4'/);
-assert.match(indexHtml, /\.body\{[^}]*padding-top:44px/);
-assert.match(indexHtml, /\.topbar\{[^}]*position:absolute;top:0;left:0;right:0/);
+assert.match(indexHtml, /\.topbar\{[^}]*position:relative;z-index:12/);
+assert.match(indexHtml, /id="contextMenu"[^>]*><\/div>\s*<header class="topbar">/s);
+assert.strictEqual((indexHtml.match(/<header class="topbar">/g) || []).length, 1);
+assert.match(indexHtml, /\.work-resize\{right:-9px\}/);
+assert.match(indexHtml, /\.work-resize::after\{right:8px\}/);
+assert.match(indexHtml, /document\.querySelector\('\[data-panel-resize\]'\)/);
 assert.match(indexHtml, /\.work\{margin:0;border:0;border-radius:0 14px 0 0/);
 
 console.log('UI action-state regression tests passed');

@@ -185,7 +185,7 @@ button{border:0;background:none;color:inherit;cursor:pointer}
 /* ---------- app shell ---------- */
 .app{height:100%;min-width:760px;display:flex;flex-direction:column;position:relative}
 
-.topbar{height:44px;flex:none;display:flex;align-items:center;gap:var(--space-4);padding:0 var(--space-4);-webkit-app-region:drag;user-select:none;position:absolute;top:0;left:0;right:0;z-index:12;
+.topbar{height:44px;flex:none;display:flex;align-items:center;gap:var(--space-4);padding:0 var(--space-4);-webkit-app-region:drag;user-select:none;position:relative;z-index:12;
   transition:padding-right var(--d-slow) var(--ease)}
 /* when the inspector is closed the window controls sit over the bar's right end,
    so the bar yields the space; when it is open they sit over the panel instead */
@@ -226,8 +226,8 @@ body.is-mac .topbar{padding-left:82px}
 .wincontrols .close:hover{background:var(--danger);color:var(--text-inverse)}
 .wincontrols svg{width:10px;height:10px}
 
-.body{flex:1;min-height:0;display:flex;position:relative;padding-top:44px}
-.left{flex:1;min-width:0;display:flex;flex-direction:column}
+.body{flex:1;min-height:0;display:flex}
+.left{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
 .work{flex:1;min-height:0;margin:var(--space-2);border-radius:var(--radius-card);background:var(--surface-card);border:1px solid var(--border-subtle);box-shadow:0 2px 5px rgba(41,41,41,.07),0 1px 2px rgba(41,41,41,.05);display:flex;flex-direction:column;overflow:hidden;position:relative}
 
 /* page side-by-side */
@@ -418,6 +418,8 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .panel-resize{position:absolute;top:0;right:0;width:18px;height:100%;cursor:ew-resize;z-index:10;-webkit-app-region:no-drag;touch-action:none}
 .panel-resize::after{content:"";position:absolute;top:0;right:0;width:1px;height:100%;background:transparent;transition:background-color var(--d-quick) var(--ease)}
 .panel-resize:hover::after,.work[data-resizing="true"] .panel-resize::after{background:var(--accent)}
+.work-resize{right:-9px}
+.work-resize::after{right:8px}
 .work[data-resizing="true"]{overflow:visible;transition:none!important}
 #app[data-inspector="false"] .panel-resize{display:none}
 body.is-resizing-panel{cursor:ew-resize;user-select:none}
@@ -657,10 +659,35 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
   </div>
   <div id="contextMenu" class="context-menu t-dropdown" data-origin="top-left" role="menu" aria-hidden="true"></div>
 
+  <header class="topbar">
+        <nav class="nav" aria-label="Primary">
+          <button class="navbtn press active" data-page="queue">Queue</button>
+          <button class="navbtn press" data-page="helpers">Helpers<span class="navdot" id="helperDot" hidden></span></button>
+          <button class="navbtn press" data-page="history">History</button>
+        </nav>
+        <div class="searchwrap">
+          <div class="tiphost theme-host">
+            <button id="themeToggle" class="theme-toggle press" aria-label="Change theme" aria-pressed="false">
+              <span id="themeLogo" class="theme-logo" aria-hidden="true"></span>
+            </button>
+        <span class="tip">Change theme</span>
+      </div>
+      <button class="search press" id="searchBtn" aria-label="Open command palette">
+        <span aria-hidden="true">âŚ•</span><span class="label">Search conversions, files, helpers</span><span class="kbd" data-shortcut="palette">âŚK</span>
+      </button>
+    </div>
+    <div class="tiphost">
+      <button class="insp-toggle press on" id="inspToggle" aria-pressed="true" aria-label="Hide inspector">
+        <span aria-hidden="true" style="display:block;width:15px;height:12px;border:1.5px solid currentColor;border-radius:var(--radius-xs);border-right-width:5px"></span>
+      </button>
+      <span class="tip" id="inspTip">Hide inspector <span class="kbd" data-shortcut="inspector">âŚĄI</span></span>
+    </div>
+  </header>
+
   <div class="body">
     <div class="left">
 
-      <header class="topbar">
+      <template data-legacy-topbar>
         <nav class="nav" aria-label="Primary">
           <button class="navbtn press active" data-page="queue">Queue</button>
           <button class="navbtn press" data-page="helpers">Helpers<span class="navdot" id="helperDot" hidden></span></button>
@@ -683,7 +710,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
           </button>
           <span class="tip" id="inspTip">Hide inspector <span class="kbd" data-shortcut="inspector">⌥I</span></span>
         </div>
-      </header>
+      </template>
 
       <div class="work" id="work">
         <section class="page" id="pageQueue" data-active="true" style="--px:-8px"></section>
@@ -693,8 +720,8 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
         <div class="scrim sheet-scrim" id="sheetScrim" data-act="close-sheet"><div class="modal sheet" id="sheetBox" data-stop="true"></div></div>
         <div class="scrim pal-scrim" id="palScrim" data-act="close-palette"><div class="modal pal" id="palBox" data-stop="true"></div></div>
         <div class="toast" id="toast"><span class="m" id="toastMark">✓</span><span style="min-width:0"><b id="toastTitle"></b><span class="sub" id="toastSub"></span></span></div>
-        <div class="work-resize panel-resize" data-panel-resize role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
       </div>
+      <div class="work-resize panel-resize" data-panel-resize role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
     </div>
 
     <aside class="panel" id="panel" data-open="true"><div class="panel-in"><div class="panel-top"></div><div id="panelBody" style="flex:1;min-height:0;display:flex;flex-direction:column"></div></div></aside>
@@ -712,7 +739,7 @@ const $ = id => document.getElementById(id);
 const work = $('work'), panel = $('panel'), panelBody = $('panelBody');
 const contextMenu = $('contextMenu');
 const themeToggle = $('themeToggle'), themeLogo = $('themeLogo');
-const panelResizeHandle = work.querySelector('[data-panel-resize]');
+const panelResizeHandle = document.querySelector('[data-panel-resize]');
 const isMac = shell?.platform === 'darwin';
 const shortcutLabel = name => OneToolShortcutLabels.label(name, isMac);
 const THEME_STORAGE = 'one-tool.theme';

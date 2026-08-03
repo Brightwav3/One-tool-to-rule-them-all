@@ -115,6 +115,8 @@
 html,body{height:100%}
 html{font-family:var(--font-sans);letter-spacing:var(--tracking);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
 body{margin:0;overflow:hidden;background:var(--surface-sunken);color:var(--text-primary);font-size:var(--text-base);font-weight:var(--weight-regular)}
+html,body,*{-webkit-user-select:none;user-select:none}
+input,textarea,[contenteditable="true"]{-webkit-user-select:text;user-select:text}
 button,input{font:inherit;letter-spacing:inherit}
 button{border:0;background:none;color:inherit;cursor:pointer}
 [hidden]{display:none!important}
@@ -197,7 +199,7 @@ body.is-mac .topbar{padding-left:82px}
 .navbtn:hover{background:var(--surface-hover)}
 .navbtn.active{background:var(--accent);color:var(--text-inverse);font-weight:var(--weight-medium)}
 .navdot{position:absolute;top:2px;right:1px;width:7px;height:7px;border-radius:var(--radius-pill);background:var(--warning);box-shadow:0 0 0 2px var(--surface-sunken)}
-.searchwrap{flex:1;display:flex;align-items:center;justify-content:center;gap:10px}
+.searchwrap{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:10px}
 .theme-host{flex:none;position:relative;display:flex;align-items:center}
 .theme-toggle{width:28px;height:28px;display:grid;place-items:center;border-radius:var(--radius-nav);-webkit-app-region:no-drag}
 .theme-toggle:hover{background:var(--surface-hover)}
@@ -206,7 +208,7 @@ body.is-mac .topbar{padding-left:82px}
 .theme-toggle.is-spinning .theme-logo{animation:theme-spin 520ms var(--ease) both}
 @keyframes theme-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .theme-host .tip{left:0;right:auto}
-.search{display:flex;align-items:center;gap:var(--gap-inline);width:330px;height:28px;padding:0 10px;border-radius:var(--radius-nav);background:var(--surface-hover);font-size:var(--text-sm);color:var(--text-tertiary);transition:background-color var(--d-quick) var(--ease)}
+.search{display:flex;align-items:center;gap:var(--gap-inline);width:330px;max-width:100%;min-width:0;height:28px;padding:0 10px;border-radius:var(--radius-nav);background:var(--surface-hover);font-size:var(--text-sm);color:var(--text-tertiary);transition:background-color var(--d-quick) var(--ease)}
 .search:hover{background:var(--surface-active)}
 .search .label{flex:1;text-align:left}
 .kbd{font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-medium);padding:2px 5px;border-radius:var(--radius-xs);background:var(--surface-active);color:var(--text-tertiary)}
@@ -219,9 +221,10 @@ body.is-mac .topbar{padding-left:82px}
 [data-theme="dark"] .tip{background:#1f2024;color:#ededed}
 .tiphost:hover .tip{opacity:1;transform:none;transition-delay:80ms}
 .tip .kbd{background:rgba(255,255,255,.16);color:rgba(255,255,255,.72)}
-.wincontrols{position:absolute;top:0;right:var(--space-3);height:44px;display:none;align-items:center;gap:2px;z-index:14}
+.topbar>.tiphost{flex:none}
+.wincontrols{position:fixed;top:0;right:var(--space-3);height:44px;display:none;align-items:center;gap:2px;z-index:2147483647;pointer-events:auto!important;-webkit-app-region:no-drag!important}
 .is-electron:not(.is-mac) .wincontrols{display:flex}
-.wincontrols button{width:30px;height:26px;display:grid;place-items:center;border-radius:var(--radius-xs);color:var(--text-tertiary);-webkit-app-region:no-drag;pointer-events:auto;cursor:pointer}
+.wincontrols button{width:30px;height:26px;display:grid;place-items:center;border-radius:var(--radius-xs);color:var(--text-tertiary);-webkit-app-region:no-drag!important;pointer-events:auto!important;cursor:pointer}
 .wincontrols button:hover{background:var(--surface-active);color:var(--text-primary)}
 .wincontrols .close:hover{background:var(--danger);color:var(--text-inverse)}
 .wincontrols svg{width:10px;height:10px}
@@ -288,6 +291,12 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .q-row.dim{opacity:.8}
 .q-row.open{z-index:6}
 .thumb{width:34px;height:44px;flex:none;border-radius:var(--radius-xs);border:1px solid var(--border-subtle);background:repeating-linear-gradient(135deg,var(--gray-200) 0 4px,transparent 4px 8px),var(--surface-sunken);display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-medium);color:var(--text-tertiary);overflow:hidden}
+.file-folder{width:48px;height:48px;flex:none;display:grid;place-items:center;padding:0;border:0;border-radius:8px;background:transparent;cursor:pointer}
+.file-folder .folder{display:block;width:48px;height:48px}
+.folder .fdr-front,.folder .fdr-sheet{transform-box:fill-box;transform-origin:50% 100%;transition:transform .36s cubic-bezier(.34,1.32,.52,1)}
+.folder:hover .fdr-front{transform:scaleY(.72) rotate(4deg)}
+.folder:hover .fdr-sheet{transform:translateY(-11px)}
+@media (prefers-reduced-motion:reduce){.folder .fdr-front,.folder .fdr-sheet{transition:none}}
 /* the tile label sits below the system's 12px floor, so it is scaled rather than
    introducing a fifth type size */
 .thumb > span{display:block;transform:scale(.55);transform-origin:bottom center;white-space:nowrap}
@@ -393,7 +402,7 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .x-row[data-multi-selected="true"],.x-row[data-multi-selected="true"]:hover{background:var(--accent-soft)}
 .check{width:15px;height:15px;flex:none;border-radius:var(--radius-xs);display:grid;place-items:center;font-size:9px;color:var(--text-inverse);box-shadow:inset 0 0 0 1px var(--border-default)}
 .check.on{background:var(--accent);box-shadow:none}
-.x-tile{width:26px;height:32px;flex:none;border-radius:var(--radius-xs);display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-medium);color:var(--text-tertiary);background:var(--surface-sunken);border:1px solid var(--border-subtle);overflow:hidden}
+.x-tile{width:48px;height:48px;flex:none;display:grid;place-items:center}
 .x-tile>span{display:block;transform:scale(.62);transform-origin:bottom center;white-space:nowrap}
 .x-name{flex:1;min-width:0;display:flex;align-items:center;gap:var(--gap-inline)}
 .x-name .t{min-width:0;font-size:var(--text-base);font-weight:var(--weight-medium);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -417,13 +426,14 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .panel[data-open="true"] .panel-in{opacity:1;transform:none;filter:blur(0);transition-duration:var(--d-slow)}
 .panel-resize{position:absolute;top:0;right:0;width:18px;height:100%;cursor:ew-resize;z-index:10;-webkit-app-region:no-drag;touch-action:none}
 .panel-resize::after{content:"";position:absolute;top:0;right:0;width:1px;height:100%;background:transparent;transition:background-color var(--d-quick) var(--ease)}
-.panel-resize:hover::after,.work[data-resizing="true"] .panel-resize::after{background:var(--accent)}
-.work-resize{right:-9px}
-.work-resize::after{right:8px}
+.panel-resize:hover::after{background:transparent}
+.work-resize{right:-9px;top:0;height:100%}
+.work-resize::after{display:none}
 .work[data-resizing="true"]{overflow:visible;transition:none!important}
 #app[data-inspector="false"] .panel-resize{display:none}
 body.is-resizing-panel{cursor:ew-resize;user-select:none}
-.panel-top{flex:none;height:44px;-webkit-app-region:drag}
+.panel-top{flex:none;height:44px;position:relative;-webkit-app-region:no-drag}
+.panel-top::before{content:"";position:absolute;inset:0 104px 0 0;-webkit-app-region:drag}
 .i-sec{flex:none;padding:var(--space-4) 18px;border-bottom:1px solid var(--border-subtle)}
 .i-sec b{display:block;font-size:var(--text-base);font-weight:var(--weight-medium);line-height:var(--leading-snug)}
 .i-sec .sub{display:block;font-size:var(--text-sm);color:var(--text-secondary);margin-top:var(--space-1)}
@@ -536,7 +546,7 @@ body{background:var(--page);font-size:13px;letter-spacing:0}
 .topbar{padding:0 14px 0 16px;gap:16px}
 .app[data-inspector="false"] .topbar{padding-right:112px;transition-duration:var(--d-medium)}
 .body{background:var(--bg)}
-.work{margin:0;border:0;border-radius:0 14px 0 0;background:var(--surface);box-shadow:0 0 0 1px var(--sep),var(--sh2)}
+.work{margin:0;border:1px solid var(--sep);border-left:0;border-bottom:0;border-radius:0 14px 0 0;background:var(--surface);box-shadow:var(--sh2)}
 .page{transform:translateX(var(--px,8px));filter:blur(3px);transition:opacity 250ms var(--ease),transform 250ms var(--ease),filter 250ms var(--ease)}
 .page[data-active="true"]{transform:none;filter:blur(0)}
 h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
@@ -1042,6 +1052,17 @@ function render(force=false) {
 
 /* ---------- queue ---------- */
 function thumbLabel(f) { return f?.kind === 'image' ? 'IMG' : f?.kind === 'comic' ? 'p.1' : (f?.from || 'FILE'); }
+function folderIcon(path, revealKind='queue') {
+  const isOutput = revealKind === 'output' || revealKind === 'history';
+  const label = isOutput ? 'Open output location' : 'Open source location';
+  return `<button class="file-folder press" data-act="reveal-file" data-path="${esc(path || '')}" data-reveal-kind="${revealKind}" aria-label="${label}">
+    <svg class="folder" width="48" height="48" viewBox="0 0 48 48" role="img" aria-label="Folder">
+      <path d="M4 13a4 4 0 0 1 4-4h9.2a4 4 0 0 1 2.8 1.2L23 13h17a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V13Z" fill="#2563EB"/>
+      <rect class="fdr-sheet" x="8" y="25" width="32" height="9" rx="1.5" fill="#EFF6FF"/>
+      <path class="fdr-front" d="M4 17a4 4 0 0 1 4-4h32a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V17Z" fill="#3B82F6"/>
+    </svg>
+  </button>`;
+}
 function metaLine(f) {
   const bits = [];
   if (f.units > 1) bits.push(`${f.units} pages`);
@@ -1171,7 +1192,7 @@ function queueRow(f) {
   const isNew = freshRows.has(f.id), errored = freshError.has(f.id);
   const delay = isNew ? ` style="animation-delay:${Math.min(files.indexOf(f), 5) * 50}ms"` : '';
   return `<div class="q-row row ${selected ? 'selected' : ''} ${selectedQueueIds.size && !multiSelected ? 'dim' : ''} ${open ? 'open' : ''} ${isNew ? 'is-new' : ''} ${errored ? 'is-error' : ''}" data-act="select-row" data-context="queue-file" data-multi-selected="${multiSelected}" data-id="${esc(f.id)}"${delay}>
-    <span class="thumb" aria-hidden="true"><span>${esc(thumbLabel(f))}</span></span>
+    ${folderIcon(f.out, 'output')}
     <div class="f-copy"><div class="f-name" title="${esc(f.name)}">${esc(f.name)}</div><div class="f-meta">${esc(metaLine(f))}</div></div>
     <span class="pill-wrap">
       <button class="pill press ${blocked ? 'blocked' : ''} ${open ? 'open' : ''}" data-act="toggle-picker" data-id="${esc(f.id)}" aria-expanded="${open}">${esc(f.from)} → ${esc(f.to || 'Choose')}<span class="chev" aria-hidden="true">▼</span></button>
@@ -1290,7 +1311,7 @@ function historyRow(r) {
   const on = checked.has(r.id), selected = r.id === selectedHistory;
   return `<div class="x-row row" role="button" tabindex="0" data-act="select-history" data-context="history-file" data-multi-selected="${on}" data-id="${esc(r.id)}" ${selected ? 'data-selected="true"' : ''} ${state === 'missing' ? 'data-missing="true"' : ''}>
     <button class="check press ${on ? 'on' : ''}" data-act="check-history" data-id="${esc(r.id)}" role="checkbox" aria-checked="${on}">${on ? '✓' : ''}</button>
-    <span class="x-tile" aria-hidden="true"><span>${esc(r.to || 'FILE')}</span></span>
+    <span class="x-tile">${folderIcon(r.outputPath, 'history')}</span>
     <span class="x-name"><span class="t">${esc(r.name || r.outputPath || 'Untitled output')}</span><span class="badge ${meta.cls}">${meta.label}</span></span>
     <span class="x-route">${esc(r.from || '')} → ${esc(r.to || '')}</span>
     <span class="x-size">${esc(fmtSize(r.size) || '—')}</span>
@@ -1313,7 +1334,7 @@ function panelFile() {
   panelBody.innerHTML = `
     <div class="i-sec"><b>Editing ${index} of ${files.length} files</b><span class="sub">Changes apply to this file unless you say otherwise.</span></div>
     <div class="i-file">
-      <span class="i-thumb" aria-hidden="true"><span>${esc(thumbLabel(f))}</span></span>
+      ${folderIcon(f.sourcePath)}
       <div style="min-width:0"><b style="display:block;font-size:var(--text-base);font-weight:var(--weight-medium);line-height:var(--leading-snug)">${esc(f.name)}</b>
         <span style="display:block;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--text-secondary);margin-top:var(--space-2)">${esc(metaLine(f))}</span>
         <span class="i-route">${esc(f.from)} → ${esc(f.to || 'Choose')}</span></div>
@@ -1433,7 +1454,7 @@ function sheetHtml() {
   const catCount = c => dests.filter(d => d.tool.cat === c).length;
   return `
     <div class="sheet-head">
-      <span class="thumb" aria-hidden="true" style="width:32px;height:42px;transform:none"><span style="transform:scale(.6);transform-origin:bottom center">${esc(thumbLabel(f))}</span></span>
+      ${folderIcon(f.sourcePath)}
       <div style="flex:1;min-width:0"><div class="t">${esc(f.name)}</div><div class="m">${esc(metaLine(f))} · ${esc(f.from)} source</div></div>
       <button class="btn btn-ghost btn-sm press" data-act="close-sheet" aria-label="Close">×</button>
     </div>
@@ -1591,14 +1612,16 @@ function contextItems(target) {
   if (target.type === 'queue-file') return [
     contextItem('Select file', 'select-queue', '○'),
     contextItem('Change output format', 'route-queue', '↔', {disabled: target.status === 'queued' || target.status === 'running'}),
-    contextItem('Show source in folder', 'reveal-source', '⌁', {disabled: !target.sourcePath}),
+    contextItem('Show input in Explorer', 'reveal-source', '⌁', {disabled: !target.sourcePath}),
+    contextItem('Show output in Explorer', 'reveal-queue-output', '⌁', {disabled: !target.out || target.status !== 'done'}),
     contextItem('Copy source path', 'copy-source', '⧉', {disabled: !target.sourcePath}),
     '<div class="ctx-sep" role="separator"></div>',
     contextItem(target.ids.length > 1 ? `Remove ${target.ids.length} files from queue` : 'Remove from queue', 'remove-queue', '×', {danger: true}),
   ];
   if (target.type === 'history-file') return [
     contextItem('Select output', 'select-history', '○'),
-    contextItem('Show in folder', 'reveal-output', '⌁', {disabled: target.state === 'missing'}),
+    contextItem('Show input in Explorer', 'reveal-history-input', '⌁', {disabled: !target.sourcePath}),
+    contextItem('Show output in Explorer', 'reveal-output', '⌁', {disabled: target.state === 'missing'}),
     contextItem('Copy output path', 'copy-output', '⧉', {disabled: !target.outputPath}),
     contextItem(target.ids.length > 1 ? `Convert ${target.ids.length} again` : 'Convert again', 'requeue-history', '↻', {disabled: !target.sourcePath}),
     '<div class="ctx-sep" role="separator"></div>',
@@ -1687,9 +1710,11 @@ async function handleContextAction(action, target) {
     selectedId = target.id; inspectorOpen = true; pickerFor = action === 'route-queue' ? target.id : null; return render(true);
   }
   if (action === 'reveal-source') return api('/api/reveal', {path: target.sourcePath}, false);
+  if (action === 'reveal-queue-output') return api('/api/reveal', {path: target.out}, false);
   if (action === 'copy-source') return copyText(target.sourcePath, 'Source path copied');
   if (action === 'remove-queue') { selectedQueueIds = new Set(); queueAnchorId = null; return api('/api/remove-many', {ids: target.ids}); }
   if (action === 'select-history') { selectedHistory = target.id; inspectorOpen = true; return render(true); }
+  if (action === 'reveal-history-input') return api('/api/reveal', {path: target.sourcePath}, false);
   if (action === 'reveal-output') return api('/api/history/reveal', {path: target.outputPath}, false);
   if (action === 'copy-output') return copyText(target.outputPath, 'Output path copied');
   if (action === 'requeue-history') { const ids = target.ids; checked.clear(); historyAnchorId = null; return historyAction('/api/history/requeue', {ids}, `${ids.length} queued again`); }
@@ -1702,6 +1727,22 @@ async function copyText(value, message) {
   if (!value || !navigator.clipboard) return;
   await navigator.clipboard.writeText(value);
   showToast(message);
+}
+function revealTargetForRow(row) {
+  const isHistory = row?.dataset.context === 'history-file';
+  const record = isHistory
+    ? historyRecords.find(item => item.id === row?.dataset.id)
+    : files.find(item => item.id === row?.dataset.id);
+  return {path: isHistory ? record?.outputPath : record?.sourcePath, history: isHistory};
+}
+async function revealFile(path, history=false) {
+  if (!path) return;
+  await api(history ? '/api/history/reveal' : '/api/reveal', {path}, false);
+}
+async function revealRow(row) {
+  const target = revealTargetForRow(row);
+  try { await revealFile(target.path, target.history); }
+  catch (error) { showToast(error.message, false); }
 }
 
 document.addEventListener('pointerdown', event => {
@@ -1731,12 +1772,17 @@ document.addEventListener('click', async event => {
   if (!el) return;
   const act = el.dataset.act;
   if ((act === 'close-sheet' || act === 'close-palette') && event.target.closest('[data-stop]')) return;
+  if (event.detail === 2 && (act === 'select-row' || act === 'select-history')) {
+    event.preventDefault();
+    return revealRow(el);
+  }
 
   switch (act) {
     case 'toggle-folder-menu': return folderMenuState === 'open' ? closeFolderMenu() : openFolderMenu();
     case 'select-folder': try { await api('/api/set-folder', {folder: el.dataset.folder}); closeFolderMenu(false); } catch (e) { showToast(e.message, false); } return;
     case 'forget-folder': event.stopPropagation(); try { await api('/api/forget-folder', {folder: el.dataset.folder}); } catch (e) { showToast(e.message, false); } return;
     case 'select-row': return applyQueueSelection(event, el.dataset.id);
+    case 'reveal-file': event.stopPropagation(); return revealFile(el.dataset.path, el.dataset.revealKind === 'history').catch(error => showToast(error.message, false));
     case 'toggle-picker': event.stopPropagation(); selectedId = el.dataset.id;
       pickerFor = pickerFor === el.dataset.id ? null : el.dataset.id; return render(true);
     case 'choose-route': { event.stopPropagation(); const f = files.find(i => i.id === el.dataset.id); if (f) await chooseRoute(f, el.dataset.converter); return; }

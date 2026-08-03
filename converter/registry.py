@@ -314,7 +314,7 @@ SEVEN_ZIP = Helper(
     download="https://github.com/ip7z/7zip/releases/download/26.02/7z2602-x64.exe",
     paths=_windows_program_paths("7-Zip", "7z.exe") + ((os.environ.get("ONETOOL_7Z") or ""),),
     commands={
-        "win32": "winget install 7zip.7zip",
+        "win32": "winget install --id 7zip.7zip --exact",
         "darwin": "brew install sevenzip",
         "linux": "sudo apt install p7zip-full",
     },
@@ -343,7 +343,7 @@ POPPLER = Helper(
     ),
     required=("pdftoppm", "pdftotext"),
     commands={
-        "win32": "winget install oschwartz10612.Poppler",
+        "win32": "winget install --id oschwartz10612.Poppler --exact",
         "darwin": "brew install poppler",
         "linux": "sudo apt install poppler-utils",
     },
@@ -385,7 +385,7 @@ FFMPEG = Helper(
         *_windows_winget_globs("Gyan.FFmpeg_*", "bin", "ffmpeg.exe"),
     ),
     commands={
-        "win32": "winget install Gyan.FFmpeg",
+        "win32": "winget install --id Gyan.FFmpeg --exact",
         "darwin": "brew install ffmpeg",
         "linux": "sudo apt install ffmpeg",
     },
@@ -406,7 +406,7 @@ IMAGEMAGICK = Helper(
         *_windows_winget_globs("ImageMagick.ImageMagick_*", "magick.exe"),
     ),
     commands={
-        "win32": "winget install ImageMagick.ImageMagick",
+        "win32": "winget install --id ImageMagick.ImageMagick --exact",
         "darwin": "brew install imagemagick",
         "linux": "sudo apt install imagemagick",
     },
@@ -428,7 +428,7 @@ LIBREOFFICE = Helper(
         *_windows_winget_globs("TheDocumentFoundation.LibreOffice_*", "LibreOffice", "program", "soffice.exe"),
     ),
     commands={
-        "win32": "winget install TheDocumentFoundation.LibreOffice",
+        "win32": "winget install --id TheDocumentFoundation.LibreOffice --exact",
         "darwin": "brew install --cask libreoffice",
         "linux": "sudo apt install libreoffice",
     },
@@ -447,7 +447,7 @@ CALIBRE = Helper(
     ),
     globs=_windows_program_globs("Calibre*", "ebook-convert.exe"),
     commands={
-        "win32": "winget install calibre.calibre",
+        "win32": "winget install --id calibre.calibre --exact",
         "darwin": "brew install --cask calibre",
         "linux": "sudo apt install calibre",
     },
@@ -464,7 +464,7 @@ RAW_TOOLS = Helper(
         *_windows_program_globs("Exiv2*", "bin", "exiv2.exe"),
     ),
     commands={
-        "win32": "install LibRaw or Exiv2 from its official distribution",
+        "win32": "winget install --id Exiv2.Exiv2 --exact",
         "darwin": "brew install libraw exiv2",
         "linux": "sudo apt install libraw-bin exiv2",
     },
@@ -481,7 +481,7 @@ PANDOC = Helper(
     ),
     globs=_windows_program_globs("Pandoc*", "pandoc.exe"),
     commands={
-        "win32": "winget install JohnMacFarlane.Pandoc",
+        "win32": "winget install --id JohnMacFarlane.Pandoc --exact",
         "darwin": "brew install pandoc",
         "linux": "sudo apt install pandoc",
     },
@@ -504,7 +504,7 @@ PDF_RENDERER = Helper(
         *_windows_program_globs("wkhtmltopdf*", "bin", "wkhtmltopdf.exe"),
     ),
     commands={
-        "win32": "install MiKTeX, wkhtmltopdf or WeasyPrint from its official distribution",
+        "win32": "winget install --id MiKTeX.MiKTeX --exact",
         "darwin": "brew install --cask mactex",
         "linux": "sudo apt install texlive-latex-base",
     },

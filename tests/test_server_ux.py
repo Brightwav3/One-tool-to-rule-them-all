@@ -67,7 +67,7 @@ class ServerUxTests(unittest.TestCase):
         tool = server.REGISTRY.get("md-pdf").as_dict()
         renderer = next(item for item in tool["requirements"] if item["name"] == "PDF renderer")
 
-        self.assertEqual(renderer["cmd"], "install MiKTeX, wkhtmltopdf or WeasyPrint from its official distribution")
+        self.assertEqual(renderer["cmd"], "winget install --id MiKTeX.MiKTeX --exact")
         self.assertEqual(renderer["url"], "https://pandoc.org/installing.html")
         self.assertTrue(renderer["download"] == "")
 

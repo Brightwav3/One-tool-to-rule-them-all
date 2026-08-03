@@ -466,6 +466,7 @@ body.is-resizing-panel{cursor:ew-resize;user-select:none}
 .kv .v{font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-medium);color:var(--text-secondary)}
 .cmd{display:flex;align-items:center;gap:var(--gap-inline);padding:var(--space-2) 10px;border-radius:var(--radius-nav);background:var(--surface-card);box-shadow:inset 0 0 0 1px var(--border-default)}
 .cmd code{flex:1;min-width:0;font-family:var(--font-mono);font-size:var(--text-xs);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmd-help{margin:var(--space-2) 0 0}
 .warnbox{padding:10px var(--space-3);border-radius:var(--radius-nav);background:var(--warning-soft);box-shadow:inset 2px 0 0 var(--warning);font-size:var(--text-sm);line-height:var(--leading-normal);color:var(--text-secondary);text-wrap:pretty}
 .unlock{display:flex;align-items:center;gap:var(--space-2)}
 .unlock .d{width:6px;height:6px;flex:none;border-radius:var(--radius-pill)}
@@ -1384,8 +1385,9 @@ function panelHelper() {
     <div class="i-body">
       <p style="margin:0;font-size:var(--text-sm);line-height:var(--leading-normal);color:var(--text-secondary);text-wrap:pretty">${esc(data.why || `${name} is a free, standard tool. Install it once and the conversions below switch on — nothing runs automatically and nothing is uploaded.`)}</p>
       ${!ready ? `<div>
-        <span class="eyebrow" style="margin-bottom:var(--space-2)">Install it</span>
-        <div class="cmd"><code>${esc(data.cmd || 'See the official page')}</code><button class="link press" data-act="copy-command" data-command="${esc(data.cmd || '')}">Copy</button></div>
+        <span class="eyebrow" style="margin-bottom:var(--space-2)">Install it in PowerShell</span>
+        <div class="cmd"><code>${esc(data.cmd || 'See the official page')}</code><button class="link press" data-act="copy-command" data-command="${esc(data.cmd || '')}">Copy PowerShell</button></div>
+        <p class="i-note cmd-help">Open PowerShell, paste the command, and press Enter. When it finishes, return here and choose Recheck.</p>
         <div style="display:flex;gap:var(--gap-inline);margin-top:var(--space-3)">
           ${data.download && shell?.downloadDependency ? `<button class="btn btn-accent press" style="flex:1" data-act="download-helper" data-url="${esc(data.download)}" data-name="${esc(name)}">Download helper</button>` : ''}
           ${data.url ? `<button class="btn btn-secondary press" data-act="open-url" data-url="${esc(data.url)}">Official page</button>` : ''}

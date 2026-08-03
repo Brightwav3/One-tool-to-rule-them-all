@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('appWindow', {
   minimize: () => ipcRenderer.invoke('window:minimize'),
   toggleMaximize: () => ipcRenderer.invoke('window:toggleMaximize'),
   close: () => ipcRenderer.invoke('window:close'),
+  getTheme: () => ipcRenderer.invoke('theme:get'),
   setTheme: theme => ipcRenderer.invoke('window:set-theme', theme),
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
   onState: handler => ipcRenderer.on('window:state', (_e, state) => handler(state)),

@@ -14,6 +14,7 @@ const OUTPUTS = app.isPackaged
   ? path.join(process.resourcesPath, 'converter')
   : path.join(__dirname, '..', 'converter');
 const PYTHON = process.env.CBZ_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+const THEME_PREFERENCE_FILE = 'theme.json';
 
 let backend = null;
 let win = null;
@@ -24,6 +25,35 @@ const DOWNLOAD_HOSTS = new Set([
   'download.documentfoundation.org', 'poppler.freedesktop.org',
   'calibre-ebook.com', 'download.calibre-ebook.com',
 ]);
+
+function normalizeTheme(theme) {
+  return theme === 'dark' ? 'dark' : 'light';
+}
+
+function themePreferencePath() {
+  return path.join(app.getPath('userData'), THEME_PREFERENCE_FILE);
+}
+
+function readThemePreference() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(themePreferencePath(), 'utf8'));
+    return normalizeTheme(saved.theme);
+  } catch {
+    return 'light';
+  }
+}
+
+function writeThemePreference(theme) {
+  const next = normalizeTheme(theme);
+  try {
+    const preferencePath = themePreferencePath();
+    fs.mkdirSync(path.dirname(preferencePath), { recursive: true });
+    fs.writeFileSync(preferencePath, `${JSON.stringify({ theme: next })}\n`, 'utf8');
+  } catch (error) {
+    console.warn('[theme] could not persist preference:', error.message);
+  }
+  return next;
+}
 
 function publishUpdateState(next) {
   updateState = { ...updateState, ...next };
@@ -224,10 +254,11 @@ ipcMain.handle('window:toggleMaximize', () => {
   return win.isMaximized();
 });
 ipcMain.handle('window:close', () => win && win.close());
+ipcMain.handle('theme:get', () => readThemePreference());
 ipcMain.handle('window:set-theme', (_event, theme) => {
-  if (!win || win.isDestroyed()) return false;
-  win.setBackgroundColor(theme === 'dark' ? '#000000' : '#f2f2f4');
-  return true;
+  const next = writeThemePreference(theme);
+  if (win && !win.isDestroyed()) win.setBackgroundColor(next === 'dark' ? '#000000' : '#f2f2f4');
+  return next;
 });
 ipcMain.handle('window:isMaximized', () => Boolean(win && win.isMaximized()));
 ipcMain.handle('update:get-state', () => updateState);

@@ -118,7 +118,10 @@ assert.match(indexHtml, /--bg:#000000;--surface:#000000;--raised:#000000;/);
 assert.match(indexHtml, /--surface-inverse:#1f2024/);
 assert.match(indexHtml, /\[data-theme="dark"\] \.tip\{background:#1f2024;color:#ededed\}/);
 assert.match(mainJs, /window:set-theme/);
+assert.match(mainJs, /ipcMain\.handle\('theme:get'/);
+assert.match(mainJs, /app\.getPath\('userData'\)/);
 assert.match(preloadJs, /setTheme/);
+assert.match(preloadJs, /getTheme/);
 assert.match(fidelioB, /<path d="M963\.41/);
 assert.match(fidelioW, /fill:rgb\(234,234,234\)/);
 assert.doesNotMatch(indexHtml, /<span class="kbd">⌘K<\/span>/);
@@ -127,5 +130,7 @@ assert.match(indexHtml, /<div class="empty-glyph">\s*<svg[^>]*viewBox="0 0 48 48
 assert.match(indexHtml, /<path d="M24 10v18"\/>\s*<path d="M17 21l7 7 7-7"\/>\s*<path d="M12 32v4a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2v-4"\/>/);
 assert.doesNotMatch(indexHtml, /\.empty-glyph\{[^}]*background:/);
 assert.match(mainJs, /backgroundColor:\s*'#f2f2f4'/);
+assert.match(indexHtml, /\.body\{[^}]*padding-top:44px/);
+assert.match(indexHtml, /\.topbar\{[^}]*position:absolute;top:0;left:0;right:0/);
 
 console.log('UI action-state regression tests passed');

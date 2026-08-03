@@ -192,7 +192,7 @@ button{border:0;background:none;color:inherit;cursor:pointer}
 .app[data-inspector="false"] .topbar{padding-right:116px;transition-duration:var(--d-medium)}
 body.is-mac .topbar{padding-left:82px}
 .topbar button,.wincontrols{-webkit-app-region:no-drag}
-.nav{display:flex;align-items:center;gap:var(--space-4)}
+.nav{display:flex;align-items:center;gap:var(--space-4);flex:none}
 .navbtn{position:relative;min-height:26px;padding:0 9px;border-radius:var(--radius-nav);font-size:var(--text-sm);font-weight:var(--weight-regular);color:var(--text-secondary);transition:background-color var(--d-quick) var(--ease),color var(--d-quick) var(--ease)}
 .navbtn:hover{background:var(--surface-hover)}
 .navbtn.active{background:var(--accent);color:var(--text-inverse);font-weight:var(--weight-medium)}
@@ -660,6 +660,33 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
   <div id="contextMenu" class="context-menu t-dropdown" data-origin="top-left" role="menu" aria-hidden="true"></div>
 
   <header class="topbar">
+    <nav class="nav" aria-label="Primary">
+      <button class="navbtn press active" data-page="queue">Queue</button>
+      <button class="navbtn press" data-page="helpers">Helpers<span class="navdot" id="helperDot" hidden></span></button>
+      <button class="navbtn press" data-page="history">History</button>
+    </nav>
+    <div class="searchwrap">
+      <div class="tiphost theme-host">
+        <button id="themeToggle" class="theme-toggle press" aria-label="Change theme" aria-pressed="false">
+          <span id="themeLogo" class="theme-logo" aria-hidden="true"></span>
+        </button>
+        <span class="tip">Change theme</span>
+      </div>
+      <button class="search press" id="searchBtn" aria-label="Open command palette">
+        <span aria-hidden="true">&#8981;</span><span class="label">Search conversions, files, helpers</span><span class="kbd" data-shortcut="palette">&#8984;K</span>
+      </button>
+    </div>
+    <div class="tiphost">
+      <button class="insp-toggle press on" id="inspToggle" aria-pressed="true" aria-label="Hide inspector">
+        <span aria-hidden="true" style="display:block;width:15px;height:12px;border:1.5px solid currentColor;border-radius:var(--radius-xs);border-right-width:5px"></span>
+      </button>
+      <span class="tip" id="inspTip">Hide inspector <span class="kbd" data-shortcut="inspector">&#8679;I</span></span>
+    </div>
+  </header>
+
+  <!-- Legacy malformed header fragment kept only as source reference. -->
+  <!--
+  <header class="legacy-topbar">
         <nav class="nav" aria-label="Primary">
           <button class="navbtn press active" data-page="queue">Queue</button>
           <button class="navbtn press" data-page="helpers">Helpers<span class="navdot" id="helperDot" hidden></span></button>
@@ -682,7 +709,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
       </button>
       <span class="tip" id="inspTip">Hide inspector <span class="kbd" data-shortcut="inspector">âŚĄI</span></span>
     </div>
-  </header>
+  </header> -->
 
   <div class="body">
     <div class="left">

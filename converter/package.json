@@ -1,0 +1,8 @@
+{
+  "name": "one-tool-backend-runtime",
+  "private": true,
+  "description": "Optional Node.js worker used by the One Tool backend for PDF to Markdown conversion",
+  "dependencies": {
+    "@firecrawl/pdf-inspector": "^1.11.2"
+  }
+}

@@ -1,0 +1,26 @@
+node_modules/
+dist/
+out/
+__pycache__/
+*.pyc
+
+# Runtime scratch — dropped archives are staged here before converting
+converter/.dropped/
+
+# Never commit the media
+*.cbz
+*.cbr
+*.epub
+*.zip
+
+.DS_Store
+Thumbs.db
+
+# Agent-facing notes — local only, never published
+README AGENTS.md
+
+# Local verification artifacts
+benchmark-results/
+output/
+tmp/
+docs/superpowers/

@@ -19,7 +19,8 @@
     "productName": "One Tool to Rule Them All",
     "copyright": "Copyright (c) 2026 Brightwav3",
     "directories": {
-      "output": "../dist"
+      "output": "../dist",
+      "buildResources": "build"
     },
     "files": [
       "main.js",
@@ -48,6 +49,7 @@
       "target": [
         "nsis-web"
       ],
+      "icon": "build/icon.ico",
       "artifactName": "OneTool-Web-Setup-${version}.${ext}"
     },
     "nsis": {

@@ -383,9 +383,7 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .empty .actions{display:flex;align-items:center;justify-content:center;gap:var(--space-3);margin-top:var(--space-6)}
 .empty-drop{border:1px dashed var(--border-default);border-radius:var(--radius-card);transition:background-color var(--d-fast) var(--ease),border-color var(--d-fast) var(--ease)}
 
-/* the rule stays 1px so nothing shifts, but it is transparent: the list above
-   already ends in its own edge, and a second line under it read as clutter */
-.foot{flex:none;display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-5);border-top:1px solid transparent}
+.foot{flex:none;display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-5);border-top:1px solid var(--border-subtle)}
 .foot .summary{flex:1;font-size:var(--text-sm);color:var(--text-secondary)}
 .go{min-width:142px;min-height:34px;display:grid;place-items:center}
 .go > span{grid-area:1/1;display:inline-flex;align-items:center;gap:var(--gap-inline);opacity:0;transform:translateY(4px);filter:blur(2px);white-space:nowrap;
@@ -749,7 +747,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 .empty .actions .btn{min-height:36px;border-radius:9px;font-size:13px}
 .empty .actions .btn-primary{padding:0 18px}
 .empty .actions .btn-secondary{padding:0 16px}
-.foot{padding:12px 20px 14px;border-top:1px solid transparent;background:var(--surface)}
+.foot{padding:12px 20px 14px;border-top:1px solid var(--sep);background:var(--surface)}
 .foot .summary{font-size:12px;color:var(--t2)}
 .pop{top:calc(100% + 6px);right:0;width:262px}
 .pop-card{border-radius:10px;background:var(--surface);box-shadow:var(--sh2)}

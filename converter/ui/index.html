@@ -294,23 +294,23 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .path-row .path-pick{flex:1;min-width:0;display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2);text-align:left}
 .path-row .path-pick .check{width:12px;height:12px;flex:none;display:grid;place-items:center;color:var(--text-accent);box-shadow:none}
 .path-row .path-pick .path-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--text-secondary)}
-.path-row .forget-path{width:26px;height:26px;flex:none;margin-right:3px;border-radius:var(--radius-xs);color:var(--text-disabled);opacity:0;font-size:15px;line-height:1}
+.path-row .forget-path{width:26px;height:26px;flex:none;padding:0;display:grid;place-items:center;margin-right:3px;border-radius:var(--radius-xs);color:var(--text-disabled);opacity:0;line-height:1}
 .path-row:hover .forget-path,.path-row .forget-path:focus-visible{opacity:1}
 .path-row .forget-path:hover{background:var(--surface-active);color:var(--text-primary)}
 .path-empty{padding:var(--space-3) var(--space-2);font-size:var(--text-sm);color:var(--text-tertiary)}
 .path-foot{display:flex;align-items:center;margin-top:var(--space-1);padding:var(--space-2) var(--space-2) var(--space-1);border-top:1px solid var(--border-subtle)}
 .path-foot .link{padding:0}
 .q-list{flex:1;min-height:0;margin-top:var(--space-4);border-radius:var(--radius-card);border:1px solid var(--border-subtle);background:var(--surface-card);display:flex;flex-direction:column;overflow:visible;position:relative}
-.q-row{flex:none;display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-subtle);position:relative;cursor:default}
+.q-row{flex:none;display:flex;align-items:center;gap:var(--space-3);padding:7px var(--space-4);border-bottom:1px solid var(--border-subtle);position:relative;cursor:default}
 .q-row:first-child{border-radius:var(--radius-card) var(--radius-card) 0 0}
 .q-row.selected{background:var(--accent-soft)}
 .q-row.selected:hover{background:var(--accent-soft)}
 .q-row.dim{opacity:.8}
 .q-row.open{z-index:6}
-.thumb{width:34px;height:44px;flex:none;display:block}
+.thumb{width:27px;height:35px;flex:none;display:block}
 .thumb svg{display:block;width:100%;height:100%;overflow:visible}
-.file-folder{width:48px;height:48px;flex:none;display:grid;place-items:center;padding:0;border:0;border-radius:8px;background:transparent;cursor:pointer}
-.file-folder .folder{display:block;width:48px;height:48px}
+.file-folder{width:34px;height:34px;flex:none;display:grid;place-items:center;padding:0;border:0;border-radius:8px;background:transparent;cursor:pointer}
+.file-folder .folder{display:block;width:34px;height:34px}
 .folder .fdr-front,.folder .fdr-sheet{transform-box:fill-box;transform-origin:50% 100%;transition:transform .36s cubic-bezier(.34,1.32,.52,1)}
 .folder:hover .fdr-front{transform:scaleY(.72) rotate(4deg)}
 .folder:hover .fdr-sheet{transform:translateY(-11px)}
@@ -366,7 +366,7 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .status.failed{color:var(--danger-hover)}
 .tick{width:14px;height:14px;display:grid;place-items:center;border-radius:var(--radius-pill);background:var(--success);color:var(--text-inverse)}
 .tick svg{display:block}
-.rm{width:22px;height:22px;flex:none;display:grid;place-items:center;color:var(--text-disabled);line-height:1}
+.rm{width:22px;height:22px;flex:none;padding:0;display:grid;place-items:center;color:var(--text-disabled);line-height:1}
 .rm:hover{color:var(--text-primary)}
 .dropmore{flex:none;display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-4);font-size:var(--text-sm);color:var(--text-secondary);text-align:left;border:0;width:100%}
 .dropmore .plus{width:34px;display:grid;place-items:center;color:var(--accent)}
@@ -441,15 +441,29 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .x-list{flex:1;min-height:0;margin-top:var(--space-3);border-radius:var(--radius-card);border:1px solid var(--border-subtle);background:var(--surface-card);overflow:auto}
 .x-head{display:flex;align-items:center;gap:var(--space-3);padding:9px var(--space-4);border-bottom:1px solid var(--border-subtle);position:sticky;top:0;background:var(--surface-card);z-index:1}
 .x-head span{font-size:var(--text-xs);font-weight:var(--weight-medium);letter-spacing:.04em;text-transform:uppercase;color:var(--text-tertiary)}
-.x-row{display:flex;align-items:center;gap:var(--space-3);padding:10px var(--space-4);border-bottom:1px solid var(--border-subtle);width:100%;text-align:left;cursor:default}
+.x-row{display:flex;align-items:center;gap:var(--space-3);padding:6px var(--space-4);border-bottom:1px solid var(--border-subtle);width:100%;text-align:left;cursor:default}
 .x-row[data-selected="true"],.x-row[data-selected="true"]:hover{background:var(--accent-soft)}
 .x-row[data-multi-selected="true"],.x-row[data-multi-selected="true"]:hover{background:var(--accent-soft)}
-.check{width:15px;height:15px;flex:none;border-radius:var(--radius-xs);display:grid;place-items:center;font-size:9px;color:var(--text-inverse);box-shadow:inset 0 0 0 1px var(--border-default)}
+/* padding:0 matters — the browser's default button padding leaves a content box
+   narrower than the mark, and a grid item wider than its track is placed at the
+   start rather than centred, which pushed the tick off to the right */
+.check{width:15px;height:15px;flex:none;padding:0;border-radius:var(--radius-xs);display:grid;place-items:center;color:var(--text-inverse);box-shadow:inset 0 0 0 1px var(--border-default)}
 .check.on{background:var(--accent);box-shadow:none}
-.x-tile{width:48px;height:48px;flex:none;display:grid;place-items:center}
-.x-tile>span{display:block;transform:scale(.62);transform-origin:bottom center;white-space:nowrap}
-.x-name{flex:1;min-width:0;display:flex;align-items:center;gap:var(--gap-inline)}
-.x-name .t{min-width:0;font-size:var(--text-base);font-weight:var(--weight-medium);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.x-tile{width:34px;height:34px;flex:none;display:grid;place-items:center}
+/* The name column keeps a floor so the filename cannot be squeezed out of
+   existence by the fixed columns beside it, and the state badge never steals
+   from it. Header cells carry the same widths as the row cells so the two stay
+   in step as columns drop away. */
+.x-name{flex:1 1 110px;min-width:0;display:flex;align-items:center;gap:var(--gap-inline)}
+.x-name .t{flex:1 1 auto;min-width:0;font-size:var(--text-base);font-weight:var(--weight-medium);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.x-h-tile{width:48px;flex:none}
+.x-h-name{flex:1 1 110px;min-width:0}
+.x-h-route{width:112px;flex:none}
+.x-h-size{width:66px;flex:none;text-align:right}
+.x-h-when{width:132px;flex:none;text-align:right}
+@container queue (max-width:560px){.x-when,.x-h-when{display:none}}
+@container queue (max-width:440px){.x-size,.x-h-size{display:none}}
+@container queue (max-width:360px){.x-tile,.x-h-tile{display:none}}
 .x-row[data-missing="true"] .x-name .t{text-decoration:line-through;color:var(--text-tertiary)}
 .badge{flex:none;display:inline-flex;align-items:center;height:19px;padding:0 var(--pad-control-y);border-radius:var(--radius-xs);font-size:var(--text-xs);font-weight:var(--weight-medium)}
 .badge.ok{background:var(--success-soft);color:var(--green-600)}
@@ -459,8 +473,9 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .x-route{width:112px;flex:none;font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-medium);color:var(--text-secondary)}
 .x-size{width:66px;flex:none;text-align:right;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--text-secondary)}
 .x-when{width:132px;flex:none;text-align:right;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--text-tertiary)}
-.x-foot{flex:none;display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) 0}
-.x-foot .summary{flex:1;font-size:var(--text-xs);color:var(--text-tertiary)}
+.x-foot{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-3);padding:var(--space-3) 0}
+.x-foot .summary{flex:1 1 100%;font-size:var(--text-xs);color:var(--text-tertiary)}
+@container queue (min-width:521px){.x-foot .summary{flex:1 1 auto}}
 
 /* ---------- inspector ---------- */
 .panel{flex:none;width:0;overflow:hidden;background:var(--surface-sunken);display:flex;flex-direction:column;position:relative;transition:width var(--d-medium) var(--ease)}
@@ -700,7 +715,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 .dest .k{font-size:12px;color:var(--t2)}
 .dest .v{font-size:11px;color:var(--t2)}
 .q-list{margin-top:16px;border-radius:12px;border:0;box-shadow:0 0 0 1px var(--sep),var(--sh1);background:var(--raised);overflow:visible}
-.q-row{padding:12px 14px;gap:12px;border-bottom:1px solid var(--sep);animation-fill-mode:backwards}
+.q-row{padding:7px 14px;gap:12px;border-bottom:1px solid var(--sep);animation-fill-mode:backwards}
 .q-row:first-child{border-radius:11px 11px 0 0}
 .q-row.selected,.q-row.selected:hover{background:var(--acc-tint)}
 .q-row.dim{opacity:.8}
@@ -747,7 +762,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 .chip{font-size:12px}
 .x-list{margin-top:12px}
 .x-head{padding:9px 14px;border-bottom:1px solid var(--sep);background:var(--raised)}
-.x-row{padding:10px 14px;gap:12px;border-bottom:1px solid var(--sep)}
+.x-row{padding:6px 14px;gap:12px;border-bottom:1px solid var(--sep)}
 .x-name .t{font-size:12.5px}
 .x-route,.x-size,.x-when{font-size:11.5px}
 .panel{background:var(--bg);transition:width 350ms var(--ease)}
@@ -1216,8 +1231,11 @@ const ICON = {
 function chevron(size = 12, part = '') {
   return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 16 16" ${STROKE}><path class="${part}" d="M4 6.5L8 10.5 12 6.5"/></svg>`;
 }
+/* The path is centred on the viewBox rather than drawn by eye: its bounding box
+   runs 5–19 across and 7.15–16.85 down, so both midpoints land on 12 and the
+   mark sits square inside the checkbox at every size. */
 function tickIcon(size = 12, cls = '') {
-  return `<svg class="ic ic-tick ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 L10 17.5 L19.5 7"/></svg>`;
+  return `<svg class="ic ic-tick ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.05 L9.8 16.85 L19 7.15"/></svg>`;
 }
 /* Format is carried by a filled pill inside the page rather than by mono text
    scaled below the type ramp, and each family keeps its own token colour. */
@@ -1482,9 +1500,9 @@ function renderHistory() {
       <div class="x-list">
         <div class="x-head">
           <button class="check press ${allOn ? 'on' : ''}" data-act="check-all" aria-label="Select all">${allOn ? tickIcon(10) : ''}</button>
-          <span style="width:26px;flex:none"></span>
-          <span style="flex:1">File</span><span style="width:112px;flex:none">Conversion</span>
-          <span style="width:66px;flex:none;text-align:right">Size</span><span style="width:132px;flex:none;text-align:right">Written</span>
+          <span class="x-h-tile"></span>
+          <span class="x-h-name">File</span><span class="x-h-route">Conversion</span>
+          <span class="x-h-size">Size</span><span class="x-h-when">Written</span>
         </div>
         ${rows.length ? rows.map(historyRow).join('') : '<div class="page-empty">Nothing has been converted yet.</div>'}
       </div>

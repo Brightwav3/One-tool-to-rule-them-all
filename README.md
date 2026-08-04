@@ -4,7 +4,7 @@
 
 **Files in. The format you actually wanted out. Nothing leaves your machine.**
 
-[Download the Windows installer](https://github.com/Brightwav3/One-tool-to-rule-them-all/releases/download/v2.0.3/OneTool-Web-Setup-2.0.3.exe)
+[Download the Windows installer](https://github.com/Brightwav3/One-tool-to-rule-them-all/releases/download/v2.1.0/OneTool-Web-Setup-2.1.0.exe)
 
 One Tool is a local-first Electron app and conversion backend. The desktop UI, queue, history, JSON API,
 conversion engines, and agent-facing command-line tools all run on your machine. No cloud service is
@@ -47,7 +47,7 @@ This is one window that does all of it, on your machine, and tells you the truth
 
 ## What it converts
 
-Twenty-four conversions are declared. **Twenty-two are implemented**; two are named for later so you can
+Fifty-five conversions are declared. **Fifty-three are implemented**; two are named for later so you can
 see where it is going.
 
 | | Conversion | Needs |
@@ -62,6 +62,11 @@ see where it is going.
 | | PNG → PDF | Python standard library; ImageMagick fallback |
 | | JPG → PDF | Python standard library; ImageMagick fallback |
 | | SVG → PNG | ImageMagick |
+| | PDF → JPG / PNG | Poppler — one chosen page, whole documents go to CBZ |
+| | GIF → JPG / PNG / PDF | ImageMagick or ffmpeg — first frame |
+| | AVIF → JPG / PNG / PDF | ImageMagick or ffmpeg |
+| | BMP → JPG / PNG / PDF | ImageMagick or ffmpeg |
+| | TIFF → JPG / PNG / PDF | ImageMagick or ffmpeg — first page |
 | | RAW → DNG | *not built yet* |
 | **Documents** | DOCX → PDF | LibreOffice |
 | | DOCX/ODT → EPUB | LibreOffice |
@@ -99,6 +104,9 @@ See the [pdf-inspector benchmark](https://github.com/firecrawl/pdf-inspector#ben
 | PNG -> PDF | Python standard library; ImageMagick fallback |
 | JPG -> PDF | Python standard library; ImageMagick fallback |
 | SVG -> PNG | ImageMagick |
+| PDF -> JPG/PNG | Poppler pdftoppm |
+| GIF/AVIF/BMP/TIFF -> JPG/PNG | ImageMagick or ffmpeg |
+| GIF/AVIF/BMP/TIFF -> PDF | ImageMagick or ffmpeg, then the direct PDF writer |
 | RAW -> DNG | Future: LibRaw or Exiv2 |
 | DOCX -> PDF | LibreOffice |
 | DOCX/ODT -> EPUB | LibreOffice Writer EPUB export |

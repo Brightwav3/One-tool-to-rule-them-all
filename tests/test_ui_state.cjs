@@ -91,10 +91,18 @@ assert.match(indexHtml, /Show output in Explorer/);
 assert.match(indexHtml, /reveal-queue-output/);
 assert.match(indexHtml, /reveal-history-input/);
 assert.match(indexHtml, /function revealTargetForRow/);
-assert.match(indexHtml, /event\.detail === 2 && \(act === 'select-row' \|\| act === 'select-history'\)/);
+// A queued file is not on disk yet, so double-click renames it; a history record
+// is a real file, so double-click still reveals it.
+assert.match(indexHtml, /event\.detail === 2 && act === 'select-row'/);
+assert.match(indexHtml, /event\.detail === 2 && act === 'select-history'/);
+assert.match(indexHtml, /return startRename\(file\.id\)/);
+assert.match(indexHtml, /contextItem\('Rename output…', 'rename-queue'/);
+assert.match(indexHtml, /id="renameField"/);
 assert.match(indexHtml, /data-act="reveal-file"/);
 assert.match(indexHtml, /data-reveal-kind/);
-assert.match(indexHtml, /\$\{folderIcon\(f\.out, 'output'\)\}/);
+// the queue's folder button opens the file you dropped, which exists, rather
+// than the output, which does not exist until the conversion has run
+assert.match(indexHtml, /\$\{folderIcon\(f\.sourcePath, 'queue'\)\}/);
 assert.match(indexHtml, /\$\{folderIcon\(r\.outputPath, 'history'\)\}/);
 assert.match(indexHtml, /history \? '\/api\/history\/reveal' : '\/api\/reveal'/);
 assert.match(indexHtml, /data-multi-selected/);

@@ -205,6 +205,13 @@ def _show_dialog(kind: str, **kwargs):
 # --------------------------------------------------------------------------- #
 
 
+WINDOWS_RESERVED_NAMES = frozenset(
+    {"CON", "PRN", "AUX", "NUL"}
+    | {f"COM{digit}" for digit in range(1, 10)}
+    | {f"LPT{digit}" for digit in range(1, 10)}
+)
+
+
 class Job:
     def __init__(self, job_id: str, source: Path, converter, temporary: bool = False, output_folder: Path | None = None):
         self.id = job_id
@@ -224,6 +231,36 @@ class Job:
         self.error = ""
         self.set_converter(converter)
 
+    def set_output_name(self, name: str) -> None:
+        """Rename what this job will write, keeping the folder and extension.
+
+        The extension belongs to the converter, not the user: letting it be
+        edited here would let a route silently write the wrong kind of file.
+        A typed extension that already matches is accepted and trimmed, so
+        pasting a full filename does the obvious thing.
+        """
+        suffix = self.converter.ext if self.converter else self.source.suffix
+        cleaned = str(name).strip().rstrip(". ")
+        if not cleaned:
+            raise ValueError("the name cannot be empty")
+        if cleaned != Path(cleaned).name or cleaned in {".", ".."}:
+            raise ValueError("the name cannot contain a folder path")
+        if set(cleaned) & set('<>:"/\\|?*') or any(ord(character) < 32 for character in cleaned):
+            raise ValueError('a name cannot contain any of < > : " / \\ | ? *')
+
+        stem = cleaned
+        if suffix and stem.casefold().endswith(suffix.casefold()):
+            stem = stem[: -len(suffix)].rstrip(". ") or stem
+        if not stem:
+            raise ValueError("the name cannot be empty")
+        if stem.split(".")[0].upper() in WINDOWS_RESERVED_NAMES:
+            raise ValueError(f"{stem} is a name Windows reserves for devices")
+        if len(stem) > 180:
+            raise ValueError("the name is too long")
+
+        self.base = stem
+        self.out = str(Path(self.out).parent / f"{stem}{suffix}")
+
     def set_converter(self, converter) -> None:
         previous_opts = dict(getattr(self, "opts", {}))
         self.converter = converter
@@ -236,7 +273,7 @@ class Job:
         self.error_title = ""
         self.error = ""
         if converter is None:
-            self.out = str(self.output_folder / self.source.name)
+            self.out = str(self.output_folder / f"{self.base}{self.source.suffix}")
             self.fail(
                 "No converter handles this file",
                 f"Nothing in the registry claims {self.source.suffix or 'files without an extension'}. "
@@ -244,7 +281,9 @@ class Job:
             )
             return
 
-        self.out = str(self.output_folder / f"{self.source.stem}{converter.ext}")
+        # Named from `base` rather than the source stem, so a rename survives a
+        # later change of route.
+        self.out = str(self.output_folder / f"{self.base}{converter.ext}")
         if converter.options and "title" in {o.key for o in converter.options}:
             self.opts.setdefault("title", self.source.stem)
 
@@ -339,6 +378,15 @@ class Converter:
                     job.status = "idle"
                     job.error_title = ""
                     job.error = ""
+
+    def rename(self, job_id: str, name: str) -> None:
+        with self.lock:
+            job = self.jobs.get(job_id)
+            if not job:
+                raise ValueError("file is no longer in the queue")
+            if job.status in ("queued", "running"):
+                raise ValueError("cannot rename a file while it is converting")
+            job.set_output_name(name)
 
     def route(self, job_id: str, converter_id: str) -> None:
         with self.lock:
@@ -686,6 +734,8 @@ class Handler(BaseHTTPRequestHandler):
                 target = Path(str(body.get("path", ""))).expanduser()
                 if target.exists():
                     reveal(target)
+            elif route == "/api/rename":
+                QUEUE.rename(str(body.get("id")), str(body.get("name", "")))
             elif route == "/api/update":
                 QUEUE.update(str(body.get("id")), str(body.get("key")), str(body.get("value", "")))
             elif route == "/api/remove":
@@ -702,9 +752,16 @@ class Handler(BaseHTTPRequestHandler):
                 REGISTRY.recheck()
                 QUEUE.refresh_states()
             elif route == "/api/reveal":
+                # Silence here reads as a dead button. Say what went wrong so the
+                # renderer can surface it rather than appearing to do nothing.
                 target = Path(str(body.get("path", "")))
-                if target.exists():
-                    reveal(target)
+                if not str(target).strip() or str(target) == ".":
+                    self.send_json({"error": "there is no path to open for this file"}, status=400)
+                    return
+                if not target.exists():
+                    self.send_json({"error": f"{target.name} is no longer at its saved path"}, status=404)
+                    return
+                reveal(target)
             elif route == "/api/open-url":
                 url = str(body.get("url", ""))
                 if url.startswith("https://"):
@@ -714,6 +771,11 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self.send_error(404)
                 return
+        except ValueError as exc:
+            # A rejected name or route is the caller's mistake, not a crash, and
+            # its message is already written to be read by a person.
+            self.send_json({"error": str(exc)}, status=400)
+            return
         except Exception as exc:
             traceback.print_exc()
             self.send_json({"error": f"{type(exc).__name__}: {exc}"}, status=500)

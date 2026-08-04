@@ -45,6 +45,70 @@ class ServerUxTests(unittest.TestCase):
             self.assertTrue(queue.jobs[second.id].out.endswith("two.epub"))
             self.assertGreater(queue.snapshot()[0]["sourceSize"], 0)
 
+    def test_rename_changes_the_output_and_keeps_the_route_extension(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            queue = server.Converter(history_path=root / "history.json")
+            job = queue.add(self.make_cbz(root), server.REGISTRY.get("cbz-epub"))
+
+            queue.rename(job.id, "Saga volume one")
+
+            self.assertTrue(queue.jobs[job.id].out.endswith("Saga volume one.epub"))
+            # the source on disk is the user's file and is never touched
+            self.assertTrue(self.make_cbz(root).is_file())
+
+    def test_rename_survives_a_later_change_of_route(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            queue = server.Converter(history_path=root / "history.json")
+            job = queue.add(self.make_cbz(root), server.REGISTRY.get("cbz-epub"))
+
+            queue.rename(job.id, "Saga volume one")
+            queue.route(job.id, "cbz-pdf")
+
+            self.assertTrue(queue.jobs[job.id].out.endswith("Saga volume one.pdf"))
+
+    def test_rename_trims_an_extension_the_user_typed(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            queue = server.Converter(history_path=root / "history.json")
+            job = queue.add(self.make_cbz(root), server.REGISTRY.get("cbz-epub"))
+
+            queue.rename(job.id, "Saga.epub")
+
+            self.assertTrue(queue.jobs[job.id].out.endswith("Saga.epub"))
+            self.assertNotIn("Saga.epub.epub", queue.jobs[job.id].out)
+
+    def test_rename_rejects_names_that_would_escape_or_break_the_folder(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            queue = server.Converter(history_path=root / "history.json")
+            job = queue.add(self.make_cbz(root), server.REGISTRY.get("cbz-epub"))
+
+            for name, expected in (
+                ("", "cannot be empty"),
+                ("   ", "cannot be empty"),
+                ("../escape", "folder path"),
+                ("nested/name", "folder path"),
+                ("bad:name", "cannot contain"),
+                ("CON", "reserves"),
+            ):
+                with self.subTest(name=name):
+                    with self.assertRaisesRegex(ValueError, expected):
+                        queue.rename(job.id, name)
+
+            self.assertTrue(queue.jobs[job.id].out.endswith("book.epub"))
+
+    def test_rename_rejects_busy_jobs(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            queue = server.Converter(history_path=root / "history.json")
+            job = queue.add(self.make_cbz(root), server.REGISTRY.get("cbz-epub"))
+            job.status = "running"
+
+            with self.assertRaisesRegex(ValueError, "while it is converting"):
+                queue.rename(job.id, "anything")
+
     def test_route_rejects_a_converter_for_the_wrong_source_extension(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

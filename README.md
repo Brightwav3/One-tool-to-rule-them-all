@@ -4,7 +4,7 @@
 
 **Files in. The format you actually wanted out. Nothing leaves your machine.**
 
-[Download the Windows installer](https://github.com/Brightwav3/One-tool-to-rule-them-all/releases/download/v2.1.0/OneTool-Web-Setup-2.1.0.exe)
+[Download the Windows installer](https://github.com/Brightwav3/One-tool-to-rule-them-all/releases/download/v2.2.0/OneTool-Web-Setup-2.2.0.exe)
 
 One Tool is a local-first Electron app and conversion backend. The desktop UI, queue, history, JSON API,
 conversion engines, and agent-facing command-line tools all run on your machine. No cloud service is
@@ -153,6 +153,7 @@ well already have; they stay on your machine and are only launched for that conv
 | **Mixed queue** | Queue a CBZ, three HEICs and a PDF in one request. Each is routed by extension and labelled with where it went. |
 | **Live progress** | Page-by-page where the format allows it, not a spinner that lies to you. |
 | **Per-file options** | Title and creator for comics, quality and max edge for photos, DPI for PDFs — whatever that converter declares. |
+| **Rename before you convert** | Name the output in the inspector, from the right-click menu, or by double-clicking a queued row. The extension follows the route, and the file you dropped is never touched. |
 | **Honest errors** | A bad file gets its own message on its own card. The queue keeps going. |
 | **Streaming** | A 400 MB archive never sits in RAM. Pages are copied one at a time. |
 | **Session history** | Every run, with an API operation to put its files back in the queue. |

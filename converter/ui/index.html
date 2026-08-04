@@ -383,7 +383,9 @@ h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-heig
 .empty .actions{display:flex;align-items:center;justify-content:center;gap:var(--space-3);margin-top:var(--space-6)}
 .empty-drop{border:1px dashed var(--border-default);border-radius:var(--radius-card);transition:background-color var(--d-fast) var(--ease),border-color var(--d-fast) var(--ease)}
 
-.foot{flex:none;display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-5);border-top:1px solid var(--border-subtle)}
+/* the rule stays 1px so nothing shifts, but it is transparent: the list above
+   already ends in its own edge, and a second line under it read as clutter */
+.foot{flex:none;display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-5);border-top:1px solid transparent}
 .foot .summary{flex:1;font-size:var(--text-sm);color:var(--text-secondary)}
 .go{min-width:142px;min-height:34px;display:grid;place-items:center}
 .go > span{grid-area:1/1;display:inline-flex;align-items:center;gap:var(--gap-inline);opacity:0;transform:translateY(4px);filter:blur(2px);white-space:nowrap;
@@ -567,6 +569,11 @@ body.is-resizing-panel{cursor:ew-resize;user-select:none}
 .field label{display:block;font-size:var(--text-sm);font-weight:var(--weight-medium);color:var(--text-secondary);margin-bottom:var(--space-2)}
 .field input,.fake-select{width:100%;min-height:32px;padding:var(--pad-control-y) 10px;border:0;border-radius:var(--radius-nav);font-size:var(--text-sm);color:var(--text-primary);background:var(--surface-card);box-shadow:inset 0 0 0 1px var(--border-default)}
 .field input:focus{outline:none;box-shadow:inset 0 0 0 1px var(--border-focus),var(--ring)}
+.rename-row{display:flex;align-items:center;gap:var(--space-2)}
+.rename-row input{flex:1;min-width:0}
+.rename-row input:disabled{opacity:.6;cursor:not-allowed}
+.rename-ext{flex:none;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--text-tertiary)}
+.rename-hint{margin:var(--space-2) 0 0;font-size:var(--text-xs);line-height:var(--leading-normal);color:var(--text-tertiary)}
 .fake-select{display:flex;align-items:center;justify-content:space-between}
 .adv-toggle{display:flex;align-items:center;gap:var(--space-2);font-size:var(--text-sm);font-weight:var(--weight-medium);color:var(--text-secondary)}
 
@@ -742,7 +749,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 .empty .actions .btn{min-height:36px;border-radius:9px;font-size:13px}
 .empty .actions .btn-primary{padding:0 18px}
 .empty .actions .btn-secondary{padding:0 16px}
-.foot{padding:12px 20px 14px;border-top:1px solid var(--sep);background:var(--surface)}
+.foot{padding:12px 20px 14px;border-top:1px solid transparent;background:var(--surface)}
 .foot .summary{font-size:12px;color:var(--t2)}
 .pop{top:calc(100% + 6px);right:0;width:262px}
 .pop-card{border-radius:10px;background:var(--surface);box-shadow:var(--sh2)}
@@ -1224,6 +1231,7 @@ const ICON = {
   copy: `<svg class="ic" width="16" height="16" viewBox="0 0 24 24" ${STROKE}><rect x="8" y="8" width="12" height="12" rx="2"/><path class="ia-up" d="M16 5.5A1.5 1.5 0 0 0 14.5 4h-8A2.5 2.5 0 0 0 4 6.5v8A1.5 1.5 0 0 0 5.5 16"/></svg>`,
   again: `<svg class="ic" width="16" height="16" viewBox="0 0 24 24" ${STROKE}><g class="ia-spin"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></g></svg>`,
   remove: `<svg class="ic" width="16" height="16" viewBox="0 0 24 24" ${STROKE}><path class="ia-xa" d="M6 6l12 12"/><path class="ia-xb" d="M18 6L6 18"/></svg>`,
+  rename: `<svg class="ic" width="16" height="16" viewBox="0 0 24 24" ${STROKE}><g class="ia-up"><path d="M14.5 5.5l4 4"/><path d="M6 18l-2.5.5.5-2.5L15.6 4.4a1.5 1.5 0 0 1 2.1 0l1.9 1.9a1.5 1.5 0 0 1 0 2.1L6 18Z"/></g><path d="M13 20h8"/></svg>`,
   alert: `<svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 6.5v6"/><path d="M12 16.6v.2" stroke-width="3"/></svg>`,
   external: `<svg class="ic" width="16" height="16" viewBox="0 0 24 24" ${STROKE}><path d="M14 4h6v6"/><path class="ia-up" d="M20 4l-8 8"/><path d="M18 14v4.5A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/></svg>`,
 };
@@ -1398,7 +1406,7 @@ function queueRow(f) {
   const barClass = f.status === 'done' ? 'prog-bar done' : 'prog-bar';
   const isNew = freshRows.has(f.id), errored = freshError.has(f.id);
   const delay = isNew ? ` style="animation-delay:${Math.min(files.indexOf(f), 5) * 50}ms"` : '';
-  return `<div class="q-row row ${selected ? 'selected' : ''} ${selectedQueueIds.size && !multiSelected ? 'dim' : ''} ${open ? 'open' : ''} ${isNew ? 'is-new' : ''} ${errored ? 'is-error' : ''}" data-act="select-row" data-context="queue-file" data-multi-selected="${multiSelected}" data-id="${esc(f.id)}"${delay}>
+  return `<div class="q-row row ${selected ? 'selected' : ''} ${selectedQueueIds.size && !multiSelected && !open ? 'dim' : ''} ${open ? 'open' : ''} ${isNew ? 'is-new' : ''} ${errored ? 'is-error' : ''}" data-act="select-row" data-context="queue-file" data-multi-selected="${multiSelected}" data-id="${esc(f.id)}"${delay}>
     ${fileThumb(f)}
     <div class="f-copy"><div class="f-name" title="${esc(f.name)}">${esc(f.name)}</div><div class="f-meta">${esc(metaLine(f))}</div></div>
     <span class="pill-wrap">
@@ -1412,7 +1420,7 @@ function queueRow(f) {
         <span class="status ${sc} ${indeterminate(f) ? 'indeterminate' : ''}">${esc(statusText(f))}</span>
       </div>
     </div>
-    ${folderIcon(f.out, 'output')}
+    ${folderIcon(f.sourcePath, 'queue')}
     <button class="rm press" data-act="remove" data-id="${esc(f.id)}" aria-label="Remove ${esc(f.name)}">${ICON.remove}</button>
   </div>`;
 }
@@ -1551,6 +1559,7 @@ function panelFile() {
     </div>
     <div class="body">
       ${inspectorFacts(f, tool)}
+      ${renameFieldHtml(f)}
       ${primary.length ? `<div class="divider inspector-metadata">${primary.map(o => fieldHtml(f, o)).join('')}</div>` : '<p class="hint">This converter has no per-file settings.</p>'}
       ${extra.length ? `<div class="divider">
         <button class="adv-toggle" data-act="toggle-advanced"><span class="chev" aria-hidden="true" data-flipped="${advanced}" style="transform:rotate(${advanced ? 180 : 0}deg)">${chevron()}</span>Conversion options</button>
@@ -1575,6 +1584,34 @@ function inspectorFacts(f, tool) {
   const isImage = /image|png|jpg|jpeg|webp|heic/i.test(`${kind} ${ext}`);
   const details = isComic ? `<div class="divider"><div class="divider-head"><span>Archive</span></div><div class="facts"><strong>Package detected</strong><span class="dot"></span><span class="ok">● Readable</span></div></div>` : isImage ? `<div class="divider"><div class="divider-head"><span>Image facts</span><span class="ok">● Readable</span></div><div class="facts"><strong>Source image</strong><span class="dot"></span><strong>Original dimensions</strong></div></div>` : `<div class="divider"><div class="divider-head"><span>File facts</span><span class="ok">● Readable</span></div><div class="facts"><strong>Ready to inspect</strong></div></div>`;
   return `<div class="divider inspector-facts"><div class="kv"><span class="k">Source</span><span class="v">${esc(ext)} · ${esc(size)}</span></div><div class="kv"><span class="k">Type</span><span class="v">${esc(kind)}</span></div>${tool?.blurb ? `<p class="inspector-note">${esc(tool.blurb)}</p>` : ''}</div>${details}`;
+}
+/* Renaming names the output, not the source: the file on disk is the user's and
+   is never touched. The extension is shown but not editable, because it belongs
+   to the chosen route — editing it here would write the wrong kind of file. */
+function outputStem(f) {
+  const name = outputName(f.out) || '';
+  const ext = outputExt(f);
+  return ext && name.toLowerCase().endsWith(ext.toLowerCase()) ? name.slice(0, -ext.length) : name;
+}
+function outputExt(f) {
+  const name = outputName(f.out) || '';
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(dot) : '';
+}
+function renameFieldHtml(f) {
+  const locked = f.status === 'queued' || f.status === 'running';
+  return `<div class="divider inspector-rename">
+    <div class="field">
+      <label for="renameField">Output name</label>
+      <div class="rename-row">
+        <input id="renameField" data-act="rename-file" data-id="${esc(f.id)}" value="${esc(outputStem(f))}"
+          spellcheck="false" autocomplete="off" ${locked ? 'disabled' : ''}
+          aria-describedby="renameHint">
+        <span class="rename-ext" aria-hidden="true">${esc(outputExt(f))}</span>
+      </div>
+      <p class="rename-hint" id="renameHint">${locked ? 'The name is fixed while this file is converting.' : 'Enter to save, Escape to undo. The extension follows the route.'}</p>
+    </div>
+  </div>`;
 }
 function fieldHtml(f, option) {
   return `<div class="field"><label for="field-${esc(option.key)}">${esc(option.label)}</label>${optionControl(f, option)}</div>`;
@@ -1865,6 +1902,7 @@ function contextItem(label, action, icon, options={}) {
 function contextItems(target) {
   if (target.type === 'queue-file') return [
     contextItem('Select file', 'select-queue', ICON.select),
+    contextItem('Rename output…', 'rename-queue', ICON.rename, {disabled: target.status === 'queued' || target.status === 'running'}),
     contextItem('Change output format', 'route-queue', ICON.route, {disabled: target.status === 'queued' || target.status === 'running'}),
     contextItem('Show input in Explorer', 'reveal-source', ICON.reveal, {disabled: !target.sourcePath}),
     contextItem('Show output in Explorer', 'reveal-queue-output', ICON.reveal, {disabled: !target.out || target.status !== 'done'}),
@@ -1963,6 +2001,7 @@ async function handleContextAction(action, target) {
   if (action === 'select-queue' || action === 'route-queue') {
     selectedId = target.id; inspectorOpen = true; pickerFor = action === 'route-queue' ? target.id : null; return render(true);
   }
+  if (action === 'rename-queue') return startRename(target.id);
   if (action === 'reveal-source') return api('/api/reveal', {path: target.sourcePath}, false);
   if (action === 'reveal-queue-output') return api('/api/reveal', {path: target.out}, false);
   if (action === 'copy-source') return copyText(target.sourcePath, 'Source path copied');
@@ -2026,7 +2065,15 @@ document.addEventListener('click', async event => {
   if (!el) return;
   const act = el.dataset.act;
   if ((act === 'close-sheet' || act === 'close-palette') && event.target.closest('[data-stop]')) return;
-  if (event.detail === 2 && (act === 'select-row' || act === 'select-history')) {
+  // A queued file has not been written yet, so double-click renames what it will
+  // become. A history record is a file on disk, so double-click still reveals it.
+  if (event.detail === 2 && act === 'select-row') {
+    event.preventDefault();
+    const file = files.find(i => i.id === el.dataset.id);
+    if (file && file.status !== 'queued' && file.status !== 'running') return startRename(file.id);
+    return revealRow(el);
+  }
+  if (event.detail === 2 && act === 'select-history') {
     event.preventDefault();
     return revealRow(el);
   }
@@ -2037,7 +2084,11 @@ document.addEventListener('click', async event => {
     case 'forget-folder': event.stopPropagation(); try { await api('/api/forget-folder', {folder: el.dataset.folder}); } catch (e) { showToast(e.message, false); } return;
     case 'select-row': return applyQueueSelection(event, el.dataset.id);
     case 'reveal-file': event.stopPropagation(); return revealFile(el.dataset.path, el.dataset.revealKind === 'history').catch(error => showToast(error.message, false));
+    // The picker acts on the row it belongs to, so opening it on a row outside an
+    // existing multi-selection drops that selection rather than leaving two sets
+    // of rows looking chosen at once.
     case 'toggle-picker': event.stopPropagation(); selectedId = el.dataset.id;
+      if (!selectedQueueIds.has(el.dataset.id)) { selectedQueueIds = new Set(); queueAnchorId = null; }
       pickerFor = pickerFor === el.dataset.id ? null : el.dataset.id; return render(true);
     case 'choose-route': { event.stopPropagation(); const f = files.find(i => i.id === el.dataset.id); if (f) await chooseRoute(f, el.dataset.converter); return; }
     case 'open-sheet': event.stopPropagation(); sheetFor = el.dataset.id;
@@ -2099,6 +2150,25 @@ document.addEventListener('click', async event => {
   }
 });
 
+async function commitRename(input) {
+  if (!input || input.disabled) return;
+  const file = files.find(i => i.id === input.dataset.id);
+  if (!file) return;
+  const next = input.value.trim();
+  if (!next || next === outputStem(file)) { input.value = outputStem(file); return; }
+  try { await api('/api/rename', {id: file.id, name: next}); showToast('Renamed'); }
+  catch (error) { showToast(error.message, false); input.value = outputStem(file); }
+}
+function startRename(id) {
+  selectedId = id; selectedHelper = null; inspectorOpen = true; pickerFor = null;
+  render(true);
+  // after the panel has been rebuilt, put the caret in the field ready to type
+  setTimeout(() => { const input = $('renameField'); if (input && !input.disabled) { input.focus(); input.select(); } }, 0);
+}
+document.addEventListener('focusout', event => {
+  if (event.target?.dataset?.act === 'rename-file') commitRename(event.target);
+});
+
 function updateFieldFromControl(target) {
   const field = target.closest('[data-act="update-field"]');
   if (field && selectedId) api('/api/update', {id: selectedId, key: field.dataset.key, value: field.value}, false).catch(error => showToast(error.message, false));
@@ -2117,6 +2187,18 @@ function openPalette() { paletteOpen = true; query = ''; commandIndex = 0; picke
 
 document.addEventListener('keydown', event => {
   const key = (event.key || '').toLowerCase();
+  // The rename field owns Enter and Escape while it has focus, so Escape undoes
+  // the edit instead of closing whatever else is open behind the inspector.
+  if (event.target?.dataset?.act === 'rename-file') {
+    if (key === 'enter') { event.preventDefault(); commitRename(event.target); return; }
+    if (key === 'escape') {
+      event.preventDefault(); event.stopPropagation();
+      const file = files.find(i => i.id === event.target.dataset.id);
+      event.target.value = file ? outputStem(file) : event.target.value;
+      event.target.blur();
+      return;
+    }
+  }
   if ((event.metaKey || event.ctrlKey) && key === 'k') { event.preventDefault(); paletteOpen ? (paletteOpen = false, render(true)) : openPalette(); return; }
   if (event.altKey && key === 'i') { event.preventDefault(); inspectorOpen = !inspectorOpen; return render(true); }
   if (key === 'escape') { closeContextMenu(); closeFolderMenu(); paletteOpen = false; pickerFor = null; sheetFor = null; return render(true); }

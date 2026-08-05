@@ -284,6 +284,7 @@ body.is-mac .topbar{padding-left:82px}
 .u-row:hover{background:var(--surface-hover)}
 .u-row[data-live="true"]{background:var(--accent-soft)}
 .u-row[data-selected="true"],.u-row[data-selected="true"]:hover{background:var(--accent-soft)}
+.u-row[data-multi-selected="true"],.u-row[data-multi-selected="true"]:hover{background:var(--accent-soft)}
 .u-row[data-dim="true"]{opacity:.8}
 .u-row[data-open="true"]{z-index:9}
 .u-row[data-rule="true"]{border-top:1px solid var(--border-default)}
@@ -2051,6 +2052,10 @@ function renderContextMenu() {
 }
 function openContextMenu(event, row) {
   closeFolderMenu(false);
+  /* cancel a fade still running from the last menu, or it will hide this one */
+  if (contextMenuTimer) { clearTimeout(contextMenuTimer); contextMenuTimer = null; }
+  contextMenu.classList.remove('is-closing');
+  contextMenu.setAttribute('aria-hidden', 'false');
   if (row.dataset.context === 'queue-file') {
     if (!selectedQueueIds.has(row.dataset.id)) {
       selectedQueueIds = new Set([row.dataset.id]);
@@ -2086,17 +2091,19 @@ function closeContextMenu(animate=true) {
   if (!contextTarget) return;
   if (contextMenuTimer) clearTimeout(contextMenuTimer);
   contextMenu.classList.remove('is-open');
+  /* The menu is closed the moment it is asked to close; only the fade is left
+     on a timer. Holding the target until the timer fired meant a right-click
+     during the fade reopened the menu and was then torn down by the old timer. */
+  contextTarget = null;
   if (!animate) {
     contextMenu.classList.remove('is-closing');
     contextMenu.setAttribute('aria-hidden', 'true');
-    contextTarget = null;
     return;
   }
   contextMenu.classList.add('is-closing');
   contextMenuTimer = setTimeout(() => {
     contextMenu.classList.remove('is-closing');
     contextMenu.setAttribute('aria-hidden', 'true');
-    contextTarget = null;
     contextMenuTimer = null;
   }, dropdownCloseMs());
 }

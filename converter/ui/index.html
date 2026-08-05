@@ -258,19 +258,23 @@ body.is-mac .topbar{padding-left:82px}
    between the two. Both drop the flex:1/overflow:hidden they used when each
    owned the whole work area, so a pane scrolls instead of clipping. */
 .convert-split{flex:1;min-height:0;display:flex;flex-direction:column}
-.convert-queue{flex:none;height:var(--convert-queue-height,56%);min-height:120px;display:flex;flex-direction:column;overflow:auto}
-/* With an empty queue the pane cannot be dragged smaller than the drop box it
-   holds, so the box grows with the pane but is never cut in half. A queue with
-   rows keeps the flat floor and scrolls instead. */
-.convert-queue:has(.empty){min-height:min-content}
-.convert-history{flex:1;min-height:120px;display:flex;flex-direction:column;overflow:auto;padding-bottom:var(--space-3)}
+.convert-queue{flex:none;height:var(--convert-queue-height,56%);min-height:72px;display:flex;flex-direction:column;overflow:auto}
+/* An empty queue is measured as a container so the drop box can be dragged well
+   below its natural height: rather than being clipped, it sheds its copy a piece
+   at a time and keeps the drop target usable down to a strip. */
+.convert-queue:has(.empty){container:convertqueue / size}
+.convert-history{flex:1;min-height:72px;display:flex;flex-direction:column;overflow:auto;padding-bottom:var(--space-3)}
 .convert-split .q-wrap{flex:none;overflow:visible}
 .convert-split .q-list,.convert-split .x-list{flex:none;min-height:0}
-/* The empty-queue box fills whatever height the queue pane has, so dragging the
-   handle grows and shrinks the drop target with it. flex-shrink stays 0 so it is
-   never squeezed under its own content. */
-.convert-split .empty{flex:1 0 auto}
-.convert-split .empty .empty-inner{align-self:stretch;display:flex;flex-direction:column;justify-content:center}
+/* The empty-queue box fills whatever height the queue pane has, growing and
+   shrinking with the drag handle in both directions. */
+.convert-split .empty{flex:1 1 auto;min-height:0;overflow:hidden}
+.convert-split .empty .empty-inner{align-self:stretch;min-height:0;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+@container convertqueue (max-height:320px){.convert-split .empty p{display:none}}
+@container convertqueue (max-height:250px){.convert-split .empty{padding:var(--space-5)}.convert-split .empty h1{display:none}}
+@container convertqueue (max-height:180px){.convert-split .empty{padding:var(--space-4)}.convert-split .empty .empty-glyph{display:none}.convert-split .empty .actions{margin-top:0}}
+@container convertqueue (max-height:120px){.convert-split .empty{padding:var(--space-2)}.convert-split .empty .actions{gap:var(--space-2)}}
+@container convertqueue (max-height:96px){.convert-split .empty{padding:var(--space-1)}.convert-split .empty .actions .btn{min-height:26px;font-size:var(--text-xs)}}
 .convert-split-handle{flex:none;height:14px;position:relative;z-index:7;cursor:ns-resize;-webkit-app-region:no-drag;touch-action:none}
 .convert-split-handle::after{content:"";position:absolute;left:var(--space-5);right:var(--space-5);top:6px;height:2px;border-radius:var(--radius-pill);background:var(--border-subtle);
   transition:background-color var(--d-quick) var(--ease)}

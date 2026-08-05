@@ -98,12 +98,11 @@ assert.match(indexHtml, /event\.detail === 2 && act === 'select-history'/);
 assert.match(indexHtml, /return startRename\(file\.id\)/);
 assert.match(indexHtml, /contextItem\('Rename output…', 'rename-queue'/);
 assert.match(indexHtml, /id="renameField"/);
-assert.match(indexHtml, /data-act="reveal-file"/);
-assert.match(indexHtml, /data-reveal-kind/);
-// the queue's folder button opens the file you dropped, which exists, rather
-// than the output, which does not exist until the conversion has run
-assert.match(indexHtml, /\$\{folderIcon\(f\.sourcePath, 'queue'\)\}/);
+// The one list has no per-row folder button; revealing is a context-menu action
+// and a double-click, and each still opens the file that actually exists — the
+// source for queued work, the output for something already written.
 assert.match(indexHtml, /\$\{folderIcon\(r\.outputPath, 'history'\)\}/);
+assert.match(indexHtml, /contextItem\('Show input in Explorer', 'reveal-history-input'/);
 assert.match(indexHtml, /history \? '\/api\/history\/reveal' : '\/api\/reveal'/);
 assert.match(indexHtml, /data-multi-selected/);
 assert.match(indexHtml, /selectedQueueIds/);
@@ -177,9 +176,6 @@ assert.match(fidelioB, /<path d="M963\.41/);
 assert.match(fidelioW, /fill:rgb\(234,234,234\)/);
 assert.doesNotMatch(indexHtml, /<span class="kbd">⌘K<\/span>/);
 assert.doesNotMatch(indexHtml, /<span class="kbd">⌥I<\/span>/);
-assert.match(indexHtml, /<div class="empty-glyph">\s*<svg[^>]*viewBox="0 0 48 48"[^>]*aria-label="Drop files here"/s);
-assert.match(indexHtml, /<g class="ia-drop"><path d="M24 10v18"\/><path d="M17 21l7 7 7-7"\/><\/g>\s*<path class="ia-tray" d="M12 32v4a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2v-4"\/>/);
-assert.doesNotMatch(indexHtml, /\.empty-glyph\{[^}]*background:/);
 assert.match(mainJs, /backgroundColor:\s*'#f2f2f4'/);
 assert.match(indexHtml, /\.topbar\{[^}]*position:relative;z-index:12/);
 assert.match(indexHtml, /<div class="body">\s*<div class="left">\s*<header class="topbar">/s);
@@ -202,12 +198,12 @@ assert.match(indexHtml, /\.work\{margin:0;border:1px solid var\(--sep\);border-l
 assert.match(indexHtml, /class="folder" width="48" height="48" viewBox="0 0 48 48"/);
 assert.match(indexHtml, /\.folder:hover \.fdr-front\{transform:scaleY\(\.72\) rotate\(4deg\)\}/);
 assert.match(indexHtml, /\.folder:hover \.fdr-sheet\{transform:translateY\(-11px\)\}/);
-assert.doesNotMatch(indexHtml, /data-act="reveal-file"[^>]* disabled/);
+
 assert.doesNotMatch(indexHtml, /class="thumb" aria-hidden="true"><span>\$\{esc\(thumbLabel\(f\)\)/);
 assert.match(indexHtml, /html,body,\*\{-webkit-user-select:none;user-select:none\}/);
 assert.match(indexHtml, /input,textarea,\[contenteditable="true"\]\{-webkit-user-select:text;user-select:text\}/);
 
-// ---- Convert view: two top-level views, history lives under the queue ----
+// ---- Convert view: two top-level views, one list ----
 // Only Convert and Helpers are navigable; History is no longer a page of its own.
 const navPages = [...indexHtml.matchAll(/data-page="([a-z]+)"/g)].map(m => m[1]);
 assert.deepEqual([...new Set(navPages)].sort(), ['convert', 'helpers']);
@@ -217,63 +213,57 @@ assert.doesNotMatch(indexHtml, /<section class="page" id="pageHistory"/);
 assert.match(indexHtml, /const pages = \{ convert: \$\('pageConvert'\), helpers: \$\('pageHelpers'\) \};/);
 assert.match(indexHtml, /let page='convert',/);
 
-// The queue block and the history block are stacked inside the one Convert page,
-// history second, so the converted-file list sits under the queue/empty-state box.
-const convertPage = indexHtml.match(
-  /<section class="page" id="pageConvert"[\s\S]*?<\/section>/,
-)[0];
-assert.match(convertPage, /id="convertSplit"/);
-assert.ok(
-  convertPage.indexOf('id="pageQueue"') < convertPage.indexOf('id="pageHistory"'),
-  'history must render below the queue',
-);
-assert.match(indexHtml, /\.convert-queue\{[^}]*overflow:auto/);
-assert.match(indexHtml, /\.convert-history\{[^}]*overflow:auto/);
+// Queued work and written output render as one table, status as a column.
+assert.match(indexHtml, /function convertRows\(\)/);
+assert.match(indexHtml, /function renderConvert\(\)/);
+assert.match(indexHtml, /function unifiedRow\(row, index, lastActive\)/);
+assert.doesNotMatch(indexHtml, /function renderQueue\(\)/);
+assert.doesNotMatch(indexHtml, /function renderHistory\(\)/);
+assert.match(indexHtml, /renderConvert\(\); renderHelpers\(\); renderPanel\(\); renderOverlays\(\);/);
+// a file that is both queued and already written appears once, from the queue
+assert.match(indexHtml, /const inQueue = new Set\(files\.map\(file => `\$\{file\.sourcePath\}\|\$\{file\.to\}`\)\);/);
+// the history has to be loaded at boot now that it is part of the default view
+assert.match(indexHtml, /absorb\(state\); loadHistory\(\);/);
 
-// The border between the queue and the history is the drag handle that splits
-// the height between them.
-assert.match(convertPage, /data-split-resize/);
-assert.ok(
-  convertPage.indexOf('data-split-resize') > convertPage.indexOf('id="pageQueue"')
-    && convertPage.indexOf('data-split-resize') < convertPage.indexOf('id="pageHistory"'),
-  'the split handle must sit on the border between the two panes',
-);
-assert.match(indexHtml, /\.convert-split-handle\{[^}]*cursor:ns-resize/);
-assert.match(indexHtml, /one-tool\.convert-split/);
-assert.match(indexHtml, /splitResizeHandle\?\.addEventListener\('pointerdown', startSplitResize\)/);
-
-// The history section no longer carries the old page heading and blurb.
-assert.doesNotMatch(indexHtml, /<h1>History<\/h1>/);
-assert.doesNotMatch(indexHtml, /Every file this tool has written/);
-
-// Split sizing keeps both panes alive.
-assert.equal(panelResize.clampSplitHeight(10, 800), 96);
-assert.equal(panelResize.clampSplitHeight(5000, 800), 704);
-assert.equal(panelResize.clampSplitHeight(300, 800), 300);
-assert.equal(panelResize.splitHeightFromDrag(300, 100, 160, 800), 360);
-assert.equal(panelResize.splitHeightFromDrag(300, 100, 40, 800), 240);
-assert.equal(panelResize.splitHeightFromDrag(120, 100, 20, 800), 96);
-assert.match(indexHtml, /queueSlot\.innerHTML/);
-assert.match(indexHtml, /historySlot\.innerHTML/);
-
-// The queue's empty state and the history list both still render on Convert.
-assert.match(indexHtml, /class="empty-inner empty-drop" id="dropZone"/);
-// the empty-queue box grows and shrinks with the queue pane
-assert.match(indexHtml, /\.convert-split \.empty\{flex:1 1 auto;min-height:0;overflow:hidden;padding:clamp\(/);
-// the box scales as one against the pane height: nothing is hidden at any size
-assert.match(indexHtml, /\.convert-queue:has\(\.empty\)\{container:convertqueue \/ size\}/);
-['\.empty \.empty-glyph', '\.empty h1', '\.empty p', '\.empty \.actions'].forEach(sel => {
-  assert.match(indexHtml, new RegExp(`\.convert-split ${sel}[^\n]*cqh`), `${sel} must scale with the pane`);
+// The prototype's header: filter pills, sort, Add files.
+['All', 'Active', 'Completed', 'Stopped', 'Missing', 'Comics', 'Images', 'Documents', 'Video'].forEach(name => {
+  assert.match(indexHtml, new RegExp(`name:'${name}'`), `missing the ${name} filter`);
 });
-assert.doesNotMatch(indexHtml, /@container convertqueue[^@]*display:none/);
-assert.doesNotMatch(indexHtml, /min-height:min-content/);
-assert.match(indexHtml, /\.convert-split \.empty \.empty-inner\{align-self:stretch/);
-assert.match(indexHtml, /Nothing has been converted yet\./);
+assert.match(indexHtml, /const SORTS = \{newest:'Newest', oldest:'Oldest', name:'Name', largest:'Largest'\};/);
+assert.match(indexHtml, /class="u-add press" data-act="add">Add files/);
+// its column headers, empty state and footer copy, verbatim
+['File', 'Conversion', 'Status', 'Size', 'Written'].forEach(col => {
+  assert.match(indexHtml, new RegExp(`>${col}<`), `missing the ${col} column header`);
+});
+assert.match(indexHtml, /<b>Nothing matches<\/b><span>Nothing in this view yet\.<\/span>/);
+assert.match(indexHtml, /\$\{ready\} ready · \$\{blocked\} waiting on \$\{blockingHelper\(\)\} · \$\{written\} written/);
+assert.match(indexHtml, /All done<\/span>/);
 
-// Existing queue and history actions survive the merge.
-['convert', 'clear', 'add', 'history-sort', 'history-filter', 'history-requeue',
- 'history-delete', 'history-deselect', 'check-history', 'check-all',
- 'select-history', 'select-row', 'requeue-one', 'reveal-history'].forEach(act => {
+// The prototype's motion survives the port.
+assert.match(indexHtml, /@keyframes u-cascade\{from\{opacity:0;transform:translateY\(10px\);filter:blur\(2px\)\}/);
+assert.match(indexHtml, /@keyframes u-shimmer/);
+assert.match(indexHtml, /\.u-fill\{[^}]*transition:width var\(--d-fast\) linear\}/);
+assert.match(indexHtml, /animation-delay:\$\{Math\.min\(index, 7\) \* 50\}ms/);
+
+// This app's own thumbnails and route picker stay in the ported row.
+assert.match(indexHtml, /fileThumb\(file, 'u-tile'\)/);
+assert.match(indexHtml, /\$\{routePopover\(file, open\)\}/);
+
+// The split pane it replaces is gone.
+assert.doesNotMatch(indexHtml, /convert-split/);
+assert.doesNotMatch(indexHtml, /data-split-resize/);
+assert.doesNotMatch(indexHtml, /one-tool\.convert-split/);
+
+// Tick boxes span the whole list, and deleting reaches both stores.
+assert.match(indexHtml, /function applyRowCheck\(event, id\)/);
+assert.match(indexHtml, /const rows = visibleRows\(\);\n\s+const allOn = rows\.length > 0/);
+assert.match(indexHtml, /if \(queued\.length\) await api\('\/api\/remove-many', \{ids: queued\}\);/);
+assert.match(indexHtml, /if \(written\.length\) await historyAction\('\/api\/history\/delete'/);
+
+// Existing queue and history actions all survive the merge.
+['convert', 'add', 'history-sort', 'history-filter', 'history-requeue', 'history-delete',
+ 'history-deselect', 'check-history', 'check-all', 'select-history', 'select-row',
+ 'toggle-picker', 'requeue-one', 'reveal-history'].forEach(act => {
   assert.match(indexHtml, new RegExp(`data-act="${act}"`), `missing data-act="${act}"`);
 });
 assert.match(indexHtml, /if \(next === 'convert'\) loadHistory\(\);/);

@@ -257,6 +257,10 @@ assert.match(indexHtml, /historySlot\.innerHTML/);
 
 // The queue's empty state and the history list both still render on Convert.
 assert.match(indexHtml, /class="empty-inner empty-drop" id="dropZone"/);
+// the empty-queue box grows and shrinks with the queue pane
+assert.match(indexHtml, /\.convert-split \.empty\{flex:1 0 auto\}/);
+assert.match(indexHtml, /\.convert-queue:has\(\.empty\)\{min-height:min-content\}/);
+assert.match(indexHtml, /\.convert-split \.empty \.empty-inner\{align-self:stretch/);
 assert.match(indexHtml, /Nothing has been converted yet\./);
 
 // Existing queue and history actions survive the merge.

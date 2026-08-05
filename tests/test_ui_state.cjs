@@ -143,7 +143,6 @@ assert.match(indexHtml, /\.canvas-inspector \.status\{flex:none;flex-shrink:0\}/
 assert.match(indexHtml, /\.canvas-inspector\.inspector\{background:var\(--bg\)!important;border:0!important;box-shadow:none!important;border-radius:0!important\}/);
 assert.match(indexHtml, /#app \.panel\{background:var\(--bg\)\}/);
 assert.match(indexHtml, /<section class="canvas-inspector inspector batch-inspector">/);
-assert.match(indexHtml, /@media \(max-width:640px\)\{\.app\{min-width:0\}\.left\{display:none\}\.panel\[data-open="true"\]\{width:100%!important\}\}/);
 
 assert.deepEqual(selectionState.updateSelection({
   ids: ['a', 'b', 'c'], selected: [], anchorId: null, targetId: 'a',
@@ -271,5 +270,9 @@ assert.match(indexHtml, /if \(next === 'convert'\) loadHistory\(\);/);
 assert.match(indexHtml, /page === 'convert'\) \{ event\.preventDefault\(\); convert\(\); \}/);
 // The inspector serves the history record when one is picked, the queue otherwise.
 assert.match(indexHtml, /if \(selectedHistory\) return panelHistory\(\);/);
+
+// A narrow window keeps the list; the inspector collapses rather than taking over.
+assert.match(indexHtml, /@media \(max-width:640px\)\{\.app\{min-width:0\}\.panel\[data-open="true"\]\{width:0\}/);
+assert.doesNotMatch(indexHtml, /@media \(max-width:640px\)[^}]*\.left\{display:none\}/);
 
 console.log('UI action-state regression tests passed');

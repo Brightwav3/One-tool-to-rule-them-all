@@ -257,8 +257,13 @@ body.is-mac .topbar{padding-left:82px}
    footer carries the summary and the convert button. The sizes are the
    prototype's own; the thumbnails, icons and route picker are this app's. */
 .u-wrap{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;container:queue / inline-size}
-.u-head{flex:none;display:flex;align-items:center;gap:var(--space-2);padding:14px 18px 12px}
-.u-chips{flex:1;min-width:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+/* Two lines, not one: the destination, sort and Add files hold the top line, and
+   the filter pills run underneath and wrap along the row rather than stacking
+   into a column when the controls crowd them. */
+.u-head{flex:none;display:flex;flex-direction:column;gap:10px;padding:14px 18px 12px}
+.u-controls{display:flex;align-items:center;gap:var(--space-2)}
+.u-controls .dest{margin-right:auto;min-width:0}
+.u-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .u-chip{min-height:26px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;border-radius:var(--radius-pill);font-size:12px;font-weight:500;color:var(--text-secondary);
   box-shadow:inset 0 0 0 1px var(--border-default);transition:background-color var(--d-quick) var(--ease),color var(--d-quick) var(--ease),box-shadow var(--d-quick) var(--ease)}
 .u-chip:hover{background:var(--surface-hover)}
@@ -1555,12 +1560,14 @@ function renderConvert() {
   pages.convert.innerHTML = `
     <div class="u-wrap">
       <div class="u-head">
+        <div class="u-controls">
+          ${destinationHtml()}
+          <button class="u-sort press" data-act="history-sort">${esc(SORTS[histSort])}<span class="chev" aria-hidden="true">${chevron(12, 'ia-spin')}</span></button>
+          <button class="u-add press" data-act="add">Add files<span class="k" data-shortcut="open">${shortcutLabel('open')}</span></button>
+        </div>
         <div class="u-chips">
           ${U_FILTERS.map(f => `<button class="u-chip press" data-act="history-filter" data-filter="${f.id}" data-on="${histFilter === f.id}">${f.name}<span class="n">${all.filter(row => uMatches(row, f.id)).length}</span></button>`).join('')}
         </div>
-        ${destinationHtml()}
-        <button class="u-sort press" data-act="history-sort">${esc(SORTS[histSort])}<span class="chev" aria-hidden="true">${chevron(12, 'ia-spin')}</span></button>
-        <button class="u-add press" data-act="add">Add files<span class="k" data-shortcut="open">${shortcutLabel('open')}</span></button>
       </div>
       <div class="u-list" id="dropZone">
         <div class="u-headrow">

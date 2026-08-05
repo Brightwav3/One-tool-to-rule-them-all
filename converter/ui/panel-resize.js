@@ -23,7 +23,7 @@
   /* The Convert view stacks the queue above the history and lets the border
      between them be dragged. Both panes keep a floor so neither can be pulled
      out of existence. */
-  const MIN_PANE = 72;
+  const MIN_PANE = 96;
 
   function clampSplitHeight(height, availableHeight) {
     const available = Number(availableHeight);

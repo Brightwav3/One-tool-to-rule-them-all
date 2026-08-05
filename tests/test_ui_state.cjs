@@ -247,24 +247,25 @@ assert.doesNotMatch(indexHtml, /<h1>History<\/h1>/);
 assert.doesNotMatch(indexHtml, /Every file this tool has written/);
 
 // Split sizing keeps both panes alive.
-assert.equal(panelResize.clampSplitHeight(10, 800), 72);
-assert.equal(panelResize.clampSplitHeight(5000, 800), 728);
+assert.equal(panelResize.clampSplitHeight(10, 800), 96);
+assert.equal(panelResize.clampSplitHeight(5000, 800), 704);
 assert.equal(panelResize.clampSplitHeight(300, 800), 300);
 assert.equal(panelResize.splitHeightFromDrag(300, 100, 160, 800), 360);
 assert.equal(panelResize.splitHeightFromDrag(300, 100, 40, 800), 240);
-assert.equal(panelResize.splitHeightFromDrag(120, 100, 20, 800), 72);
+assert.equal(panelResize.splitHeightFromDrag(120, 100, 20, 800), 96);
 assert.match(indexHtml, /queueSlot\.innerHTML/);
 assert.match(indexHtml, /historySlot\.innerHTML/);
 
 // The queue's empty state and the history list both still render on Convert.
 assert.match(indexHtml, /class="empty-inner empty-drop" id="dropZone"/);
 // the empty-queue box grows and shrinks with the queue pane
-assert.match(indexHtml, /\.convert-split \.empty\{flex:1 1 auto;min-height:0;overflow:hidden\}/);
-// the box is draggable below its natural height: it sheds copy instead of clipping
+assert.match(indexHtml, /\.convert-split \.empty\{flex:1 1 auto;min-height:0;overflow:hidden;padding:clamp\(/);
+// the box scales as one against the pane height: nothing is hidden at any size
 assert.match(indexHtml, /\.convert-queue:has\(\.empty\)\{container:convertqueue \/ size\}/);
-assert.match(indexHtml, /@container convertqueue \(max-height:320px\)\{\.convert-split \.empty p\{display:none\}\}/);
-assert.match(indexHtml, /@container convertqueue \(max-height:250px\)[^@]*\.empty h1\{display:none\}/);
-assert.match(indexHtml, /@container convertqueue \(max-height:180px\)[^@]*\.empty-glyph\{display:none\}/);
+['\.empty \.empty-glyph', '\.empty h1', '\.empty p', '\.empty \.actions'].forEach(sel => {
+  assert.match(indexHtml, new RegExp(`\.convert-split ${sel}[^\n]*cqh`), `${sel} must scale with the pane`);
+});
+assert.doesNotMatch(indexHtml, /@container convertqueue[^@]*display:none/);
 assert.doesNotMatch(indexHtml, /min-height:min-content/);
 assert.match(indexHtml, /\.convert-split \.empty \.empty-inner\{align-self:stretch/);
 assert.match(indexHtml, /Nothing has been converted yet\./);

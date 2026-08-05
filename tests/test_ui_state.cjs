@@ -207,4 +207,44 @@ assert.doesNotMatch(indexHtml, /class="thumb" aria-hidden="true"><span>\$\{esc\(
 assert.match(indexHtml, /html,body,\*\{-webkit-user-select:none;user-select:none\}/);
 assert.match(indexHtml, /input,textarea,\[contenteditable="true"\]\{-webkit-user-select:text;user-select:text\}/);
 
+// ---- Convert view: two top-level views, history lives under the queue ----
+// Only Convert and Helpers are navigable; History is no longer a page of its own.
+const navPages = [...indexHtml.matchAll(/data-page="([a-z]+)"/g)].map(m => m[1]);
+assert.deepEqual([...new Set(navPages)].sort(), ['convert', 'helpers']);
+assert.doesNotMatch(indexHtml, /data-page="queue"/);
+assert.doesNotMatch(indexHtml, /data-page="history"/);
+assert.doesNotMatch(indexHtml, /<section class="page" id="pageHistory"/);
+assert.match(indexHtml, /const pages = \{ convert: \$\('pageConvert'\), helpers: \$\('pageHelpers'\) \};/);
+assert.match(indexHtml, /let page='convert',/);
+
+// The queue block and the history block are stacked inside the one Convert page,
+// history second, so the converted-file list sits under the queue/empty-state box.
+const convertPage = indexHtml.match(
+  /<section class="page" id="pageConvert"[\s\S]*?<\/section>/,
+)[0];
+assert.match(convertPage, /id="convertScroll"/);
+assert.ok(
+  convertPage.indexOf('id="pageQueue"') < convertPage.indexOf('id="pageHistory"'),
+  'history must render below the queue',
+);
+assert.match(indexHtml, /\.convert-scroll\{[^}]*overflow-y:auto/);
+assert.match(indexHtml, /queueSlot\.innerHTML/);
+assert.match(indexHtml, /historySlot\.innerHTML/);
+
+// The queue's empty state and the history list both still render on Convert.
+assert.match(indexHtml, /class="empty-inner empty-drop" id="dropZone"/);
+assert.match(indexHtml, /Nothing has been converted yet\./);
+
+// Existing queue and history actions survive the merge.
+['convert', 'clear', 'add', 'history-sort', 'history-filter', 'history-requeue',
+ 'history-delete', 'history-deselect', 'check-history', 'check-all',
+ 'select-history', 'select-row', 'requeue-one', 'reveal-history'].forEach(act => {
+  assert.match(indexHtml, new RegExp(`data-act="${act}"`), `missing data-act="${act}"`);
+});
+assert.match(indexHtml, /if \(next === 'convert'\) loadHistory\(\);/);
+// Enter still converts from the Convert view.
+assert.match(indexHtml, /page === 'convert'\) \{ event\.preventDefault\(\); convert\(\); \}/);
+// The inspector serves the history record when one is picked, the queue otherwise.
+assert.match(indexHtml, /if \(selectedHistory\) return panelHistory\(\);/);
+
 console.log('UI action-state regression tests passed');

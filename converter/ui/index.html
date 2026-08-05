@@ -251,16 +251,23 @@ body.is-mac .topbar{padding-left:82px}
   transition:opacity var(--d-fast) var(--ease),transform var(--d-fast) var(--ease),filter var(--d-fast) var(--ease)}
 .page[data-active="true"]{opacity:1;transform:none;filter:blur(0);pointer-events:auto}
 
-/* ---------- convert page (queue + history stacked) ----------
+/* ---------- convert page (queue above history) ----------
    The queue and the history keep their own markup and styling; they are simply
-   stacked inside one scrolling column now that History is no longer its own
-   view. Both blocks drop the flex:1/overflow:hidden they used when each owned
-   the full work area, so the page scrolls as a whole instead of clipping. */
-.convert-scroll{flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto}
-.convert-queue,.convert-history{flex:none;display:flex;flex-direction:column}
-.convert-scroll .q-wrap{flex:none;overflow:visible}
-.convert-scroll .q-list,.convert-scroll .x-list,.convert-scroll .empty{flex:none;min-height:0}
-.convert-history{margin-top:var(--space-5);border-top:1px solid var(--border-subtle);padding-bottom:var(--space-3)}
+   stacked now that History is no longer its own view. Each is its own scrolling
+   pane, and the border between them is the drag handle that splits the height
+   between the two. Both drop the flex:1/overflow:hidden they used when each
+   owned the whole work area, so a pane scrolls instead of clipping. */
+.convert-split{flex:1;min-height:0;display:flex;flex-direction:column}
+.convert-queue{flex:none;height:var(--convert-queue-height,56%);min-height:120px;display:flex;flex-direction:column;overflow:auto}
+.convert-history{flex:1;min-height:120px;display:flex;flex-direction:column;overflow:auto;padding-bottom:var(--space-3)}
+.convert-split .q-wrap{flex:none;overflow:visible}
+.convert-split .q-list,.convert-split .x-list,.convert-split .empty{flex:none;min-height:0}
+.convert-split-handle{flex:none;height:14px;position:relative;z-index:7;cursor:ns-resize;-webkit-app-region:no-drag;touch-action:none}
+.convert-split-handle::after{content:"";position:absolute;left:var(--space-5);right:var(--space-5);top:6px;height:2px;border-radius:var(--radius-pill);background:var(--border-subtle);
+  transition:background-color var(--d-quick) var(--ease)}
+.convert-split-handle:hover::after,.convert-split-handle:focus-visible::after{background:var(--border-default)}
+body.is-resizing-split{cursor:ns-resize;user-select:none}
+body.is-resizing-split .convert-split-handle::after{background:var(--accent)}
 
 h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-height:var(--leading-tight)}
 .page-sub{margin:var(--space-2) 0 0;font-size:var(--text-sm);line-height:var(--leading-normal);color:var(--text-secondary);max-width:64ch}
@@ -913,8 +920,9 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 
       <div class="work" id="work">
         <section class="page" id="pageConvert" data-active="true" style="--px:-8px">
-          <div class="convert-scroll" id="convertScroll">
+          <div class="convert-split" id="convertSplit">
             <div class="convert-queue" id="pageQueue"></div>
+            <div class="convert-split-handle" data-split-resize role="separator" aria-orientation="horizontal" aria-label="Resize queue and history" tabindex="0"></div>
             <div class="convert-history" id="pageHistory"></div>
           </div>
         </section>
@@ -948,6 +956,8 @@ const work = $('work'), panel = $('panel'), panelBody = $('panelBody');
 const contextMenu = $('contextMenu');
 const themeToggle = $('themeToggle'), themeLogo = $('themeLogo');
 const panelResizeHandle = document.querySelector('[data-panel-resize]');
+const splitResizeHandle = document.querySelector('[data-split-resize]');
+const convertSplit = document.getElementById('convertSplit'), convertQueue = document.getElementById('pageQueue');
 const isMac = shell?.platform === 'darwin';
 const shortcutLabel = name => OneToolShortcutLabels.label(name, isMac);
 const THEME_STORAGE = 'one-tool.theme';
@@ -1016,6 +1026,8 @@ let folderMenuState='closed', folderMenuTimer=null, contextTarget=null, contextM
 let selectedQueueIds=new Set(), queueAnchorId=null;
 const PANEL_WIDTH_STORAGE = 'one-tool.panel-width';
 let panelWidth = 308, panelResizeSession = null;
+const SPLIT_HEIGHT_STORAGE = 'one-tool.convert-split';
+let splitHeight = null, splitResizeSession = null;
 /* One-shot motion cues. Each set is filled when a real state transition is seen in
    absorb(), consumed by the next render, then cleared — so an unrelated re-render
    (selecting a row, opening a popover) never replays an entrance. */
@@ -1113,6 +1125,58 @@ function finishPanelResize() {
   document.body.classList.remove('is-resizing-panel');
   setPanelWidth(panelWidth);
 }
+
+/* The split starts on the CSS percentage; the first drag pins it to pixels. */
+const splitAvailable = () => (convertSplit?.clientHeight || 0) - (splitResizeHandle?.offsetHeight || 0);
+function setSplitHeight(next, persist=true) {
+  if (!convertQueue) return;
+  splitHeight = OneToolPanelResize.clampSplitHeight(next, splitAvailable());
+  convertQueue.style.setProperty('--convert-queue-height', `${splitHeight}px`);
+  splitResizeHandle?.setAttribute('aria-valuenow', String(splitHeight));
+  if (persist) {
+    try { localStorage.setItem(SPLIT_HEIGHT_STORAGE, String(splitHeight)); } catch { /* storage may be unavailable */ }
+  }
+}
+function restoreSplitHeight() {
+  let stored = null;
+  try { stored = localStorage.getItem(SPLIT_HEIGHT_STORAGE); } catch { /* storage may be unavailable */ }
+  if (stored === null) return;
+  setSplitHeight(stored, false);
+}
+function startSplitResize(event) {
+  if (!convertQueue) return;
+  if (event.button !== undefined && event.button !== 0) return;
+  event.preventDefault();
+  splitResizeSession = {startY: event.clientY, startHeight: convertQueue.getBoundingClientRect().height};
+  document.body.classList.add('is-resizing-split');
+  splitResizeHandle?.setPointerCapture?.(event.pointerId);
+}
+function moveSplitResize(event) {
+  if (!splitResizeSession) return;
+  setSplitHeight(OneToolPanelResize.splitHeightFromDrag(
+    splitResizeSession.startHeight,
+    splitResizeSession.startY,
+    event.clientY,
+    splitAvailable(),
+  ), false);
+}
+function finishSplitResize() {
+  if (!splitResizeSession) return;
+  splitResizeSession = null;
+  document.body.classList.remove('is-resizing-split');
+  setSplitHeight(splitHeight);
+}
+restoreSplitHeight();
+splitResizeHandle?.addEventListener('pointerdown', startSplitResize);
+splitResizeHandle?.addEventListener('keydown', event => {
+  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+  event.preventDefault();
+  setSplitHeight((splitHeight ?? convertQueue.getBoundingClientRect().height) + (event.key === 'ArrowDown' ? 16 : -16));
+});
+document.addEventListener('pointermove', moveSplitResize);
+document.addEventListener('pointerup', finishSplitResize);
+document.addEventListener('pointercancel', finishSplitResize);
+
 setPanelWidth(readPanelWidth(), false);
 panelResizeHandle?.addEventListener('pointerdown', startPanelResize);
 panelResizeHandle?.addEventListener('keydown', event => {
@@ -1514,7 +1578,7 @@ function renderHistory() {
   historySlot.innerHTML = `
     <div class="q-wrap x-wrap">
       <div class="q-head">
-        <div class="grow"><h1>History</h1><p class="page-sub">Every file this tool has written, checked against where it was saved.</p></div>
+        <div class="grow"></div>
         <button class="btn btn-secondary press" data-act="history-sort">${esc(SORTS[histSort])}<span class="chev" aria-hidden="true">${chevron(12, 'ia-spin')}</span></button>
       </div>
       <div class="chips">

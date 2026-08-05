@@ -222,12 +222,36 @@ assert.match(indexHtml, /let page='convert',/);
 const convertPage = indexHtml.match(
   /<section class="page" id="pageConvert"[\s\S]*?<\/section>/,
 )[0];
-assert.match(convertPage, /id="convertScroll"/);
+assert.match(convertPage, /id="convertSplit"/);
 assert.ok(
   convertPage.indexOf('id="pageQueue"') < convertPage.indexOf('id="pageHistory"'),
   'history must render below the queue',
 );
-assert.match(indexHtml, /\.convert-scroll\{[^}]*overflow-y:auto/);
+assert.match(indexHtml, /\.convert-queue\{[^}]*overflow:auto/);
+assert.match(indexHtml, /\.convert-history\{[^}]*overflow:auto/);
+
+// The border between the queue and the history is the drag handle that splits
+// the height between them.
+assert.match(convertPage, /data-split-resize/);
+assert.ok(
+  convertPage.indexOf('data-split-resize') > convertPage.indexOf('id="pageQueue"')
+    && convertPage.indexOf('data-split-resize') < convertPage.indexOf('id="pageHistory"'),
+  'the split handle must sit on the border between the two panes',
+);
+assert.match(indexHtml, /\.convert-split-handle\{[^}]*cursor:ns-resize/);
+assert.match(indexHtml, /one-tool\.convert-split/);
+assert.match(indexHtml, /splitResizeHandle\?\.addEventListener\('pointerdown', startSplitResize\)/);
+
+// The history section no longer carries the old page heading and blurb.
+assert.doesNotMatch(indexHtml, /<h1>History<\/h1>/);
+assert.doesNotMatch(indexHtml, /Every file this tool has written/);
+
+// Split sizing keeps both panes alive.
+assert.equal(panelResize.clampSplitHeight(10, 800), 120);
+assert.equal(panelResize.clampSplitHeight(5000, 800), 680);
+assert.equal(panelResize.clampSplitHeight(300, 800), 300);
+assert.equal(panelResize.splitHeightFromDrag(300, 100, 160, 800), 360);
+assert.equal(panelResize.splitHeightFromDrag(300, 100, 40, 800), 240);
 assert.match(indexHtml, /queueSlot\.innerHTML/);
 assert.match(indexHtml, /historySlot\.innerHTML/);
 

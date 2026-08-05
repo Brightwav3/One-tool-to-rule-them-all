@@ -20,5 +20,24 @@
     return clampPanelWidth(Number(startWidth) + Number(startX) - Number(currentX), viewportWidth);
   }
 
-  return {clampPanelWidth, widthFromDrag};
+  /* The Convert view stacks the queue above the history and lets the border
+     between them be dragged. Both panes keep a floor so neither can be pulled
+     out of existence. */
+  const MIN_PANE = 120;
+
+  function clampSplitHeight(height, availableHeight) {
+    const available = Number(availableHeight);
+    const max = Number.isFinite(available) && available > MIN_PANE * 2
+      ? available - MIN_PANE
+      : MIN_PANE;
+    const value = Number(height);
+    const safe = Number.isFinite(value) ? value : MIN_PANE;
+    return Math.round(Math.min(Math.max(safe, MIN_PANE), max));
+  }
+
+  function splitHeightFromDrag(startHeight, startY, currentY, availableHeight) {
+    return clampSplitHeight(Number(startHeight) + Number(currentY) - Number(startY), availableHeight);
+  }
+
+  return {clampPanelWidth, widthFromDrag, clampSplitHeight, splitHeightFromDrag};
 }));

@@ -977,7 +977,17 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 .wk-card{border-radius:14px;background:var(--surface);box-shadow:0 0 0 1px var(--sep),var(--sh2);display:flex;flex-direction:column;overflow:hidden;min-width:0}
 .wk-h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.018em}
 .wk-sub{margin:4px 0 0;font-size:12.5px;color:var(--t2)}
-.wk-side{width:308px;flex:none;display:flex;flex-direction:column;overflow:auto}
+/* The workspace panes are the same inspector as the Convert panel, so they take
+   the same width and the same collapse. Their handle is a static sibling rather
+   than an absolute overlay, because there is no card edge here to sit on. */
+.wk-side{width:var(--panel-width,308px);flex:none;display:flex;flex-direction:column;overflow:auto;
+  transition:opacity var(--d-fast) var(--ease)}
+.wk-resize{position:relative;flex:none;width:10px;margin:0 -5px;align-self:stretch;cursor:ew-resize;z-index:10;
+  -webkit-app-region:no-drag;touch-action:none}
+/* Past the collapse point the pane stops rendering as a pane: it blanks, rather
+   than clipping its rows into an unreadable column. */
+.wk-side[data-collapsed="true"]{opacity:0;pointer-events:none}
+.panel[data-collapsed="true"] .panel-in{opacity:0;pointer-events:none}
 .pbtn{min-height:28px;padding:0 12px;display:flex;align-items:center;gap:7px;border-radius:8px;font:600 12px var(--ui);color:var(--t2);box-shadow:inset 0 0 0 1px var(--sep2);transition:background var(--d-quick) ease}
 .pbtn:hover{background:var(--quiet)}
 .pbtn.pri{background:var(--acc);color:#fff;box-shadow:none;min-height:30px;font-size:12.5px}
@@ -1341,21 +1351,31 @@ function readPanelWidth() {
     return OneToolPanelResize.clampPanelWidth(stored === null ? 308 : stored, window.innerWidth);
   } catch { return OneToolPanelResize.clampPanelWidth(308, window.innerWidth); }
 }
+/* One width for every inspector in the app — the Convert panel and the panes
+   Creator and Editor carry — so dragging one does not leave the others disagreeing
+   about how wide an inspector is. */
 function setPanelWidth(next, persist=true) {
   panelWidth = OneToolPanelResize.clampPanelWidth(next, window.innerWidth);
-  panel.style.setProperty('--panel-width', `${panelWidth}px`);
-  panelResizeHandle?.setAttribute('aria-valuenow', String(panelWidth));
+  const collapsed = OneToolPanelResize.isPanelCollapsed(panelWidth);
+  document.documentElement.style.setProperty('--panel-width', `${panelWidth}px`);
+  panel.dataset.collapsed = String(collapsed);
+  document.querySelectorAll('.wk-side').forEach(side => { side.dataset.collapsed = String(collapsed); });
+  document.querySelectorAll('[data-panel-resize]').forEach(handle => {
+    handle.setAttribute('aria-valuenow', String(panelWidth));
+  });
   if (persist) {
     try { localStorage.setItem(PANEL_WIDTH_STORAGE, String(panelWidth)); } catch { /* storage may be unavailable */ }
   }
 }
 function startPanelResize(event) {
   if (event.button !== undefined && event.button !== 0) return;
+  const handle = event.target.closest?.('[data-panel-resize]');
+  if (!handle) return;
   event.preventDefault();
   panelResizeSession = {startX: event.clientX, startWidth: panelWidth};
   work.dataset.resizing = 'true';
   document.body.classList.add('is-resizing-panel');
-  panelResizeHandle?.setPointerCapture?.(event.pointerId);
+  handle.setPointerCapture?.(event.pointerId);
 }
 function movePanelResize(event) {
   if (!panelResizeSession) return;
@@ -1375,8 +1395,12 @@ function finishPanelResize() {
 }
 
 setPanelWidth(readPanelWidth(), false);
-panelResizeHandle?.addEventListener('pointerdown', startPanelResize);
-panelResizeHandle?.addEventListener('keydown', event => {
+/* Creator and Editor rebuild their pane on every render, so their handle is a new
+   element each time. Listening on the document keeps one wiring for all of them. */
+document.addEventListener('pointerdown', startPanelResize);
+document.addEventListener('keydown', event => {
+  const handle = event.target.closest?.('[data-panel-resize]');
+  if (!handle) return;
   if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
   event.preventDefault();
   setPanelWidth(panelWidth + (event.key === 'ArrowRight' ? 16 : -16));
@@ -1485,6 +1509,8 @@ function render(force=false) {
   if (panelResizeHandle) panelResizeHandle.hidden = !panelVisible;
 
   renderConvert(); renderCreator(); renderEditor(); renderSettings(); renderPanel(); renderOverlays();
+  /* The panes were just rebuilt, so hand them the current width and collapse state. */
+  setPanelWidth(panelWidth, false);
   renderShortcutLabels();
   // the cues have now been painted; clear them so nothing replays on the next render
   freshRows.clear(); freshDone.clear(); freshError.clear();
@@ -1661,6 +1687,7 @@ function renderEditor() {
       <div class="wk-card" style="flex:1;margin:0 8px 8px ${reader ? '0' : '8px'};background:${reader ? 'var(--bg)' : 'var(--surface)'}">
         ${reader ? editorReaderHtml() : editorGridHtml(selIds)}
       </div>
+      <div class="wk-resize" data-panel-resize role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
       <div class="wk-side" style="padding:14px 16px 12px;gap:14px">
         ${reader ? editorReaderPaneHtml() : editorGridPaneHtml()}
       </div>
@@ -1892,6 +1919,7 @@ function renderCreator() {
       <div class="wk-card" style="flex:1;margin:0 0 8px 8px">
         ${s.stage === 'pick' ? creatorPickHtml() : creatorBuildHtml()}
       </div>
+      <div class="wk-resize" data-panel-resize role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
       <div class="wk-side" style="padding:12px 16px 12px 14px;gap:14px">
         ${s.stage === 'build' ? creatorOutputHtml() : ''}
         ${creatorRecipesHtml()}

@@ -63,10 +63,20 @@ assert.equal(
 assert.match(indexHtml, /class="\$\{OneToolActionState\.actionButtonClass\(actionStatus\)\}"/);
 assert.match(indexHtml, /\.go\.success\[disabled\]\{background:var\(--ok-t\);color:#fff\}/);
 assert.match(indexHtml, /\$\{ready && !busy && actionStatus === 'idle' \? '' : 'disabled'\}/);
-assert.equal(panelResize.clampPanelWidth(180, 980), 240);
+// Dragging left still stops at 520. Dragging right no longer stops at 240 — it
+// keeps going to the window edge, and everything under 240 counts as collapsed,
+// so the pane blanks instead of clipping its rows.
 assert.equal(panelResize.clampPanelWidth(640, 980), 520);
-assert.equal(panelResize.widthFromDrag(308, 700, 760, 980), 248);
+assert.equal(panelResize.clampPanelWidth(180, 980), 180);
+assert.equal(panelResize.clampPanelWidth(-40, 980), 0);
+assert.equal(panelResize.isPanelCollapsed(240), false);
+assert.equal(panelResize.isPanelCollapsed(239), true);
+assert.equal(panelResize.isPanelCollapsed(0), true);
 assert.equal(panelResize.widthFromDrag(308, 700, 500, 980), 508);
+assert.equal(panelResize.widthFromDrag(308, 700, 760, 980), 248);
+// past the old floor, all the way to nothing
+assert.equal(panelResize.widthFromDrag(308, 700, 900, 980), 108);
+assert.equal(panelResize.widthFromDrag(308, 700, 1100, 980), 0);
 assert.match(indexHtml, /class="[^"]*panel-resize/);
 assert.match(indexHtml, /data-panel-resize/);
 assert.match(indexHtml, /<div class="work-resize panel-resize" data-panel-resize/);
@@ -197,7 +207,12 @@ assert.match(indexHtml, /\.work-resize\{right:-9px;top:0;height:100%\}/);
 assert.match(indexHtml, /\.work-resize::after\{display:none\}/);
 assert.match(indexHtml, /\.panel-resize:hover::after\{background:transparent\}/);
 assert.doesNotMatch(indexHtml, /\.work\[data-resizing="true"\] \.panel-resize::after/);
-assert.match(indexHtml, /document\.querySelector\('\[data-panel-resize\]'\)/);
+assert.match(indexHtml, /document\.querySelectorAll\('\[data-panel-resize\]'\)/);
+// Creator and Editor rebuild their pane each render, so the handle is delegated.
+assert.equal((indexHtml.match(/class="wk-resize" data-panel-resize/g) || []).length, 2);
+assert.match(indexHtml, /\.wk-side\{width:var\(--panel-width,308px\)/);
+assert.match(indexHtml, /\.wk-side\[data-collapsed="true"\]\{opacity:0;pointer-events:none\}/);
+assert.match(indexHtml, /\.panel\[data-collapsed="true"\] \.panel-in\{opacity:0;pointer-events:none\}/);
 assert.match(indexHtml, /\.work\{margin:0;border:1px solid var\(--sep\);border-left:0;border-bottom:0;border-radius:0 14px 0 0/);
 assert.match(indexHtml, /class="folder" width="48" height="48" viewBox="0 0 48 48"/);
 assert.match(indexHtml, /\.folder:hover \.fdr-front\{transform:scaleY\(\.72\) rotate\(4deg\)\}/);

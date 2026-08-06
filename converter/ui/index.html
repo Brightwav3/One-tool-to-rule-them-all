@@ -882,7 +882,11 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
    Ported from the One Tool Settings 4a prototype: a sidebar of categories beside a
    scrolling pane of sections. Helpers is a category here, not a page of its own, so
    the installer list lives inside the same shell as every other preference. */
-.cog-btn{display:inline-flex;position:relative;background:none;border:0;padding:0;cursor:pointer;width:24px;height:24px;flex:none;color:var(--t3);-webkit-app-region:no-drag}
+/* The cog is its own two-tone icon rather than a theme token: grey on light,
+   near-white on dark, at the weights the handoff specifies. */
+:root{--cog:#6E6E74}
+[data-theme="dark"]{--cog:#EDEDED}
+.cog-btn{display:inline-flex;position:relative;background:none;border:0;padding:0;cursor:pointer;width:24px;height:24px;flex:none;color:var(--cog);-webkit-app-region:no-drag}
 .cog-btn svg{width:100%;height:100%;display:block;transform-origin:50% 50%;transition:transform .7s cubic-bezier(.33,1,.68,1)}
 .cog-btn:hover svg,.cog-btn:focus-visible svg{transform:rotate(45deg)}
 .cog-btn .navdot{top:-1px;right:-2px}
@@ -1153,14 +1157,11 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
       <header class="topbar">
         <div class="tiphost">
           <button class="cog-btn" id="settingsBtn" aria-label="Settings" aria-haspopup="dialog" aria-expanded="false">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <mask id="cog-mask">
-                <g fill="#fff" stroke="#fff" stroke-width="2.4" stroke-linejoin="round" transform="translate(12 12) scale(0.87) translate(-12 -12)">
-                  <path d="M10.19 1.15 L13.81 1.15 L14.46 3.76 L16.09 4.43 L18.40 3.05 L20.95 5.60 L19.57 7.91 L20.24 9.54 L22.85 10.19 L22.85 13.81 L20.24 14.46 L19.57 16.09 L20.95 18.40 L18.40 20.95 L16.09 19.57 L14.46 20.24 L13.81 22.85 L10.19 22.85 L9.54 20.24 L7.91 19.57 L5.60 20.95 L3.05 18.40 L4.43 16.09 L3.76 14.46 L1.15 13.81 L1.15 10.19 L3.76 9.54 L4.43 7.91 L3.05 5.60 L5.60 3.05 L7.91 4.43 L9.54 3.76 Z"/>
-                </g>
-                <circle cx="12" cy="12" r="3.9" fill="#000"/>
-              </mask>
-              <rect width="24" height="24" fill="currentColor" mask="url(#cog-mask)"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <g transform="translate(12 12) scale(0.87) translate(-12 -12)">
+                <path d="M10.19 1.15 L13.81 1.15 L14.46 3.76 L16.09 4.43 L18.40 3.05 L20.95 5.60 L19.57 7.91 L20.24 9.54 L22.85 10.19 L22.85 13.81 L20.24 14.46 L19.57 16.09 L20.95 18.40 L18.40 20.95 L16.09 19.57 L14.46 20.24 L13.81 22.85 L10.19 22.85 L9.54 20.24 L7.91 19.57 L5.60 20.95 L3.05 18.40 L4.43 16.09 L3.76 14.46 L1.15 13.81 L1.15 10.19 L3.76 9.54 L4.43 7.91 L3.05 5.60 L5.60 3.05 L7.91 4.43 L9.54 3.76 Z"/>
+              </g>
+              <circle cx="12" cy="12" r="3.4"/>
             </svg>
             <span class="navdot" id="helperDot" hidden></span>
           </button>

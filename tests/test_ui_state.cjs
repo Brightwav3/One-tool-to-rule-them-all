@@ -247,6 +247,13 @@ assert.match(indexHtml, /<button class="cog-btn" id="settingsBtn" aria-label="Se
 assert.doesNotMatch(indexHtml, /\.cog-btn:hover,\.cog-btn\.active\{color/);
 assert.match(indexHtml, /<span class="navdot" id="helperDot" hidden><\/span>\s*<\/button>/);
 assert.match(indexHtml, /\.cog-btn:hover svg,\.cog-btn:focus-visible svg\{transform:rotate\(45deg\)\}/);
+// The outline cog, drawn not masked, grey on light and near-white on dark.
+assert.match(indexHtml, /<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1\.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">/);
+assert.match(indexHtml, /<circle cx="12" cy="12" r="3\.4"\/>/);
+assert.doesNotMatch(indexHtml, /cog-mask/);
+assert.match(indexHtml, /:root\{--cog:#6E6E74\}/);
+assert.match(indexHtml, /\[data-theme="dark"\]\{--cog:#EDEDED\}/);
+assert.match(indexHtml, /\.cog-btn\{[^}]*color:var\(--cog\)/);
 // Helpers is a sidebar category, not a page of its own.
 assert.doesNotMatch(indexHtml, /function renderHelpers\(\)/);
 assert.doesNotMatch(indexHtml, /function panelHelper\(\)/);

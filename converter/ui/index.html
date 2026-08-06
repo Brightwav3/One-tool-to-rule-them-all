@@ -1703,6 +1703,25 @@ function outputExt(f) {
   const dot = name.lastIndexOf('.');
   return dot > 0 ? name.slice(dot) : '';
 }
+function historyRenameFieldHtml(r, state) {
+  const name = String(r.name || '');
+  const dot = name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : '';
+  const locked = state === 'missing';
+  return `<div class="divider inspector-rename">
+    <div class="field">
+      <label for="renameField">File name</label>
+      <div class="rename-row">
+        <input id="renameField" data-act="rename-history-file" data-id="${esc(r.id)}" value="${esc(stem)}"
+          spellcheck="false" autocomplete="off" ${locked ? 'disabled' : ''}
+          aria-describedby="renameHint">
+        <span class="rename-ext" aria-hidden="true">${esc(ext)}</span>
+      </div>
+      <p class="rename-hint" id="renameHint">${locked ? 'The file is no longer where it was saved.' : 'Enter to save, Escape to undo. This renames the file on disk.'}</p>
+    </div>
+  </div>`;
+}
 function renameFieldHtml(f) {
   const locked = f.status === 'queued' || f.status === 'running';
   return `<div class="divider inspector-rename">
@@ -1786,6 +1805,7 @@ function panelHistory() {
     <div class="i-file history-inspector">${folderIcon(r.outputPath, 'history')}<div style="min-width:0"><b style="display:block;font-size:var(--text-base);font-weight:var(--weight-medium);line-height:var(--leading-snug);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name || 'Output file')}</b><span class="badge ${meta.cls}" style="margin-top:var(--space-2)">${meta.label}</span></div></div>
     <div class="i-body history-inspector">
       <div class="stack"><div class="history-stat"><span class="k">Output size</span><span class="v">${esc(fmtSize(r.size) || '—')}</span></div><div class="history-stat"><span class="k">Conversion</span><span class="v">${esc(r.conv || 'Recorded run')}</span></div></div>
+      ${historyRenameFieldHtml(r, state)}
       <div class="divider"><span class="eyebrow" style="margin-bottom:var(--space-2)">Source file</span><div class="history-path">${esc(r.sourcePath || r.sourceName || 'Source path unavailable')}</div></div>
       <div class="divider"><span class="eyebrow" style="margin-bottom:var(--space-2)">Saved output</span><div class="history-path">${esc(r.outputPath || 'Output path unavailable')}</div></div>
       ${settings.length ? `<div class="divider"><span class="eyebrow" style="margin-bottom:var(--space-2)">Settings used</span><div class="stack">${settings.map(([k, v]) => `<div class="kv"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join('')}</div></div>` : ''}
@@ -2017,6 +2037,7 @@ function contextItems(target) {
   ];
   if (target.type === 'history-file') return [
     contextItem('Select output', 'select-history', ICON.select),
+    contextItem('Rename file…', 'rename-history', ICON.rename, {disabled: target.state === 'missing'}),
     contextItem('Show input in Explorer', 'reveal-history-input', ICON.reveal, {disabled: !target.sourcePath}),
     contextItem('Show output in Explorer', 'reveal-output', ICON.reveal, {disabled: target.state === 'missing'}),
     contextItem('Copy output path', 'copy-output', ICON.copy, {disabled: !target.outputPath}),
@@ -2117,6 +2138,7 @@ async function handleContextAction(action, target) {
   if (action === 'reveal-queue-output') return api('/api/reveal', {path: target.out}, false);
   if (action === 'copy-source') return copyText(target.sourcePath, 'Source path copied');
   if (action === 'remove-queue') { selectedQueueIds = new Set(); queueAnchorId = null; return api('/api/remove-many', {ids: target.ids}); }
+  if (action === 'rename-history') return startHistoryRename(target.id);
   if (action === 'select-history') { selectedHistory = target.id; selectedId = null; selectedQueueIds = new Set(); queueAnchorId = null; inspectorOpen = true; return render(true); }
   if (action === 'reveal-history-input') return api('/api/reveal', {path: target.sourcePath}, false);
   if (action === 'reveal-output') return api('/api/history/reveal', {path: target.outputPath}, false);
@@ -2134,6 +2156,12 @@ async function copyText(value, message) {
 }
 function revealTargetForRow(row) {
   const isHistory = row?.dataset.context === 'history-file';
+  if (!isHistory) {
+    /* the output only exists once the file has been written */
+    const file = files.find(item => item.id === row?.dataset.id);
+    if (file?.status === 'done' && file.out) return {path: file.out, history: true};
+    return {path: '', history: false};
+  }
   const record = isHistory
     ? historyRecords.find(item => item.id === row?.dataset.id)
     : files.find(item => item.id === row?.dataset.id);
@@ -2176,13 +2204,17 @@ document.addEventListener('click', async event => {
   if (!el) return;
   const act = el.dataset.act;
   if ((act === 'close-sheet' || act === 'close-palette') && event.target.closest('[data-stop]')) return;
-  // A queued file has not been written yet, so double-click renames what it will
-  // become. A history record is a file on disk, so double-click still reveals it.
-  if (event.detail === 2 && act === 'select-row') {
+  // Double-click opens the output file whenever the row has written one. A row
+  // that has not been converted yet has nothing to open, so it falls back to
+  // renaming what it is going to write. Renaming itself lives in the context
+  // menu, which every row has.
+  if (event.detail === 2 && (act === 'select-row' || act === 'select-history')) {
     event.preventDefault();
+    const target = revealTargetForRow(el);
+    if (target.path) return revealFile(target.path, target.history).catch(error => showToast(error.message, false));
     const file = files.find(i => i.id === el.dataset.id);
     if (file && file.status !== 'queued' && file.status !== 'running') return startRename(file.id);
-    return revealRow(el);
+    return;
   }
   if (event.detail === 2 && act === 'select-history') {
     event.preventDefault();
@@ -2266,6 +2298,18 @@ document.addEventListener('click', async event => {
   }
 });
 
+async function commitHistoryRename(input) {
+  if (!input || input.disabled) return;
+  const record = historyRecords.find(i => i.id === input.dataset.id);
+  if (!record) return;
+  const name = String(record.name || '');
+  const dot = name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const next = input.value.trim();
+  if (!next || next === stem) { input.value = stem; return; }
+  try { await api('/api/history/rename', {id: record.id, name: next}, false); await loadHistory(); showToast('Renamed'); }
+  catch (error) { showToast(error.message, false); input.value = stem; }
+}
 async function commitRename(input) {
   if (!input || input.disabled) return;
   const file = files.find(i => i.id === input.dataset.id);
@@ -2275,6 +2319,14 @@ async function commitRename(input) {
   try { await api('/api/rename', {id: file.id, name: next}); showToast('Renamed'); }
   catch (error) { showToast(error.message, false); input.value = outputStem(file); }
 }
+/* Renaming a written file is the same gesture as renaming a queued one: the
+   inspector opens on that row with the name selected and ready to type. */
+function startHistoryRename(id) {
+  selectedHistory = id; selectedId = null; selectedQueueIds = new Set(); queueAnchorId = null;
+  selectedHelper = null; inspectorOpen = true; pickerFor = null;
+  render(true);
+  setTimeout(() => { const input = $('renameField'); if (input && !input.disabled) { input.focus(); input.select(); } }, 0);
+}
 function startRename(id) {
   selectedId = id; selectedHelper = null; inspectorOpen = true; pickerFor = null;
   render(true);
@@ -2283,6 +2335,7 @@ function startRename(id) {
 }
 document.addEventListener('focusout', event => {
   if (event.target?.dataset?.act === 'rename-file') commitRename(event.target);
+  if (event.target?.dataset?.act === 'rename-history-file') commitHistoryRename(event.target);
 });
 
 function updateFieldFromControl(target) {
@@ -2311,6 +2364,17 @@ document.addEventListener('keydown', event => {
       event.preventDefault(); event.stopPropagation();
       const file = files.find(i => i.id === event.target.dataset.id);
       event.target.value = file ? outputStem(file) : event.target.value;
+      event.target.blur();
+      return;
+    }
+  }
+  if (event.target?.dataset?.act === 'rename-history-file') {
+    if (key === 'enter') { event.preventDefault(); commitHistoryRename(event.target); return; }
+    if (key === 'escape') {
+      event.preventDefault(); event.stopPropagation();
+      const record = historyRecords.find(i => i.id === event.target.dataset.id);
+      const name = String(record?.name || ''), dot = name.lastIndexOf('.');
+      event.target.value = dot > 0 ? name.slice(0, dot) : name;
       event.target.blur();
       return;
     }

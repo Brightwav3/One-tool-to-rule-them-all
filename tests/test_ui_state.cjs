@@ -91,10 +91,11 @@ assert.match(indexHtml, /Show output in Explorer/);
 assert.match(indexHtml, /reveal-queue-output/);
 assert.match(indexHtml, /reveal-history-input/);
 assert.match(indexHtml, /function revealTargetForRow/);
-// A queued file is not on disk yet, so double-click renames it; a history record
-// is a real file, so double-click still reveals it.
-assert.match(indexHtml, /event\.detail === 2 && act === 'select-row'/);
-assert.match(indexHtml, /event\.detail === 2 && act === 'select-history'/);
+// Double-click opens the output file on any row that has written one, and falls
+// back to renaming when there is nothing to open yet.
+assert.match(indexHtml, /event\.detail === 2 && \(act === 'select-row' \|\| act === 'select-history'\)/);
+assert.match(indexHtml, /const target = revealTargetForRow\(el\);\n\s+if \(target\.path\) return revealFile\(target\.path, target\.history\)/);
+assert.match(indexHtml, /if \(file\?\.status === 'done' && file\.out\) return \{path: file\.out, history: true\};/);
 assert.match(indexHtml, /return startRename\(file\.id\)/);
 assert.match(indexHtml, /contextItem\('Rename output…', 'rename-queue'/);
 assert.match(indexHtml, /id="renameField"/);
@@ -274,5 +275,20 @@ assert.match(indexHtml, /if \(selectedHistory\) return panelHistory\(\);/);
 // A narrow window keeps the list; the inspector collapses rather than taking over.
 assert.match(indexHtml, /@media \(max-width:640px\)\{\.app\{min-width:0\}\.panel\[data-open="true"\]\{width:0\}/);
 assert.doesNotMatch(indexHtml, /@media \(max-width:640px\)[^}]*\.left\{display:none\}/);
+
+// Every row can be renamed from its context menu — a queued row renames what it
+// will write, a written row renames the file on disk.
+assert.match(indexHtml, /contextItem\('Rename output…', 'rename-queue'/);
+assert.match(indexHtml, /contextItem\('Rename file…', 'rename-history', ICON\.rename, \{disabled: target\.state === 'missing'\}\)/);
+assert.match(indexHtml, /if \(action === 'rename-history'\) return startHistoryRename\(target\.id\);/);
+assert.match(indexHtml, /function startHistoryRename\(id\)/);
+assert.match(indexHtml, /function historyRenameFieldHtml\(r, state\)/);
+assert.match(indexHtml, /data-act="rename-history-file"/);
+assert.match(indexHtml, /api\('\/api\/history\/rename', \{id: record\.id, name: next\}/);
+// a file that is no longer where it was saved cannot be renamed
+assert.match(indexHtml, /const locked = state === 'missing';/);
+// Enter commits, Escape puts the old name back, blur commits — as for the queue
+assert.match(indexHtml, /if \(key === 'enter'\) \{ event\.preventDefault\(\); commitHistoryRename\(event\.target\); return; \}/);
+assert.match(indexHtml, /if \(event\.target\?\.dataset\?\.act === 'rename-history-file'\) commitHistoryRename\(event\.target\);/);
 
 console.log('UI action-state regression tests passed');

@@ -19,6 +19,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import threading
 import zipfile
@@ -1682,6 +1683,139 @@ def repack_convert(source: Path, out: Path, opts: dict, progress) -> int:
 
 
 # --------------------------------------------------------------------------- #
+# Creator — many items into one container
+# --------------------------------------------------------------------------- #
+
+
+def _staged_items(items: list[Path]) -> list[tuple[str, Path]]:
+    """Flatten the picked items into (archive name, file) pairs.
+
+    A picked folder contributes its whole tree under its own name; a picked file
+    contributes itself. Names are made unique so two files called `cover.jpg`
+    from different folders cannot silently overwrite one another.
+    """
+    pairs: list[tuple[str, Path]] = []
+    for item in items:
+        item = item.expanduser()
+        if item.is_dir():
+            for member in sorted(item.rglob("*"), key=lambda p: natural(str(p))):
+                if member.is_file():
+                    pairs.append((f"{item.name}/{member.relative_to(item).as_posix()}", member))
+        elif item.is_file():
+            pairs.append((item.name, item))
+        else:
+            raise ValueError(f"{item.name} is no longer at its saved path")
+    if not pairs:
+        raise ValueError("there is nothing to pack — every item is empty or missing")
+
+    seen: dict[str, int] = {}
+    unique: list[tuple[str, Path]] = []
+    for name, path in pairs:
+        if name in seen:
+            seen[name] += 1
+            stem, dot, suffix = name.rpartition(".")
+            name = f"{stem} ({seen[name]}){dot}{suffix}" if dot else f"{name} ({seen[name]})"
+        else:
+            seen[name] = 0
+        unique.append((name, path))
+    return unique
+
+
+def _item_images(items: list[Path]) -> list[Path]:
+    """The images inside the picked items, in the order the user sees them."""
+    pages: list[Path] = []
+    for name, path in _staged_items(items):
+        if path.suffix.casefold() in IMAGE_SUFFIXES:
+            pages.append(path)
+    if not pages:
+        raise ValueError("none of the chosen items are images this can pack")
+    return pages
+
+
+def items_to_zip_convert(items: list[Path], out: Path, opts: dict, progress) -> int:
+    staged = _staged_items(items)
+    return zip_files(
+        [path for _, path in staged],
+        Path(out).parent,
+        out,
+        progress,
+        archive_names=[name for name, _ in staged],
+    )
+
+
+def items_to_tgz_convert(items: list[Path], out: Path, opts: dict, progress) -> int:
+    staged = _staged_items(items)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with _atomic_output(out) as partial:
+        with tarfile.open(partial, "w:gz") as archive:
+            for index, (name, path) in enumerate(staged, start=1):
+                archive.add(path, arcname=name)
+                progress(index, len(staged))
+    return len(staged)
+
+
+def items_to_7z_convert(items: list[Path], out: Path, opts: dict, progress) -> int:
+    """Pack with 7-Zip. Items are staged under their archive names first so the
+    archive's layout matches what the Creator listed, not the disk's."""
+    staged = _staged_items(items)
+    progress(0, len(staged))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="onetool-create-7z-") as tmp:
+        room = Path(tmp)
+        for index, (name, path) in enumerate(staged, start=1):
+            target = room / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, target)
+            progress(index, len(staged), "staging")
+        with _atomic_output(out) as partial:
+            # 7-Zip expands the wildcard itself and stores names relative to it,
+            # so the archive's layout is the staged layout.
+            command = [which("7z", "7za", "7zz"), "a", "-t7z", str(partial), str(room / "*"), "-y"]
+            if opts.get("password"):
+                command.append(f"-p{opts['password']}")
+            run(command, "7-Zip")
+            if not partial.is_file() or partial.stat().st_size == 0:
+                raise ValueError("7-Zip produced no archive")
+    progress(len(staged), len(staged), "writing")
+    return len(staged)
+
+
+def items_to_epub_convert(items: list[Path], out: Path, opts: dict, progress) -> int:
+    pages = _item_images(items)
+    return cbz_to_epub.convert_paths(
+        pages,
+        out,
+        opts.get("title") or out.stem,
+        opts.get("creator") or "Unknown",
+        progress=progress,
+    )
+
+
+def items_to_pdf_convert(items: list[Path], out: Path, opts: dict, progress) -> int:
+    return images_to_pdf_convert(_item_images(items), out, opts, progress)
+
+
+def items_to_tiff_convert(items: list[Path], out: Path, opts: dict, progress) -> int:
+    pages = _item_images(items)
+    progress(0, len(pages), "writing")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    compression = (opts.get("compression") or "lzw").strip() or "lzw"
+    names = [str(page.resolve()) for page in pages]
+    with _atomic_output(out) as partial:
+        # The partial file has no .tiff extension, so name the format explicitly
+        # rather than letting ImageMagick guess from `.partial`.
+        command = magick_command(
+            [*names, "-compress", compression, f"TIFF:{partial}"],
+            limit_resources=len(pages) > 1,
+        )
+        run(command, "ImageMagick")
+        if not partial.is_file() or partial.stat().st_size == 0:
+            raise ValueError("ImageMagick produced no TIFF")
+    progress(len(pages), len(pages), "writing")
+    return len(pages)
+
+
+# --------------------------------------------------------------------------- #
 # Images and video
 # --------------------------------------------------------------------------- #
 
@@ -2245,6 +2379,61 @@ CONVERTERS = [
         blurb="Re-wrap or re-encode video.",
         options=(Option("codec", "Codec", "copy"), Option("crf", "Quality (CRF)", "20")),
         extensions=(".mov",), helper=FFMPEG, dependencies=("ffmpeg",), convert=mov_to_mp4_convert,
+    ),
+
+    # Creator — many items into one container. These claim no extensions, so a
+    # dropped file can never route to them; the Creator asks for them by id.
+    Converter(
+        id="items-zip", src="Items", dst="ZIP", category="Create", kind="doc", glyph="ZI", ext=".zip",
+        title="Items → ZIP", sub="one archive from everything on the list",
+        blurb="Pack the chosen files and folders into a ZIP archive.",
+        dependencies=("Python standard library",), multi=True, convert=items_to_zip_convert,
+    ),
+    Converter(
+        id="items-cbz", src="Items", dst="CBZ", category="Create", kind="comic", glyph="CB", ext=".cbz",
+        title="Items → CBZ", sub="a comic archive in reading order",
+        blurb="Pack images into a CBZ comic archive.",
+        dependencies=("Python standard library",), multi=True, convert=items_to_zip_convert,
+    ),
+    Converter(
+        id="items-tgz", src="Items", dst="TGZ", category="Create", kind="doc", glyph="TG", ext=".tar.gz",
+        title="Items → TAR.GZ", sub="gzip-compressed tar",
+        blurb="Pack the chosen files and folders into a gzipped tar archive.",
+        dependencies=("Python standard library",), multi=True, convert=items_to_tgz_convert,
+    ),
+    Converter(
+        id="items-7z", src="Items", dst="7Z", category="Create", kind="doc", glyph="7Z", ext=".7z",
+        title="Items → 7Z", sub="7-Zip's own format",
+        blurb="Pack the chosen files and folders into a 7z archive.",
+        options=(Option("password", "Password", "none"),),
+        helper=SEVEN_ZIP, dependencies=("7-Zip",), multi=True, convert=items_to_7z_convert,
+    ),
+    Converter(
+        id="items-cb7", src="Items", dst="CB7", category="Create", kind="comic", glyph="CB", ext=".cb7",
+        title="Items → CB7", sub="a 7z-packed comic archive",
+        blurb="Pack images into a CB7 comic archive.",
+        helper=SEVEN_ZIP, dependencies=("7-Zip",), multi=True, convert=items_to_7z_convert,
+    ),
+    Converter(
+        id="items-epub", src="Items", dst="EPUB", category="Create", kind="comic", glyph="EP", ext=".epub",
+        title="Items → EPUB", sub="fixed-layout, one page per image",
+        blurb="Build a fixed-layout EPUB from images.",
+        options=TITLE_OPTS, dependencies=("Python standard library",),
+        multi=True, convert=items_to_epub_convert,
+    ),
+    Converter(
+        id="items-pdf", src="Items", dst="PDF", category="Create", kind="doc", glyph="PD", ext=".pdf",
+        title="Items → PDF", sub="JPEG and PNG pages embedded without re-encoding",
+        blurb="Build a PDF from images.",
+        options=PDF_IMAGE_OPTS, helper=IMAGEMAGICK, dependencies=("ImageMagick",),
+        multi=True, convert=items_to_pdf_convert,
+    ),
+    Converter(
+        id="items-tiff", src="Items", dst="TIFF", category="Create", kind="image", glyph="TI", ext=".tiff",
+        title="Items → multi-page TIFF", sub="one frame per image",
+        blurb="Build a single multi-page TIFF from images.",
+        options=(Option("compression", "Compression", "lzw"),),
+        helper=IMAGEMAGICK, dependencies=("ImageMagick",), multi=True, convert=items_to_tiff_convert,
     ),
 ]
 

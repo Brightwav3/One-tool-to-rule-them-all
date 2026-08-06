@@ -28,6 +28,8 @@ from pathlib import Path
 # progress(done, total); total of 0 means "no known unit count, just working"
 Progress = Callable[[int, int], None]
 ConvertFn = Callable[[Path, Path, dict, Progress], int]
+# A `multi` converter takes every source at once instead of one at a time.
+MultiConvertFn = Callable[[list[Path], Path, dict, Progress], int]
 ProbeFn = Callable[[Path], int]
 
 # Registry state is requested often. Cache helper hits and misses until the
@@ -174,9 +176,13 @@ class Converter:
     dependencies: tuple[str, ...] = ()
     helper_alternatives: tuple[Helper, ...] = ()
     requirements: tuple[Helper, ...] = ()
-    convert: ConvertFn | None = None
+    convert: ConvertFn | MultiConvertFn | None = None
     probe: ProbeFn | None = None
     extensions: tuple[str, ...] = ()   # inputs this converter claims when routing
+    # Many sources into one output — the Creator's containers. A multi converter
+    # is handed the whole source list, and claims no extensions, so a dropped
+    # file can never route to it.
+    multi: bool = False
 
     @property
     def label(self) -> str:
@@ -211,6 +217,7 @@ class Converter:
             "dropTitle": self.drop_title or f"Drop {self.src.lower()} files here",
             "dropSub": self.drop_sub,
             "options": [{"key": o.key, "label": o.label, "placeholder": o.placeholder} for o in self.options],
+            "multi": self.multi,
             "dependencies": list(self.dependencies),
             "helper": None if not self.helper else {
                 **self.helper.as_dict(),

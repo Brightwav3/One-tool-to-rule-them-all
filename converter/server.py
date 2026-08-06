@@ -267,14 +267,26 @@ WINDOWS_RESERVED_NAMES = frozenset(
 
 
 class Job:
-    def __init__(self, job_id: str, source: Path, converter, temporary: bool = False, output_folder: Path | None = None):
+    def __init__(
+        self,
+        job_id: str,
+        source: Path | list[Path],
+        converter,
+        temporary: bool = False,
+        output_folder: Path | None = None,
+        name: str = "",
+    ):
         self.id = job_id
-        self.source = source
+        # One source or many. `source` stays the first of them, so every
+        # single-file call site — the whole Convert view included — is unchanged.
+        self.sources = [source] if isinstance(source, Path) else list(source)
+        if not self.sources:
+            raise ValueError("a job needs at least one source file")
         self.temporary = temporary
         self.output_folder = Path(output_folder or DEFAULT_OUT).expanduser().resolve()
-        self.name = source.name
-        self.base = source.stem
-        self.source_size = source.stat().st_size if source.is_file() else 0
+        self.name = name or self.source.name
+        self.base = Path(name).stem if name else self.source.stem
+        self.source_size = sum(p.stat().st_size for p in self.sources if p.is_file())
         self.opts: dict[str, str] = {}
         self.status = "idle"
         self.units = 0
@@ -284,6 +296,10 @@ class Job:
         self.error_title = ""
         self.error = ""
         self.set_converter(converter)
+
+    @property
+    def source(self) -> Path:
+        return self.sources[0]
 
     def set_output_name(self, name: str) -> None:
         """Rename what this job will write, keeping the folder and extension."""
@@ -326,6 +342,9 @@ class Job:
                 f"{converter.helper.name} isn't installed",
                 f"{converter.label} is ready to run — it just needs {converter.helper.name} on this machine first.",
             )
+        elif converter.multi:
+            # A container's unit is an item, and they are all already known.
+            self.units = len(self.sources)
         elif converter.probe:
             try:
                 self.units = converter.probe(self.source)
@@ -349,6 +368,8 @@ class Job:
             "kind": self.converter.kind if self.converter else "doc",
             "name": self.name,
             "sourcePath": str(self.source),
+            "sourcePaths": [str(p) for p in self.sources],
+            "items": len(self.sources),
             "base": self.base,
             "sourceSize": self.source_size,
             "sourceExt": self.source.suffix.casefold(),
@@ -382,12 +403,18 @@ class Converter:
 
     # -- queue ------------------------------------------------------------- #
 
-    def add(self, source: Path, converter=None, temporary: bool = False) -> Job:
-        if converter is None:
+    def add(
+        self,
+        source: Path | list[Path],
+        converter=None,
+        temporary: bool = False,
+        name: str = "",
+    ) -> Job:
+        if converter is None and isinstance(source, Path):
             converter = REGISTRY.route(source)
         with self.lock:
             self.seq += 1
-            job = Job(str(self.seq), source, converter, temporary, self.output_folder)
+            job = Job(str(self.seq), source, converter, temporary, self.output_folder, name)
             self.jobs[job.id] = job
             self.order.append(job.id)
             return job
@@ -429,6 +456,10 @@ class Converter:
             converter = REGISTRY.get(converter_id)
             if not converter:
                 raise ValueError(f"unknown converter: {converter_id}")
+            if job.converter and job.converter.multi:
+                raise ValueError("a created file keeps the container it was built for")
+            if converter.multi:
+                raise ValueError(f"{converter.id} builds new files rather than converting one")
             if job.source.suffix.casefold() not in converter.extensions:
                 raise ValueError(
                     f"{converter.id} does not accept {job.source.suffix or 'files without an extension'}"
@@ -497,7 +528,8 @@ class Converter:
             if job_id in self.order:
                 self.order.remove(job_id)
         if job and job.temporary:
-            job.source.unlink(missing_ok=True)
+            for staged in job.sources:
+                staged.unlink(missing_ok=True)
 
     def remove_many(self, job_ids: list[str]) -> None:
         for job_id in job_ids:
@@ -569,7 +601,7 @@ class Converter:
                 if not out.suffix:
                     out = out / f"{job.base}{job.converter.ext}"
                 job.converter.convert(
-                    job.source, out, job.opts,
+                    job.sources if job.converter.multi else job.source, out, job.opts,
                     lambda done, total, phase="working", j=job: self._tick(j, done, total, phase),
                 )
                 job.out = str(out)
@@ -584,7 +616,8 @@ class Converter:
                 job.fail("Conversion failed", f"{type(exc).__name__}: {exc}")
             finally:
                 if job.temporary and job.status == "done":
-                    job.source.unlink(missing_ok=True)
+                    for staged in job.sources:
+                        staged.unlink(missing_ok=True)
 
     @staticmethod
     def _tick(job: Job, done: int, total: int, phase: str = "working") -> None:
@@ -730,6 +763,9 @@ class Handler(BaseHTTPRequestHandler):
                     temporary=False,
                     converter_id=body.get("converter"),
                 )
+            elif route == "/api/create":
+                self.send_json({"id": self.create(body), **self.state()})
+                return
             elif route == "/api/select":
                 QUEUE.select(body.get("id"))
             elif route == "/api/pick-files":
@@ -820,6 +856,46 @@ class Handler(BaseHTTPRequestHandler):
         if route in ("/api/recheck", "/api/select", "/api/route"):
             payload["tools"] = REGISTRY.as_list()
         self.send_json(payload)
+
+    def create(self, body: dict) -> str:
+        """Build one container from many items.
+
+        Everything after this — progress, cancel, errors, the toast and the
+        history entry — is the queue's existing machinery, unchanged.
+        """
+        converter = REGISTRY.get(str(body.get("format", "")))
+        if converter is None or not converter.multi:
+            raise ValueError(f"unknown container: {body.get('format')}")
+
+        raw_items = body.get("items") if isinstance(body.get("items"), list) else []
+        items: list[Path] = []
+        for entry in raw_items:
+            path = Path(str(entry)).expanduser().resolve()
+            if not path.exists():
+                raise ValueError(f"{path.name} is no longer at its saved path")
+            items.append(path)
+        if not items:
+            raise ValueError("pick at least one item to build from")
+
+        name = str(body.get("name", "")).strip() or "Untitled"
+        job = QUEUE.add(items, converter, name=name)
+        job.set_output_name(name)
+
+        dest = str(body.get("dest", "")).strip()
+        if dest:
+            folder = Path(dest).expanduser().resolve()
+            if not folder.is_dir():
+                raise ValueError(f"{folder} is not a folder")
+            QUEUE.update(job.id, "__out", str(folder / Path(job.out).name))
+
+        options = body.get("options") if isinstance(body.get("options"), dict) else {}
+        known = {option.key for option in converter.options}
+        for key, value in options.items():
+            if str(key) in known:
+                QUEUE.update(job.id, str(key), str(value))
+
+        QUEUE.start([job.id])
+        return job.id
 
     def restore(self, entry_id: str) -> None:
         """Put a past run's files back in the queue."""

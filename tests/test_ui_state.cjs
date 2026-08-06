@@ -94,7 +94,7 @@ assert.match(indexHtml, /function revealTargetForRow/);
 // Double-click opens the output file on any row that has written one, and falls
 // back to renaming when there is nothing to open yet.
 assert.match(indexHtml, /event\.detail === 2 && \(act === 'select-row' \|\| act === 'select-history'\)/);
-assert.match(indexHtml, /const target = revealTargetForRow\(el\);\n\s+if \(target\.path\) return revealFile\(target\.path, target\.history\)/);
+assert.match(indexHtml, /const target = revealTargetForRow\(el\);\s+if \(target\.path\) return revealFile\(target\.path, target\.history\)/);
 assert.match(indexHtml, /if \(file\?\.status === 'done' && file\.out\) return \{path: file\.out, history: true\};/);
 assert.match(indexHtml, /return startRename\(file\.id\)/);
 assert.match(indexHtml, /contextItem\('Rename output…', 'rename-queue'/);
@@ -256,7 +256,7 @@ assert.doesNotMatch(indexHtml, /one-tool\.convert-split/);
 
 // Tick boxes span the whole list, and deleting reaches both stores.
 assert.match(indexHtml, /function applyRowCheck\(event, id\)/);
-assert.match(indexHtml, /const rows = visibleRows\(\);\n\s+const allOn = rows\.length > 0/);
+assert.match(indexHtml, /const rows = visibleRows\(\);\s+const allOn = rows\.length > 0/);
 assert.match(indexHtml, /if \(queued\.length\) await api\('\/api\/remove-many', \{ids: queued\}\);/);
 assert.match(indexHtml, /if \(written\.length\) await historyAction\('\/api\/history\/delete'/);
 

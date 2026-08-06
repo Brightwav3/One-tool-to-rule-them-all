@@ -970,7 +970,9 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 :root{--paper:#fdfdfd;--ink:rgba(60,60,67,.16)}
 [data-theme="dark"]{--paper:#151517;--ink:rgba(237,237,237,.18)}
 
-#pageEditor,#pageCreator{display:flex;flex-direction:column;padding:0;overflow:hidden}
+/* Both screens are a window field with cards floating in it, so the page is the
+   sunken colour and the white card reads as a card rather than as the page. */
+#pageEditor,#pageCreator{display:flex;flex-direction:column;padding:0;overflow:hidden;background:var(--bg)}
 .wk-row{flex:1;min-height:0;display:flex}
 .wk-card{border-radius:14px;background:var(--surface);box-shadow:0 0 0 1px var(--sep),var(--sh2);display:flex;flex-direction:column;overflow:hidden;min-width:0}
 .wk-h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.018em}
@@ -1152,21 +1154,9 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
           <button class="navbtn press" data-page="editor">Editor</button>
         </nav>
         <div class="searchwrap">
-          <div class="tiphost theme-host">
-            <button id="themeToggle" class="theme-toggle press" aria-label="Change theme" aria-pressed="false">
-              <span id="themeLogo" class="theme-logo" aria-hidden="true"></span>
-            </button>
-            <span class="tip">Change theme</span>
-          </div>
           <button class="search press" id="searchBtn" aria-label="Open command palette">
             <span aria-hidden="true">&#8981;</span><span class="label">Search conversions, files, helpers</span><span class="kbd" data-shortcut="palette">&#8984;K</span>
           </button>
-        </div>
-        <div class="tiphost">
-          <button class="insp-toggle press on" id="inspToggle" aria-pressed="true" aria-label="Hide inspector">
-            <span aria-hidden="true" style="display:block;width:15px;height:12px;border:1.5px solid currentColor;border-radius:var(--radius-xs);border-right-width:5px"></span>
-          </button>
-          <span class="tip" id="inspTip">Hide inspector <span class="kbd" data-shortcut="inspector">&#8679;I</span></span>
         </div>
       </header>
 
@@ -1207,7 +1197,6 @@ const shell = window.appWindow;
 const $ = id => document.getElementById(id);
 const work = $('work'), panel = $('panel'), panelBody = $('panelBody');
 const contextMenu = $('contextMenu');
-const themeToggle = $('themeToggle'), themeLogo = $('themeLogo');
 const panelResizeHandle = document.querySelector('[data-panel-resize]');
 const isMac = shell?.platform === 'darwin';
 const shortcutLabel = name => OneToolShortcutLabels.label(name, isMac);
@@ -1222,25 +1211,10 @@ function applyTheme(next, persist = true) {
   themeName = next === 'dark' ? 'dark' : 'light';
   document.documentElement.dataset.theme = themeName;
   document.documentElement.style.colorScheme = themeName;
-  themeLogo?.setAttribute('data-theme', themeName);
-  themeToggle?.setAttribute('aria-pressed', String(themeName === 'dark'));
-  themeToggle?.setAttribute('aria-label', `Change theme to ${themeName === 'dark' ? 'light' : 'dark'}`);
   if (persist) {
     try { localStorage.setItem(THEME_STORAGE, themeName); } catch { /* storage may be unavailable */ }
     shell?.setTheme?.(themeName);
   }
-}
-function toggleTheme() {
-  themeToggle?.classList.remove('is-spinning');
-  void themeToggle?.offsetWidth;
-  themeToggle?.classList.add('is-spinning');
-  themeHydrated = true;
-  applyTheme(themeName === 'dark' ? 'light' : 'dark');
-  /* The title-bar toggle and the Theme setting are the same choice, so flipping one
-     writes the other rather than leaving the pane showing a stale value. */
-  setVals.theme = themeName === 'dark' ? 'Dark' : 'Light';
-  writeSettings();
-  setTimeout(() => themeToggle?.classList.remove('is-spinning'), 560);
 }
 applyTheme(readTheme(), false);
 Promise.resolve(shell?.getTheme?.()).then(saved => {
@@ -1268,7 +1242,11 @@ const byId = (items, key) => items.reduce((m, i) => { m[i[key]] = i; return m; }
 
 let tools=[], toolMap={}, files=[], counts={ready:0,helper:0,soon:0}, historyRecords=[];
 let outputFolder='~/Converted', outputFolders=[];
-let page='convert', selectedId=null, inspectorOpen=true, pickerFor=null, sheetFor=null, sheetPick=null, sheetCat=null, sheetQuery='';
+let page='convert', selectedId=null, pickerFor=null, sheetFor=null, sheetPick=null, sheetCat=null, sheetQuery='';
+/* The sidebar is not a thing you open — it is the detail of whatever is selected,
+   so it appears when there is something to detail and leaves when there is not.
+   Creator and Editor carry their own inspector, so the shared one stays away. */
+const inspectorVisible = () => page === 'convert' && Boolean(selectedId || selectedHistory);
 let paletteOpen=false, query='', commandIndex=0;
 let scope='this', advanced=true, keepNames=true, selectedHelper=null, selectedHistory=null;
 let histFilter='all', histSort='newest', checked=new Set(), historyAnchorId=null;
@@ -1306,7 +1284,6 @@ function applyQueueSelection(event, id) {
   selectedId = selectedQueueIds.has(id) ? id : [...selectedQueueIds][0] || null;
   pickerFor = null;
   selectedHistory = null;
-  inspectorOpen = Boolean(selectedId);
   render(true);
 }
 /* Ticking a box is about the list, not about which kind of row it is, so the
@@ -1332,7 +1309,6 @@ function applyHistorySelection(event, id, forceToggle=false) {
   historyAnchorId = result.anchorId;
   selectedHistory = id;
   selectedQueueIds = new Set(); queueAnchorId = null; selectedId = null;
-  inspectorOpen = true;
   render(true);
 }
 const selectedTool = f => f ? toolMap[f.conv] : null;
@@ -1480,7 +1456,7 @@ async function loadHistory() {
 
 /* ---------- render ---------- */
 function signature() {
-  return JSON.stringify([page, selectedId, inspectorOpen, pickerFor, sheetFor, sheetPick, sheetCat, sheetQuery, paletteOpen, query, commandIndex,
+  return JSON.stringify([page, selectedId, inspectorVisible(), pickerFor, sheetFor, sheetPick, sheetCat, sheetQuery, paletteOpen, query, commandIndex,
     scope, advanced, keepNames, selectedHelper, selectedHistory, histFilter, histSort, [...checked], [...selectedQueueIds], queueAnchorId, historyAnchorId, actionStatus, outputFolder, outputFolders, folderMenuState,
     pendingAdd, countFresh, dotFresh, [...freshRows], [...freshDone], [...freshError],
     files.map(f => [f.id, f.name, f.from, f.to, f.conv, f.status, f.units, f.doneUnits, f.size, f.sourceSize, f.errorTitle, JSON.stringify(f.opts||{})]),
@@ -1502,17 +1478,11 @@ function render(force=false) {
   dotEl.hidden = !(counts.helper > 0);
   dotEl.classList.toggle('is-fresh', dotFresh);
   Object.entries(pages).forEach(([key, el]) => el.dataset.active = String(key === page));
-  /* Creator and Editor carry their own inspector, so the shared one steps aside
-     rather than putting two panes side by side. */
-  const ownsInspector = page === 'creator' || page === 'editor';
-  const panelVisible = inspectorOpen && !ownsInspector;
+  const panelVisible = inspectorVisible();
   panel.dataset.open = String(panelVisible);
   document.getElementById('app').dataset.inspector = String(panelVisible);
-  $('inspToggle').hidden = ownsInspector;
-  $('inspToggle').classList.toggle('on', inspectorOpen);
-  $('inspToggle').setAttribute('aria-pressed', String(inspectorOpen));
-  $('inspToggle').setAttribute('aria-label', inspectorOpen ? 'Hide inspector' : 'Show inspector');
-  $('inspTip').innerHTML = `${inspectorOpen ? 'Hide' : 'Show'} inspector <span class="kbd" data-shortcut="inspector">${shortcutLabel('inspector')}</span>`;
+  /* Nothing to resize when there is no panel, so the handle goes with it. */
+  if (panelResizeHandle) panelResizeHandle.hidden = !panelVisible;
 
   renderConvert(); renderCreator(); renderEditor(); renderSettings(); renderPanel(); renderOverlays();
   renderShortcutLabels();
@@ -2984,7 +2954,7 @@ function closeContextMenu(animate=true) {
 async function handleContextAction(action, target) {
   if (!target) return;
   if (action === 'select-queue' || action === 'route-queue') {
-    selectedId = target.id; selectedHistory = null; inspectorOpen = true; pickerFor = action === 'route-queue' ? target.id : null; return render(true);
+    selectedId = target.id; selectedHistory = null; pickerFor = action === 'route-queue' ? target.id : null; return render(true);
   }
   if (action === 'rename-queue') return startRename(target.id);
   if (action === 'reveal-source') return api('/api/reveal', {path: target.sourcePath}, false);
@@ -2992,7 +2962,7 @@ async function handleContextAction(action, target) {
   if (action === 'copy-source') return copyText(target.sourcePath, 'Source path copied');
   if (action === 'remove-queue') { selectedQueueIds = new Set(); queueAnchorId = null; return api('/api/remove-many', {ids: target.ids}); }
   if (action === 'rename-history') return startHistoryRename(target.id);
-  if (action === 'select-history') { selectedHistory = target.id; selectedId = null; selectedQueueIds = new Set(); queueAnchorId = null; inspectorOpen = true; return render(true); }
+  if (action === 'select-history') { selectedHistory = target.id; selectedId = null; selectedQueueIds = new Set(); queueAnchorId = null; return render(true); }
   if (action === 'reveal-history-input') return api('/api/reveal', {path: target.sourcePath}, false);
   if (action === 'reveal-output') return api('/api/history/reveal', {path: target.outputPath}, false);
   if (action === 'copy-output') return copyText(target.outputPath, 'Output path copied');
@@ -3281,12 +3251,12 @@ async function commitRename(input) {
    inspector opens on that row with the name selected and ready to type. */
 function startHistoryRename(id) {
   selectedHistory = id; selectedId = null; selectedQueueIds = new Set(); queueAnchorId = null;
-  selectedHelper = null; inspectorOpen = true; pickerFor = null;
+  selectedHelper = null; pickerFor = null;
   render(true);
   setTimeout(() => { const input = $('renameField'); if (input && !input.disabled) { input.focus(); input.select(); } }, 0);
 }
 function startRename(id) {
-  selectedId = id; selectedHelper = null; inspectorOpen = true; pickerFor = null;
+  selectedId = id; selectedHelper = null; pickerFor = null;
   render(true);
   // after the panel has been rebuilt, put the caret in the field ready to type
   setTimeout(() => { const input = $('renameField'); if (input && !input.disabled) { input.focus(); input.select(); } }, 0);
@@ -3349,7 +3319,6 @@ document.addEventListener('keydown', event => {
     }
   }
   if ((event.metaKey || event.ctrlKey) && key === 'k') { event.preventDefault(); paletteOpen ? (paletteOpen = false, render(true)) : openPalette(); return; }
-  if (event.altKey && key === 'i') { event.preventDefault(); inspectorOpen = !inspectorOpen; return render(true); }
   /* Escape closes one layer at a time: an open settings menu first, then the sheet. */
   if (key === 'escape' && settingsOpen) {
     if (setOpenSel) { setOpenSel = null; return render(true); }
@@ -3404,8 +3373,6 @@ pages.editor.addEventListener('drop', event => {
   render(true);
 });
 $('searchBtn').onclick = openPalette;
-$('themeToggle').onclick = toggleTheme;
-$('inspToggle').onclick = () => { inspectorOpen = !inspectorOpen; render(true); };
 $('winMin').onclick = () => shell?.minimize?.();
 $('winMax').onclick = () => shell?.toggleMaximize?.();
 $('winClose').onclick = () => shell?.close?.();

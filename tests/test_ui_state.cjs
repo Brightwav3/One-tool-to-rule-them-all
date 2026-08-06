@@ -72,11 +72,20 @@ assert.match(indexHtml, /data-panel-resize/);
 assert.match(indexHtml, /<div class="work-resize panel-resize" data-panel-resize/);
 assert.equal(shortcutLabels.label('palette', true), '⌘K');
 assert.equal(shortcutLabels.label('palette', false), 'Ctrl K');
-assert.equal(shortcutLabels.label('inspector', true), '⌥I');
-assert.equal(shortcutLabels.label('inspector', false), 'Alt I');
 assert.equal(shortcutLabels.label('open', false), 'Ctrl O');
 assert.match(indexHtml, /data-shortcut="palette"/);
-assert.match(indexHtml, /data-shortcut="inspector"/);
+
+// ---- The sidebar follows the selection; it is not a control ----
+// It is the detail of what is selected, so there is no toggle and no Alt+I.
+assert.match(indexHtml, /const inspectorVisible = \(\) => page === 'convert' && Boolean\(selectedId \|\| selectedHistory\);/);
+assert.doesNotMatch(indexHtml, /id="inspToggle"/);
+assert.doesNotMatch(indexHtml, /inspectorOpen/);
+assert.doesNotMatch(indexHtml, /event\.altKey && key === 'i'/);
+// Theme has one home now — the Theme row in Settings.
+assert.doesNotMatch(indexHtml, /id="themeToggle"/);
+assert.doesNotMatch(indexHtml, /function toggleTheme/);
+// Editor and Creator are a window field with cards in it, not a white page.
+assert.match(indexHtml, /#pageEditor,#pageCreator\{[^}]*background:var\(--bg\)\}/);
 assert.match(indexHtml, /\.wincontrols button\{[^}]*-webkit-app-region:no-drag/);
 assert.match(indexHtml, /data-act="toggle-folder-menu"/);
 assert.match(indexHtml, /data-act="select-folder"/);
@@ -156,13 +165,8 @@ assert.deepEqual(selectionState.updateSelection({
 }), {selected: ['a', 'b', 'c'], anchorId: 'a'});
 assert.match(indexHtml, /data-shortcut="open"/);
 assert.match(indexHtml, /\.navbtn\.active\{[^}]*background:var\(--accent\)[^}]*color:var\(--text-inverse\)/);
-assert.match(indexHtml, /themeToggle/);
-assert.match(indexHtml, /fidelioB\.svg/);
-assert.match(indexHtml, /fidelioW\.svg/);
-assert.match(indexHtml, /\.theme-logo/);
-assert.match(indexHtml, /Change theme/);
+// The theme still persists and still drives the dark palette; only its control moved.
 assert.match(indexHtml, /one-tool\.theme/);
-assert.match(indexHtml, /theme-spin/);
 assert.match(indexHtml, /\[data-theme="dark"\]/);
 assert.match(indexHtml, /--bg:#000000;--surface:#000000;--raised:#000000;/);
 assert.match(indexHtml, /--surface-inverse:#1f2024/);
@@ -466,8 +470,6 @@ assert.equal(fmtSize(0.5), '512 KB');
 assert.equal(fmtSize(31.2), '31.2 MB');
 assert.equal(fmtSize(2048), '2.0 GB');
 
-// Both screens carry their own inspector, so the shared panel steps aside.
-assert.match(indexHtml, /const ownsInspector = page === 'creator' \|\| page === 'editor';/);
 // The editor only takes the keyboard when it is the visible page.
 assert.match(indexHtml, /if \(page === 'editor' && !settingsOpen && !paletteOpen/);
 // Neither screen ships the design-canvas runtime.

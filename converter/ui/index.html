@@ -914,7 +914,9 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 .set-head{height:44px;flex:none;display:flex;align-items:center;gap:10px;padding:0 12px 0 24px;font-size:12.5px;font-weight:600;color:var(--t2)}
 .set-close{flex:none;min-height:26px;padding:0 9px;color:var(--t3);font-size:11px;box-shadow:none}
 .set-close:hover{background:var(--quiet);color:var(--t1)}
-.set-pane{flex:1;min-height:0;overflow:auto;padding:0 24px 40px;animation:fadeIn var(--d-fast) var(--ease) backwards}
+.set-pane{flex:1;min-height:0;overflow:auto;padding:0 24px 40px}
+/* The Settings DC fades at 200ms ease, and only when something actually arrives. */
+.s-fade{animation:fadeIn 200ms ease backwards}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .set-sec-t{font-size:15px;font-weight:600;letter-spacing:-.01em;padding:22px 0 6px}
 .set-row{display:flex;align-items:center;gap:20px;padding:14px 0;border-top:1px solid var(--sep)}
@@ -928,7 +930,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 .set-selwrap{position:relative;flex:none}
 .sel{height:26px;padding:0 9px;display:flex;align-items:center;gap:8px;border-radius:7px;font:500 12px var(--ui);color:var(--t1);box-shadow:inset 0 0 0 1px var(--sep2);background:var(--surface)}
 .sel .car{font-size:8px;color:var(--t3)}
-.set-menu{position:absolute;right:0;top:30px;z-index:30;min-width:168px;padding:4px;border-radius:9px;background:var(--surface);box-shadow:var(--sh2),0 0 0 1px var(--sep);display:flex;flex-direction:column;gap:1px;animation:fadeIn var(--d-quick) var(--ease) backwards}
+.set-menu{position:absolute;right:0;top:30px;z-index:30;min-width:168px;padding:4px;border-radius:9px;background:var(--surface);box-shadow:var(--sh2),0 0 0 1px var(--sep);display:flex;flex-direction:column;gap:1px}
 .set-menu button{min-height:28px;padding:0 8px;display:flex;align-items:center;gap:8px;border-radius:6px;font:400 12px var(--ui);color:var(--t1);text-align:left}
 .set-menu button:hover{background:var(--quiet)}
 .set-menu button[data-on="true"]{font-weight:600;background:var(--quiet)}
@@ -953,7 +955,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 .set-chip{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;font:500 11px var(--ui);background:var(--warn-tint);color:var(--warn-t);flex:none}
 .set-chip[data-state="ok"]{background:var(--ok-tint);color:var(--ok-t)}
 .set-chip[data-state="busy"]{background:var(--acc-tint);color:var(--acc-text)}
-.set-h-body{padding:2px 8px 18px 29px;display:flex;flex-direction:column;gap:12px;animation:fadeIn var(--d-fast) var(--ease) backwards}
+.set-h-body{padding:2px 8px 18px 29px;display:flex;flex-direction:column;gap:12px}
 .set-h-grp{display:flex;flex-direction:column;gap:6px}
 .set-h-chips{display:flex;flex-wrap:wrap;gap:6px}
 .set-h-chips span{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:5px;background:var(--quiet);font:500 11px var(--mono);color:var(--t3)}
@@ -962,7 +964,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 .set-cmd code{flex:1;min-width:0;font:400 11.5px var(--mono);color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .set-copy{flex:none;color:var(--acc-text);font-weight:500}
 .set-copy:hover{background:var(--acc-tint)}
-@media (prefers-reduced-motion:reduce){.set-pane,.set-menu,.set-h-body{animation-duration:1ms}}
+@media (prefers-reduced-motion:reduce){.s-fade{animation-duration:1ms}}
 
 /* ---------- editor and creator ----------
    Both screens come from their prototypes; the values below are the prototype's,
@@ -1114,6 +1116,12 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 .rec .n{flex:1;min-width:0;font:500 12.5px var(--ui);color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rec[data-on="true"] .n{font-weight:600;color:var(--acc-text)}
 .rec .m{font:400 11px var(--mono);color:var(--t4);padding-left:26px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* The three prototypes share one press: colour and shadow at 150ms, the squash at
+   120ms so the button answers slightly ahead of its own tint. */
+#pageEditor .press,#pageCreator .press,.set-win .press,.set-win .set-tab,.set-win .btn{
+  transition:background-color 150ms ease,box-shadow 150ms ease,opacity 150ms ease,color 150ms ease,transform 120ms ease}
+#pageEditor .press:active:not([disabled]),#pageCreator .press:active:not([disabled]),.set-win .press:active:not([disabled]){transform:scale(.97)}
 
 @keyframes zoomIn{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
 @keyframes gridIn{from{opacity:0;transform:scale(1.08)}to{opacity:1;transform:scale(1)}}
@@ -1659,6 +1667,16 @@ function routePopover(f, open) {
    Grid, reader and pair, off one page model. Page bodies are placeholder rules until
    a backend can render real pages; every other value on screen is live state. */
 const editor = OneToolEditorState.createEditorState({name: 'Untitled.pdf'});
+/* Entrances belong to arriving, not to existing. Both screens rebuild their whole
+   pane on every state change, so without this gate every click would replay the
+   view's entrance and the screen would read as reloading. The helper returns its
+   class only on the render that actually changed the view. */
+let editorView = null, creatorView = null, settingsView = null;
+let editorEntering = false, creatorEntering = false, settingsEntering = false;
+let selbarShown = false, openMenuSeen = null, openHelperSeen = null;
+const seenMarks = new Set(), seenEdits = new Set();
+const enterEditor = cls => editorEntering ? cls : '';
+const enterCreator = cls => creatorEntering ? cls : '';
 const lineStyle = (line, big) => `width:${line.w};height:${line.head ? (big ? '8px' : '5px') : (big ? '4px' : '3px')};background:${line.head ? 'rgba(60,60,67,.34)' : 'var(--ink)'}`;
 const isRotated = page => (((page.rot % 360) + 360) % 360) !== 0;
 function pageCaption(page, index) {
@@ -1676,8 +1694,22 @@ function thumbHtml(page, index, on, dim, act) {
     <span class="tcap">${esc(pageCaption(page, index))}</span>
   </button>`;
 }
+/* Marks and edits animate in once, on the render that first shows them. Recording
+   them after the paint is what keeps a later click from replaying the arrival. */
+function rememberEditorMotion() {
+  editor.state.pages.forEach(p => p.marks.forEach(m => seenMarks.add(m.id)));
+  editor.state.edits.forEach(e => seenEdits.add(e.id));
+}
 function renderEditor() {
   const s = editor.state;
+  /* The tool is part of the view: switching to Redact swaps the whole right pane,
+     which is an arrival. Stepping pages or selecting is not. */
+  const key = s.mode + ':' + (s.mode === 'reader' ? s.tool : '');
+  editorEntering = editorView !== key;
+  editorView = key;
+  try { return renderEditorView(s); } finally { rememberEditorMotion(); }
+}
+function renderEditorView(s) {
   if (s.mode === 'pair') return renderEditorPair();
   const selIds = editor.selectedIds();
   const reader = s.mode === 'reader';
@@ -1695,7 +1727,7 @@ function renderEditor() {
     ${s.dragging ? editorDropHtml() : ''}`;
 }
 function editorRailHtml() {
-  return `<div class="ed-rail m-fade">
+  return `<div class="ed-rail ${enterEditor("m-fade")}">
     ${editor.TOOLS.map(t => `<button class="tool press" data-act="ed-tool" data-tool="${t.id}" data-on="${t.id === editor.state.tool}" title="${esc(t.label)}" aria-label="${esc(t.label)}">${t.glyph}</button>`).join('')}
     <span class="ed-railrule"></span>
     <button class="tool press" data-act="ed-rotate" data-deg="-90" title="Rotate left" aria-label="Rotate left">↺</button>
@@ -1704,8 +1736,11 @@ function editorRailHtml() {
 }
 function editorGridHtml(selIds) {
   const s = editor.state;
+  /* The bar fades in when a selection starts, not on every change to it. */
+  const selbarEnter = selIds.length && !selbarShown ? ' m-fade' : '';
+  selbarShown = selIds.length > 0;
   const header = selIds.length ? `
-    <div class="ed-selbar m-fade">
+    <div class="ed-selbar${selbarEnter}">
       <span class="n">${selIds.length} page${selIds.length === 1 ? '' : 's'} selected</span>
       <span class="rule"></span>
       <button class="pbtn gh press" data-act="ed-rotate" data-deg="-90" style="color:var(--acc-text)">Rotate left</button>
@@ -1726,7 +1761,7 @@ function editorGridHtml(selIds) {
   if (selIds.length) footerBits.push(`${selIds.length} selected`);
   footerBits.push(s.edits.length ? `${s.edits.length} edits not saved` : 'no unsaved edits');
   return `${header}
-    <div class="m-grid" style="flex:1;min-height:0;overflow:auto;padding:16px 18px">
+    <div class="${enterEditor("m-grid")}" style="flex:1;min-height:0;overflow:auto;padding:16px 18px">
       <div class="ed-grid">
         ${s.pages.map((p, i) => thumbHtml(p, i, Boolean(s.sel[p.id]), selIds.length > 0 && !s.sel[p.id], 'ed-page')).join('')}
         <button class="pthumb press" data-act="ed-insert"><span class="pthumb-add">+</span><span class="tcap">Insert</span></button>
@@ -1745,7 +1780,7 @@ function editorReaderHtml() {
   const index = editor.currentIndex();
   const tool = editor.TOOLS.find(t => t.id === s.tool) || editor.TOOLS[0];
   if (!page) return `<div class="page-empty">This document has no pages left.</div>`;
-  return `<div class="ed-toolbar m-fade">
+  return `<div class="ed-toolbar ${enterEditor("m-fade")}">
       <span class="pchip" style="background:var(--acc-tint);color:var(--acc-text)">${esc(tool.label)}</span>
       <span style="flex:1;min-width:0;font-size:12px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(tool.help)}</span>
       <button class="pbtn gh press" data-act="ed-step" data-delta="-1" aria-label="Previous page">‹</button>
@@ -1759,13 +1794,13 @@ function editorReaderHtml() {
       <button class="pbtn gh press" data-act="ed-grid" style="color:var(--acc-text);font-weight:600">All pages<span class="kbd" data-shortcut="reader">${shortcutLabel('reader')}</span></button>
     </div>
     <div class="ed-canvaswrap">
-      <button class="pg ed-canvas m-zoom" data-act="ed-canvas" data-redact="${s.tool === 'redact'}" style="width:${Math.round(392 * s.zoom / 96)}px;transform:rotate(${page.rot}deg)">
+      <button class="pg ed-canvas ${enterEditor("m-zoom")}" data-act="ed-canvas" data-redact="${s.tool === 'redact'}" style="width:${Math.round(392 * s.zoom / 96)}px;transform:rotate(${page.rot}deg)">
         ${page.lines.map(l => `<span class="ln" style="${lineStyle(l, true)}"></span>`).join('')}
-        ${page.marks.map(m => `<span class="ed-mark" style="left:${m.x}%;top:${m.y}%;width:${m.w}%;height:${m.h}%"></span>`).join('')}
+        ${page.marks.map(m => `<span class="ed-mark${seenMarks.has(m.id) ? "" : " m-fade"}" style="left:${m.x}%;top:${m.y}%;width:${m.w}%;height:${m.h}%"></span>`).join('')}
         <span class="ed-pageno">${index + 1}</span>
       </button>
     </div>
-    <div class="ed-strip m-fade">
+    <div class="ed-strip ${enterEditor("m-fade")}">
       ${s.pages.map((p, i) => `<button class="strip press" data-act="ed-open" data-id="${p.id}" data-on="${p.id === s.focus}" aria-label="Page ${i + 1}">
         ${p.lines.slice(0, 3).map(l => `<span class="ln" style="width:${l.w}"></span>`).join('')}
       </button>`).join('')}
@@ -1773,7 +1808,7 @@ function editorReaderHtml() {
 }
 function editorGridPaneHtml() {
   const s = editor.state;
-  return `<div class="m-up" style="display:flex;align-items:flex-start;gap:10px">
+  return `<div class="${enterEditor("m-up")}" style="display:flex;align-items:flex-start;gap:10px">
       <span class="ptile acc" style="width:30px;height:38px;font-size:7px">PDF</span>
       <div style="flex:1;min-width:0">
         <div style="font:600 13px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name)}</div>
@@ -1796,7 +1831,7 @@ function editorGridPaneHtml() {
     <div class="ed-edits">
       <span class="eyebrow-p">Edits</span>
       ${s.edits.length
-        ? s.edits.map(e => `<div class="ed-edit m-up"><span class="d"></span><span class="t">${esc(e.text)}</span></div>`).join('')
+        ? s.edits.map(e => `<div class="ed-edit ${seenEdits.has(e.id) ? "" : "m-up"}"><span class="d"></span><span class="t">${esc(e.text)}</span></div>`).join('')
         : '<div style="font-size:12px;color:var(--t3)">Nothing changed yet.</div>'}
     </div>`;
 }
@@ -1807,7 +1842,7 @@ function editorReaderPaneHtml() {
   const tool = editor.TOOLS.find(t => t.id === s.tool) || editor.TOOLS[0];
   const marks = page ? page.marks : [];
   const total = editor.totalMarks();
-  const head = `<div class="m-up"><div style="font-size:13.5px;font-weight:600">${esc(tool.label)}</div>
+  const head = `<div class="${enterEditor("m-up")}"><div style="font-size:13.5px;font-weight:600">${esc(tool.label)}</div>
     <div style="font-size:12px;color:var(--t3);margin-top:2px">${s.tool === 'redact'
       ? `${marks.length} on this page · ${total} in the document`
       : `Page ${index + 1} of ${s.pages.length}`}</div></div>`;
@@ -1817,7 +1852,7 @@ function editorReaderPaneHtml() {
       <div style="display:flex;flex-direction:column;gap:6px">
         <span class="eyebrow-p">Marks on page ${index + 1}</span>
         ${marks.length
-          ? marks.map(m => `<div class="ed-mark-row m-up"><span class="ed-mark-sw"></span><span style="flex:1;font-size:12px">Block, ${Math.round(m.w * 3.9)} × ${Math.round(m.h * 7)}</span><button class="press" data-act="ed-unmark" data-mark="${m.id}" style="color:var(--t4);font-size:13px" aria-label="Remove block">×</button></div>`).join('')
+          ? marks.map(m => `<div class="ed-mark-row ${seenMarks.has(m.id) ? "" : "m-up"}"><span class="ed-mark-sw"></span><span style="flex:1;font-size:12px">Block, ${Math.round(m.w * 3.9)} × ${Math.round(m.h * 7)}</span><button class="press" data-act="ed-unmark" data-mark="${m.id}" style="color:var(--t4);font-size:13px" aria-label="Remove block">×</button></div>`).join('')
           : '<div class="ed-empty-marks">Click anywhere on the page to drop a redaction block.</div>'}
         <span style="font-size:11px;line-height:1.5;color:var(--t3)">Applying removes the underlying text and images permanently. This can't be undone after saving.</span>
       </div>
@@ -1851,7 +1886,7 @@ function renderEditorPair() {
   const bSelIds = editor.bSelectedIds();
   pages.editor.innerHTML = `
     <div class="wk-row">
-      <div class="wk-card m-left" style="flex:1;margin:0 4px 8px 8px">
+      <div class="wk-card ${enterEditor("m-left")}" style="flex:1;margin:0 4px 8px 8px">
         <div style="flex:none;display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--sep)">
           <span class="ptile acc" style="width:24px;height:30px;font-size:6px">PDF</span>
           <div style="flex:1;min-width:0">
@@ -1867,7 +1902,7 @@ function renderEditorPair() {
           <button class="pbtn press" data-act="ed-save">Save</button>
         </div>
       </div>
-      <div class="ed-mid m-fade">
+      <div class="ed-mid ${enterEditor("m-fade")}">
         <button class="pbtn press ${selIds.length ? '' : 'off'}" data-act="ed-move-right" style="background:var(--surface)">Move →</button>
         <button class="pbtn press ${bSelIds.length ? '' : 'off'}" data-act="ed-move-left" style="background:var(--surface)">← Move</button>
         <button class="pbtn gh press ${selIds.length ? '' : 'off'}" data-act="ed-copy-right" style="font-size:11.5px;color:var(--t3)">Copy →</button>
@@ -1876,7 +1911,7 @@ function renderEditorPair() {
         <button class="pbtn gh press" data-act="ed-close-pair" style="font-size:11.5px;color:var(--t3)">Close</button>
         <span class="hint">Select pages on either side</span>
       </div>
-      <div class="wk-card m-right" style="flex:1;margin:0 8px 8px 4px">
+      <div class="wk-card ${enterEditor("m-right")}" style="flex:1;margin:0 8px 8px 4px">
         <div style="flex:none;display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--sep)">
           <span class="ptile" style="width:24px;height:30px;font-size:6px">PDF</span>
           <div style="flex:1;min-width:0">
@@ -1914,6 +1949,8 @@ const crFmtSize = OneToolCreatorState.fmtSize;
 function installedHelpers() { return Object.fromEntries(helperNames().map(name => [name, helperFound(name)])); }
 function renderCreator() {
   const s = creator.state;
+  creatorEntering = creatorView !== s.stage;
+  creatorView = s.stage;
   pages.creator.innerHTML = `
     <div class="wk-row">
       <div class="wk-card" style="flex:1;margin:0 0 8px 8px">
@@ -2238,7 +2275,12 @@ function renderSettings() {
     .filter(sec => sec.rows.length);
   const tabName = (SET_TABS.find(t => t.id === setTab) || SET_TABS[0]).name;
   setScrim.dataset.open = String(settingsOpen);
-  if (!settingsOpen) return;
+  if (!settingsOpen) { settingsView = null; return; }
+  /* Changing category, or crossing into and out of search, is an arrival. Flipping
+     a switch in the category you are already looking at is not. */
+  const key = `${settingsOpen}:${showHelpers ? 'helpers' : setTab}:${q ? 'q' : ''}`;
+  settingsEntering = settingsView !== key;
+  settingsView = key;
   setWin.innerHTML = `
     <div class="set-side">
       <div class="set-search"><div class="set-search-in">
@@ -2256,10 +2298,13 @@ function renderSettings() {
     </div>
     <div class="set-main">
       <div class="set-head"><span style="flex:1">${esc(q ? 'Search results' : tabName)}</span><button class="btn btn-sm press set-close" data-act="close-settings" aria-label="Close settings">✕</button></div>
-      <div class="set-pane">
+      <div class="set-pane${settingsEntering ? ' s-fade' : ''}">
         ${showHelpers ? settingsHelpersHtml() : (sections.length ? sections.map(settingsSectionHtml).join('') : `<div class="set-empty">Nothing matches “${esc(setQuery)}”.</div>`)}
       </div>
     </div>`;
+  /* Both were just painted, so the next render treats them as already there. */
+  openMenuSeen = setOpenSel;
+  openHelperSeen = setOpenHelper;
 }
 function settingsSectionHtml(sec) {
   return `<div>
@@ -2276,7 +2321,7 @@ function settingsRowHtml(row) {
     const open = setOpenSel === row.id;
     control = `<span class="set-selwrap">
       <button class="sel press" data-act="settings-menu" data-id="${row.id}" aria-haspopup="menu" aria-expanded="${open}">${esc(value)}<span class="car" aria-hidden="true">▼</span></button>
-      ${open ? `<span class="set-menu" role="menu">${row.opts.map(o => `<button role="menuitem" data-act="settings-pick" data-id="${row.id}" data-value="${esc(o)}" data-on="${o === value}"><span class="tk" aria-hidden="true">${o === value ? '✓' : ''}</span><span class="nm">${esc(o)}</span></button>`).join('')}</span>` : ''}
+      ${open ? `<span class="set-menu${openMenuSeen === row.id ? '' : ' s-fade'}" role="menu">${row.opts.map(o => `<button role="menuitem" data-act="settings-pick" data-id="${row.id}" data-value="${esc(o)}" data-on="${o === value}"><span class="tk" aria-hidden="true">${o === value ? '✓' : ''}</span><span class="nm">${esc(o)}</span></button>`).join('')}</span>` : ''}
     </span>`;
   } else {
     control = `<button class="btn btn-secondary btn-sm press" data-act="settings-action" data-id="${row.id}">${esc(value)}</button>`;
@@ -2313,7 +2358,7 @@ function settingsHelperHtml(name) {
       <span class="set-chip" data-state="${state}">${label}</span>
       ${canDownload ? `<button class="btn btn-primary btn-sm press" data-act="download-helper" data-url="${esc(data.download)}" data-name="${esc(name)}">Download helper</button>` : ''}
     </div>
-    ${open ? `<div class="set-h-body">
+    ${open ? `<div class="set-h-body${openHelperSeen === name ? '' : ' s-fade'}">
       <div class="set-h-grp">
         <span class="col">${ready ? 'Runs with this helper' : 'Turns on when installed'}</span>
         <div class="set-h-chips">${unlocks.length ? unlocks.map(u => `<span>${esc(u)}</span>`).join('') : `<span>${esc(data.why || 'Used by registered converters')}</span>`}</div>

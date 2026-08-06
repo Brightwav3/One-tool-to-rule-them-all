@@ -490,4 +490,43 @@ assert.match(indexHtml, /if \(page === 'editor' && !settingsOpen && !paletteOpen
 // Neither screen ships the design-canvas runtime.
 assert.doesNotMatch(indexHtml, /support\.js|<sc-for|<sc-if|data-dc-script/);
 
+// ---- Motion: entrances play on arrival, never on every render ----
+// These screens rebuild their whole pane on each state change, so an ungated
+// entrance class would replay on every click and read as the view reloading.
+assert.match(indexHtml, /const enterEditor = cls => editorEntering \? cls : '';/);
+assert.match(indexHtml, /editorEntering = editorView !== key;/);
+assert.match(indexHtml, /settingsEntering = settingsView !== key;/);
+// The tool is part of the editor's view key; stepping pages is not.
+assert.match(indexHtml, /const key = s\.mode \+ ':' \+ \(s\.mode === 'reader' \? s\.tool : ''\);/);
+// Marks, edits and the selection bar each animate once, when they first appear.
+assert.match(indexHtml, /function rememberEditorMotion\(\)/);
+assert.match(indexHtml, /seenMarks\.has\(m\.id\) \? "" : " m-fade"/);
+assert.match(indexHtml, /seenEdits\.has\(e\.id\) \? "" : "m-up"/);
+assert.match(indexHtml, /const selbarEnter = selIds\.length && !selbarShown \? ' m-fade' : '';/);
+// A dropdown and a helper body fade on the render that opens them, not after.
+assert.match(indexHtml, /openMenuSeen === row\.id \? '' : ' s-fade'/);
+assert.match(indexHtml, /openHelperSeen === name \? '' : ' s-fade'/);
+assert.doesNotMatch(indexHtml, /\.set-pane\{[^}]*animation/);
+assert.doesNotMatch(indexHtml, /\.set-menu\{[^}]*animation/);
+assert.doesNotMatch(indexHtml, /\.set-h-body\{[^}]*animation/);
+
+// The prototypes' own timings, verbatim.
+assert.match(indexHtml, /\.m-zoom\{animation:zoomIn 320ms var\(--ease\) backwards\}/);
+assert.match(indexHtml, /\.m-grid\{animation:gridIn 320ms var\(--ease\) backwards\}/);
+assert.match(indexHtml, /\.m-up\{animation:slideUp 250ms var\(--ease\) backwards\}/);
+assert.match(indexHtml, /\.m-left\{animation:fromLeft 340ms var\(--ease\) backwards\}/);
+assert.match(indexHtml, /\.m-right\{animation:fromRight 340ms var\(--ease\) 40ms backwards\}/);
+// Settings fades at 200ms, per its own DC — not the app's 250ms.
+assert.match(indexHtml, /\.s-fade\{animation:fadeIn 200ms ease backwards\}/);
+// Press: 150ms for colour and shadow, 120ms for the squash.
+assert.match(indexHtml, /transition:background-color 150ms ease,box-shadow 150ms ease,opacity 150ms ease,color 150ms ease,transform 120ms ease/);
+// The page and its thumbnail carry the editor DC's own transitions.
+assert.match(indexHtml, /\.pg\{[^}]*transition:box-shadow var\(--d-quick\) ease,transform 200ms var\(--ease\)\}/);
+assert.match(indexHtml, /\.cr-prog \.fill\{[^}]*transition:width 120ms linear\}/);
+assert.match(indexHtml, /\.sw\{[^}]*transition:background 160ms ease/);
+assert.match(indexHtml, /\.sw i\{[^}]*transition:transform 160ms var\(--ease\)\}/);
+// Every entrance collapses under reduced motion.
+assert.match(indexHtml, /@media \(prefers-reduced-motion:reduce\)\{\.m-zoom,\.m-grid,\.m-fade,\.m-up,\.m-left,\.m-right,\.ed-mark\{animation-duration:1ms\}\}/);
+assert.match(indexHtml, /@media \(prefers-reduced-motion:reduce\)\{\.s-fade\{animation-duration:1ms\}\}/);
+
 console.log('UI action-state regression tests passed');

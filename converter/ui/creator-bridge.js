@@ -57,6 +57,7 @@
       creator.saveRecipe = () => { const id = saveRecipe(); persistRecipes(); return id; };
       // The tool list may already have arrived while the page was parsing.
       try { if (containers.length) creator.setContainers(groupsFrom(containers)); } catch { /* older build */ }
+      wireCreatorDrop();
     }
   }
 
@@ -115,6 +116,38 @@
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({recipes: creator.state.recipes.filter(recipe => recipe.saved)}),
     }).catch(error => showToast(error.message, false));
+  }
+
+  /* -- dropping ------------------------------------------------------------ */
+
+  /* The list said "Drop more items here" while nothing listened, so a dropped
+     file did nothing — or the browser navigated away to it. The page keeps the
+     listeners rather than the list, because the list is rebuilt on every render
+     and would lose them; the highlight is put on whichever list is on screen. */
+  function wireCreatorDrop() {
+    const page = pages?.creator;
+    if (!page) return;
+    const list = () => page.querySelector('.cr-list') || page.querySelector('.empty-drop');
+    const highlight = on => list()?.classList.toggle('over', on);
+
+    page.addEventListener('dragover', event => {
+      if (!event.dataTransfer?.types?.includes('Files')) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+      highlight(true);
+    });
+    page.addEventListener('dragleave', event => {
+      if (page.contains(event.relatedTarget)) return;
+      highlight(false);
+    });
+    page.addEventListener('drop', event => {
+      event.preventDefault();
+      highlight(false);
+      const dropped = [...(event.dataTransfer?.files || [])];
+      if (!dropped.length) return;
+      if (creator.state.stage !== 'build') creator.toBuild();
+      creatorTakeFiles(dropped);
+    });
   }
 
   /* -- items --------------------------------------------------------------- */

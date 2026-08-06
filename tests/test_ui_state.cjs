@@ -204,14 +204,39 @@ assert.match(indexHtml, /html,body,\*\{-webkit-user-select:none;user-select:none
 assert.match(indexHtml, /input,textarea,\[contenteditable="true"\]\{-webkit-user-select:text;user-select:text\}/);
 
 // ---- Convert view: two top-level views, one list ----
-// Only Convert and Helpers are navigable; History is no longer a page of its own.
+// Convert is the only nav item; Settings is the cog, and History is not a page.
 const navPages = [...indexHtml.matchAll(/data-page="([a-z]+)"/g)].map(m => m[1]);
-assert.deepEqual([...new Set(navPages)].sort(), ['convert', 'helpers']);
+assert.deepEqual([...new Set(navPages)].sort(), ['convert']);
 assert.doesNotMatch(indexHtml, /data-page="queue"/);
 assert.doesNotMatch(indexHtml, /data-page="history"/);
+assert.doesNotMatch(indexHtml, /data-page="helpers"/);
 assert.doesNotMatch(indexHtml, /<section class="page" id="pageHistory"/);
-assert.match(indexHtml, /const pages = \{ convert: \$\('pageConvert'\), helpers: \$\('pageHelpers'\) \};/);
+assert.match(indexHtml, /const pages = \{ convert: \$\('pageConvert'\) \};/);
 assert.match(indexHtml, /let page='convert',/);
+
+// ---- Settings: a sheet over the app, Helpers as a category ----
+// Settings is not a page — it opens over whatever the app was showing and closes
+// back onto it, so the queue behind it never resets.
+assert.match(indexHtml, /<div class="scrim set-scrim" id="setScrim" data-act="close-settings"><div class="modal set-win" id="setWin" data-stop="true"><\/div><\/div>\n<\/div>/);
+assert.match(indexHtml, /\.set-scrim\{position:fixed;z-index:40/);
+assert.doesNotMatch(indexHtml, /id="pageSettings"/);
+assert.match(indexHtml, /function openSettings\(tab\)/);
+assert.match(indexHtml, /function closeSettings\(\)/);
+// The cog sits at the left end of the title bar and carries the missing-helper dot.
+assert.match(indexHtml, /<button class="cog-btn" id="settingsBtn" aria-label="Settings" aria-haspopup="dialog"/);
+// The cog turns on hover; it never changes colour.
+assert.doesNotMatch(indexHtml, /\.cog-btn:hover,\.cog-btn\.active\{color/);
+assert.match(indexHtml, /<span class="navdot" id="helperDot" hidden><\/span>\s*<\/button>/);
+assert.match(indexHtml, /\.cog-btn:hover svg,\.cog-btn:focus-visible svg\{transform:rotate\(45deg\)\}/);
+// Helpers is a sidebar category, not a page of its own.
+assert.doesNotMatch(indexHtml, /function renderHelpers\(\)/);
+assert.doesNotMatch(indexHtml, /function panelHelper\(\)/);
+assert.match(indexHtml, /function renderSettings\(\)/);
+assert.match(indexHtml, /function settingsHelpersHtml\(\)/);
+const setTabIds = [...indexHtml.matchAll(/\{id:'([a-z]+)', name:'[^']+', glyph:/g)].map(m => m[1]);
+assert.deepEqual(setTabIds, ['general', 'conversions', 'editing', 'files', 'helpers', 'shortcuts', 'advanced']);
+// An unset value falls back to the row's default rather than being written at boot.
+assert.match(indexHtml, /if \(row\.kind === 'switch'\) return stored === undefined \? Boolean\(row\.on\) : Boolean\(stored\);/);
 
 // Queued work and written output render as one table, status as a column.
 assert.match(indexHtml, /function convertRows\(\)/);
@@ -219,7 +244,7 @@ assert.match(indexHtml, /function renderConvert\(\)/);
 assert.match(indexHtml, /function unifiedRow\(row, index, lastActive\)/);
 assert.doesNotMatch(indexHtml, /function renderQueue\(\)/);
 assert.doesNotMatch(indexHtml, /function renderHistory\(\)/);
-assert.match(indexHtml, /renderConvert\(\); renderHelpers\(\); renderPanel\(\); renderOverlays\(\);/);
+assert.match(indexHtml, /renderConvert\(\); renderSettings\(\); renderPanel\(\); renderOverlays\(\);/);
 // a file that is both queued and already written appears once, from the queue
 assert.match(indexHtml, /const inQueue = new Set\(files\.map\(file => `\$\{file\.sourcePath\}\|\$\{file\.to\}`\)\);/);
 // the history has to be loaded at boot now that it is part of the default view

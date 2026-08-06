@@ -764,6 +764,9 @@ body{background:var(--page);font-size:13px;letter-spacing:0}
 .app[data-inspector="false"] .topbar{padding-right:112px;transition-duration:var(--d-medium)}
 .body{background:var(--bg)}
 .work{margin:0;border:1px solid var(--sep);border-left:0;border-bottom:0;border-radius:0 14px 0 0;background:var(--surface);box-shadow:var(--sh2)}
+/* With no sidebar, preserve a slim gutter at the window edge. It keeps the
+   workspace visibly bounded and leaves room to find the resize handle. */
+#app[data-panel="closed"] .work{margin-right:8px;border-right:1px solid var(--sep);border-radius:0 14px 14px 0}
 .page{transform:translateX(var(--px,8px));filter:blur(3px);transition:opacity 250ms var(--ease),transform 250ms var(--ease),filter 250ms var(--ease)}
 .page[data-active="true"]{transform:none;filter:blur(0)}
 h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
@@ -981,6 +984,10 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 #pageEditor,#pageCreator{display:flex;flex-direction:column;padding:0;overflow:hidden;background:var(--bg)}
 .wk-row{flex:1;min-height:0;display:flex}
 .wk-card{border-radius:14px;background:var(--surface);box-shadow:0 0 0 1px var(--sep),var(--sh2);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+/* The workspace itself is already a card. A screen that fills it uses this
+   instead, so its header sits on the workspace — the way Convert's does —
+   and only its inner list reads as a card. */
+.wk-plain{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden}
 .wk-h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.018em}
 .wk-sub{margin:4px 0 0;font-size:12.5px;color:var(--t2)}
 /* The workspace panes are the same inspector as the Convert panel, so they take
@@ -988,6 +995,9 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
    than an absolute overlay, because there is no card edge here to sit on. */
 .wk-side{width:var(--panel-width,308px);flex:none;display:flex;flex-direction:column;overflow:auto;
   transition:opacity var(--d-fast) var(--ease)}
+/* Inside the app's side panel the pane is the panel: it takes its width from it
+   rather than setting its own, so one resize handle drives both. */
+.wk-side[data-inline="true"]{width:auto;flex:1;min-height:0}
 .wk-resize{position:relative;flex:none;width:10px;margin:0 -5px;align-self:stretch;cursor:ew-resize;z-index:10;
   -webkit-app-region:no-drag;touch-action:none}
 /* Past the collapse point the pane stops rendering as a pane: it blanks, rather
@@ -1268,7 +1278,17 @@ let page='convert', selectedId=null, pickerFor=null, sheetFor=null, sheetPick=nu
 /* The sidebar is not a thing you open — it is the detail of whatever is selected,
    so it appears when there is something to detail and leaves when there is not.
    Creator and Editor carry their own inspector, so the shared one stays away. */
-const inspectorVisible = () => page === 'convert' && Boolean(selectedId || selectedHistory);
+/* The inspector is the app's one side panel, outside the workspace card. The
+   Creator's output and recipes belong to it too, so they sit beside the
+   workspace rather than inside it and its rounded corner. */
+const inspectorHasContext = () =>
+  (page === 'convert' && Boolean(selectedId || selectedHistory))
+  || page === 'creator'
+  || (page === 'editor' && editor.state.mode !== 'pair');
+/* null preserves the selection-driven default. Alt+I sets an explicit user
+   choice, including opening the batch sidebar before anything is selected. */
+let inspectorOpen = null;
+const inspectorVisible = () => inspectorOpen ?? inspectorHasContext();
 let paletteOpen=false, query='', commandIndex=0;
 let scope='this', advanced=true, keepNames=true, selectedHelper=null, selectedHistory=null;
 let histFilter='all', histSort='newest', checked=new Set(), historyAnchorId=null;
@@ -1371,6 +1391,9 @@ function setPanelWidth(next, persist=true) {
   const collapsed = OneToolPanelResize.isPanelCollapsed(panelWidth);
   document.documentElement.style.setProperty('--panel-width', `${panelWidth}px`);
   panel.dataset.collapsed = String(collapsed);
+  /* A closed panel has to stay findable: the app marks the state so the handle
+     can move fully inside the window and show its edge. */
+  document.getElementById('app').dataset.panel = panelWidth === 0 ? 'closed' : 'open';
   document.querySelectorAll('.wk-side').forEach(side => { side.dataset.collapsed = String(collapsed); });
   document.querySelectorAll('[data-panel-resize]').forEach(handle => {
     handle.setAttribute('aria-valuenow', String(panelWidth));
@@ -1398,12 +1421,18 @@ function movePanelResize(event) {
     window.innerWidth,
   ), false);
 }
+/* Dragged past the point where the pane blanks, it closes on release rather than
+   leaving an unreadable strip of panel behind. Dragging the handle back out
+   brings it straight back. */
+function settlePanelWidth() {
+  setPanelWidth(OneToolPanelResize.snapPanelWidth(panelWidth));
+}
 function finishPanelResize() {
   if (!panelResizeSession) return;
   panelResizeSession = null;
   work.dataset.resizing = 'false';
   document.body.classList.remove('is-resizing-panel');
-  setPanelWidth(panelWidth);
+  settlePanelWidth();
 }
 
 setPanelWidth(readPanelWidth(), false);
@@ -1415,7 +1444,11 @@ document.addEventListener('keydown', event => {
   if (!handle) return;
   if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
   event.preventDefault();
-  setPanelWidth(panelWidth + (event.key === 'ArrowRight' ? 16 : -16));
+  const step = event.key === 'ArrowRight' ? 16 : -16;
+  // Opening a closed panel from the keyboard goes straight to the width where
+  // it is readable, rather than stepping through widths that re-close it.
+  setPanelWidth(panelWidth === 0 && step > 0 ? OneToolPanelResize.MIN_WIDTH : panelWidth + step);
+  settlePanelWidth();
 });
 document.addEventListener('pointermove', movePanelResize);
 document.addEventListener('pointerup', finishPanelResize);
@@ -1725,18 +1758,22 @@ function renderEditorView(s) {
   if (s.mode === 'pair') return renderEditorPair();
   const selIds = editor.selectedIds();
   const reader = s.mode === 'reader';
+  // Like the Creator, the pane goes to the app's side panel — outside the
+  // workspace card, so it does not run past its corner.
   pages.editor.innerHTML = `
     <div class="wk-row">
       ${reader ? editorRailHtml() : ''}
-      <div class="wk-card" style="flex:1;margin:0 8px 8px ${reader ? '0' : '8px'};background:${reader ? 'var(--bg)' : 'var(--surface)'}">
+      <div class="wk-plain">
         ${reader ? editorReaderHtml() : editorGridHtml(selIds)}
-      </div>
-      <div class="wk-resize" data-panel-resize role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
-      <div class="wk-side" style="padding:14px 16px 12px;gap:14px">
-        ${reader ? editorReaderPaneHtml() : editorGridPaneHtml()}
       </div>
     </div>
     ${s.dragging ? editorDropHtml() : ''}`;
+}
+function renderEditorPanel() {
+  const s = editor.state;
+  panelBody.innerHTML = s.mode === 'pair' ? '' : `<div class="wk-side" data-inline="true" style="padding:14px 16px 12px;gap:14px">
+      ${s.mode === 'reader' ? editorReaderPaneHtml() : editorGridPaneHtml()}
+    </div>`;
 }
 function editorRailHtml() {
   return `<div class="ed-rail ${enterEditor("m-fade")}">
@@ -1963,16 +2000,21 @@ function renderCreator() {
   const s = creator.state;
   creatorEntering = creatorView !== s.stage;
   creatorView = s.stage;
+  // The card fills the workspace; the output and recipes are rendered into the
+  // app's side panel by renderCreatorPanel, the same place Convert puts its
+  // inspector.
   pages.creator.innerHTML = `
     <div class="wk-row">
-      <div class="wk-card" style="flex:1;margin:0 0 8px 8px">
+      <div class="wk-plain">
         ${s.stage === 'pick' ? creatorPickHtml() : creatorBuildHtml()}
       </div>
-      <div class="wk-resize" data-panel-resize role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
-      <div class="wk-side" style="padding:12px 16px 12px 14px;gap:14px">
-        ${s.stage === 'build' ? creatorOutputHtml() : ''}
-        ${creatorRecipesHtml()}
-      </div>
+    </div>`;
+}
+function renderCreatorPanel() {
+  const s = creator.state;
+  panelBody.innerHTML = `<div class="wk-side" data-inline="true" style="padding:12px 16px 12px 14px;gap:14px">
+      ${s.stage === 'build' ? creatorOutputHtml() : ''}
+      ${creatorRecipesHtml()}
     </div>`;
 }
 function creatorPickHtml() {
@@ -2578,7 +2620,8 @@ function unifiedRow(row, index, lastActive) {
 
 /* ---------- inspector ---------- */
 function renderPanel() {
-  if (page === 'creator' || page === 'editor') return;
+  if (page === 'creator') return renderCreatorPanel();
+  if (page === 'editor') return renderEditorPanel();
   if (selectedHistory) return panelHistory();
   return selectedFile() ? panelFile() : panelBatch();
 }
@@ -3416,6 +3459,7 @@ document.addEventListener('keydown', event => {
     }
   }
   if ((event.metaKey || event.ctrlKey) && key === 'k') { event.preventDefault(); paletteOpen ? (paletteOpen = false, render(true)) : openPalette(); return; }
+  if (event.altKey && key === 'i') { event.preventDefault(); inspectorOpen = !inspectorVisible(); if (inspectorOpen && panelWidth === 0) setPanelWidth(OneToolPanelResize.MIN_WIDTH); return render(true); }
   /* Escape closes one layer at a time: an open settings menu first, then the sheet. */
   if (key === 'escape' && settingsOpen) {
     if (setOpenSel) { setOpenSel = null; return render(true); }

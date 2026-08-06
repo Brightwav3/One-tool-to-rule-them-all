@@ -7,6 +7,7 @@
      window edge, and the pane blanks rather than squeezing its content into a
      column too narrow to read. Dragging left is unchanged: MAX_WIDTH still caps it. */
   const MIN_WIDTH = 240;
+  const SNAP_THRESHOLD = MIN_WIDTH / 2;
   const MAX_WIDTH = 520;
   const DEFAULT_WIDTH = 308;
   const COLLAPSED_WIDTH = 0;
@@ -21,15 +22,25 @@
     return Math.round(Math.min(Math.max(safe, COLLAPSED_WIDTH), max));
   }
 
-  /* Anything under the old minimum reads as collapsed, so the caller can blank the
-     pane instead of rendering a sliver of clipped text. */
+  /* The midpoint is the decision line between the two stable sidebar states. */
   function isPanelCollapsed(width) {
     const value = Number(width);
-    return Number.isFinite(value) ? value < MIN_WIDTH : false;
+    return Number.isFinite(value) ? value <= SNAP_THRESHOLD : false;
+  }
+
+  /* Below the midpoint the sidebar resolves closed. Above it, it resolves to
+     its readable minimum. This gives both opening and closing a deliberate
+     threshold rather than an immediate jump. */
+  function snapPanelWidth(width) {
+    const value = Number(width);
+    if (isPanelCollapsed(value)) return COLLAPSED_WIDTH;
+    return value < MIN_WIDTH ? MIN_WIDTH : Math.round(value);
   }
 
   function widthFromDrag(startWidth, startX, currentX, viewportWidth) {
-    return clampPanelWidth(Number(startWidth) + Number(startX) - Number(currentX), viewportWidth);
+    const start = Number(startWidth);
+    const width = clampPanelWidth(start + Number(startX) - Number(currentX), viewportWidth);
+    return snapPanelWidth(width);
   }
 
   /* The Convert view stacks the queue above the history and lets the border
@@ -51,6 +62,6 @@
     return clampSplitHeight(Number(startHeight) + Number(currentY) - Number(startY), availableHeight);
   }
 
-  return {clampPanelWidth, isPanelCollapsed, widthFromDrag, clampSplitHeight, splitHeightFromDrag,
+  return {clampPanelWidth, isPanelCollapsed, snapPanelWidth, widthFromDrag, clampSplitHeight, splitHeightFromDrag,
     MIN_WIDTH, MAX_WIDTH, DEFAULT_WIDTH};
 }));

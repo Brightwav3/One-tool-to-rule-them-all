@@ -1482,7 +1482,15 @@ function noteTransitions() {
 let batchAnnounced = false;
 /* Haptics are used for exactly two events: a finished batch and an unreadable file. */
 function haptic(pattern) { try { navigator.vibrate?.(pattern); } catch { /* unsupported */ } }
-function setTools(list) { tools = list || []; toolMap = byId(tools, 'id'); }
+/* Containers build one file out of many and accept no dropped file, so they are
+   kept out of the Convert view's routes entirely and handed to the Creator. */
+let containers = [];
+function setTools(list) {
+  const all = list || [];
+  containers = all.filter(t => t.multi);
+  tools = all.filter(t => !t.multi);
+  toolMap = byId(tools, 'id');
+}
 async function loadHistory() {
   try { const res = await fetch('/api/history'); const data = await res.json();
     historyRecords = Array.isArray(data.history) ? data.history : []; render(); }
@@ -2076,7 +2084,7 @@ function creatorOutputHtml() {
       <div style="font-size:12px;color:var(--t3);margin-top:2px">One file from ${s.items.length} items</div>
     </div>
     <div class="fld"><span class="lbl">File name</span>
-      <div class="inp"><input id="crName" data-live="true" value="${esc(s.name)}" style="font:500 11.5px var(--mono)" aria-label="File name"><span class="cr-mono" style="color:var(--t3)">.${esc(s.fmt.toLowerCase())}</span></div>
+      <div class="inp"><input id="crName" data-live="true" value="${esc(s.name)}" style="font:500 11.5px var(--mono)" aria-label="File name"><span class="cr-mono" style="color:var(--t3)">${esc(f.ext || `.${s.fmt.toLowerCase()}`)}</span></div>
     </div>
     <div class="fld"><span class="lbl">Save to</span>
       <div class="inp"><span style="flex:1;min-width:0;font:500 11.5px var(--mono);color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.dest)}</span><button class="press" data-act="cr-dest" style="font:600 11.5px var(--ui);color:var(--acc-text)">Change</button></div>
@@ -2091,7 +2099,17 @@ function creatorOutputHtml() {
 }
 function creatorOptionHtml(key) {
   const opt = creator.OPTS[key];
+  if (!opt) return '';
   const value = creator.value(key);
+  if (opt.kind === 'text') {
+    return `<div style="display:flex;flex-direction:column;gap:5px;padding-top:4px">
+      <span style="font-size:12px;color:var(--t2)">${esc(opt.label)}</span>
+      <div class="inp"><input id="crOpt-${esc(key)}" data-live="true" data-cr-opt="${esc(key)}" type="${opt.secret ? 'password' : 'text'}"
+        value="${esc(value == null ? '' : String(value))}" placeholder="${esc(opt.placeholder || '')}"
+        style="font:500 11.5px var(--mono)" aria-label="${esc(opt.label)}"></div>
+      ${opt.hint ? `<span style="font-size:11px;line-height:1.5;color:var(--t3)">${esc(opt.hint)}</span>` : ''}
+    </div>`;
+  }
   if (opt.kind === 'seg') {
     return `<div style="display:flex;flex-direction:column;gap:5px;padding-top:4px">
       <span style="font-size:12px;color:var(--t2)">${esc(opt.label)}</span>
@@ -3356,9 +3374,11 @@ document.addEventListener('input', event => {
      is put back exactly where it was rather than losing the caret. */
   if (target.id === 'setSearch') { const caret = target.selectionStart; setQuery = target.value; setOpenSel = null; renderSettings();
     const again = $('setSearch'); if (again) { again.focus(); again.setSelectionRange(caret, caret); } return; }
-  if (target.id === 'crQuery' || target.id === 'crName') {
+  if (target.id === 'crQuery' || target.id === 'crName' || target.dataset.crOpt) {
     const id = target.id, caret = target.selectionStart;
-    if (id === 'crQuery') creator.state.query = target.value; else creator.state.name = target.value;
+    if (target.dataset.crOpt) creator.setValue(target.dataset.crOpt, target.value);
+    else if (id === 'crQuery') creator.state.query = target.value;
+    else creator.state.name = target.value;
     renderCreator();
     const again = $(id); if (again) { again.focus(); again.setSelectionRange(caret, caret); }
     return;

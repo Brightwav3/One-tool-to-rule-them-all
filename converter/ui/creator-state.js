@@ -27,6 +27,7 @@
   ];
   const ALL = GROUPS.flatMap(g => g.items);
   const format = id => ALL.find(f => f.id === id) || ALL[0];
+  const findIn = (groups, id) => groups.flatMap(g => g.items).find(f => f.id === id);
 
   const OPTS = {
     compress: {kind: 'seg', label: 'Compression', choices: ['Store', 'Normal', 'Max'], def: 'Normal'},
@@ -37,13 +38,23 @@
     encrypt: {kind: 'toggle', label: 'Encrypt with password', def: false},
     flatten: {kind: 'toggle', label: 'Flatten folders', def: false},
     rename: {kind: 'toggle', label: 'Renumber pages', def: true, hint: 'Rewrites file names to 001, 002, … so readers keep the order.'},
+    /* Free-text options. These carry the value the backend converter reads, so
+       what is typed here is what the builder is given. */
+    password: {kind: 'text', label: 'Password', def: '', secret: true, placeholder: 'none', hint: 'Encrypts the archive and hides the file names inside it.'},
+    title: {kind: 'text', label: 'Title', def: '', placeholder: 'from the file name'},
+    creator: {kind: 'text', label: 'Author', def: '', placeholder: 'Unknown'},
+    dpi: {kind: 'text', label: 'DPI', def: '150', placeholder: '150'},
+    quality: {kind: 'text', label: 'JPEG quality', def: '90', placeholder: '90'},
   };
 
+  /* The recipes shipped with the app. Each one sets options the containers
+     really have, and leaves the destination empty so it means "wherever the app
+     is saving" rather than naming a folder that may not exist. */
   const RECIPES = [
-    {id: 'cbz', name: 'Comic → CBZ', ext: 'CBZ', dest: '~/Converted/Comics', opts: {compress: 'Normal', meta: true, rename: true}},
-    {id: 'pdfa', name: 'Scans → PDF/A', ext: 'PDF', dest: '~/Converted/Documents', opts: {pageSize: 'A4', ocr: true, compress: 'Max'}},
-    {id: 'bk', name: 'Backup → 7z, encrypted', ext: '7Z', dest: '~/Backups', opts: {compress: 'Max', encrypt: true, flatten: false}},
-    {id: 'zip', name: 'Deliver → ZIP flat', ext: 'ZIP', dest: '~/Deliveries', opts: {compress: 'Store', flatten: true, encrypt: false}},
+    {id: 'cbz', name: 'Comic → CBZ', ext: 'CBZ', dest: '', opts: {compress: 'Normal', meta: true, rename: true}},
+    {id: 'zip', name: 'Deliver → ZIP flat', ext: 'ZIP', dest: '', opts: {compress: 'Store', flatten: true}},
+    {id: 'bk', name: 'Backup → 7z, max', ext: '7Z', dest: '', opts: {compress: 'Max', flatten: false}},
+    {id: 'book', name: 'Pages → EPUB', ext: 'EPUB', dest: '', opts: {rename: true}},
   ];
 
   /* GB above 1024 MB, MB above 1, KB below — the same ladder the queue uses. */
@@ -58,7 +69,18 @@
       job: null, pct: 0,
     };
 
-    const current = () => format(state.fmt);
+    /* The containers this build can really write. They start as the declared
+       list and are replaced by the registry's own once it has been fetched, so
+       the picker can never offer a container with no route behind it. */
+    let groups = GROUPS;
+    const current = () => findIn(groups, state.fmt) || groups.flatMap(g => g.items)[0] || format(state.fmt);
+    function setContainers(next) {
+      if (!Array.isArray(next) || !next.length) return false;
+      groups = next;
+      api.GROUPS = groups;
+      if (!findIn(groups, state.fmt)) state.fmt = groups[0].items[0].id;
+      return true;
+    }
     /* An option the user has not touched reads as its default, so a format change
        never carries a stale value into a container that does not have that option. */
     const value = key => key in state.values ? state.values[key] : (OPTS[key] || {}).def;
@@ -109,7 +131,9 @@
     function pickRecipe(id) {
       const recipe = state.recipes.find(r => r.id === id);
       if (!recipe) return false;
-      state.recipe = id; state.fmt = recipe.ext; state.dest = recipe.dest;
+      state.recipe = id; state.fmt = recipe.ext;
+      // An empty destination means "leave it where the app is already saving".
+      if (recipe.dest) state.dest = recipe.dest;
       state.values = {...recipe.opts}; state.job = null; state.pct = 0;
       return true;
     }
@@ -118,7 +142,9 @@
       const opts = {};
       f.opts.forEach(key => { opts[key] = value(key); });
       const id = `r${state.recipes.length + 1}`;
-      state.recipes = [...state.recipes, {id, name: `${state.name.split(' (')[0]} → ${f.title}`, ext: state.fmt, dest: state.dest, opts}];
+      // `saved` marks a recipe as the user's own, so only those are written to
+      // disk and the shipped examples can change between versions.
+      state.recipes = [...state.recipes, {id, name: `${state.name.split(' (')[0]} → ${f.title}`, ext: state.fmt, dest: state.dest, opts, saved: true}];
       state.recipe = id;
       return id;
     }
@@ -130,18 +156,20 @@
     const canCreate = (installed = {}) =>
       state.items.length > 0 && state.job !== 'running' && !isBlocked(installed) && !current().dis;
 
-    const outputName = () => `${state.name}.${state.fmt.toLowerCase()}`;
+    /* The registry knows the real extension — .tar.gz is not .tgz. */
+    const outputName = () => `${state.name}${current().ext || `.${state.fmt.toLowerCase()}`}`;
     const outputPath = () => `${state.dest}/${outputName()}`;
 
-    return {
+    const api = {
       state, GROUPS, OPTS, ALL,
-      format: current, formatById: format, value, setValue,
+      format: current, formatById: format, value, setValue, setContainers,
       sortedItems, totalUnits, totalSize, estimate,
       chooseFormat, toBuild, toPick,
       addItems, removeItem, moveItem, cycleSort,
       pickRecipe, saveRecipe,
       isBlocked, canCreate, outputName, outputPath,
     };
+    return api;
   }
 
   return {createCreatorState, GROUPS, OPTS, RECIPES, fmtSize, format};

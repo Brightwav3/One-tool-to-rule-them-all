@@ -26,6 +26,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import formats  # noqa: E402
 from formats import REGISTRY  # noqa: E402
 
 UI_DIR = Path(__file__).resolve().parent / "ui"
@@ -33,6 +34,7 @@ DEFAULT_OUT = Path.home() / "Converted"
 MAX_UPLOAD = 8 * 1024 * 1024 * 1024
 HISTORY_LIMIT = 500
 FOLDER_HISTORY_LIMIT = 12
+RECIPE_LIMIT = 40
 DEFAULT_HISTORY = Path(os.environ.get("ONETOOL_HISTORY_PATH", str(Path.home() / ".one-tool-history.json")))
 DEFAULT_SETTINGS = Path(os.environ.get("ONETOOL_SETTINGS_PATH", str(Path.home() / ".one-tool-settings.json")))
 
@@ -161,6 +163,32 @@ class SettingsStore:
     @staticmethod
     def _normalise(folder: str | Path) -> str:
         return str(Path(folder).expanduser().resolve())
+
+    def recipes(self) -> list[dict]:
+        """The Creator's saved recipes. A recipe is a container plus its options,
+        name and destination — small, self-contained, and stored right here next
+        to the output-folder preference."""
+        with self.lock:
+            values = self._data.get("creatorRecipes", [])
+        return [r for r in values if isinstance(r, dict) and r.get("id")] if isinstance(values, list) else []
+
+    def set_recipes(self, recipes: list[dict]) -> list[dict]:
+        kept = [
+            {
+                "id": str(recipe.get("id")),
+                "name": str(recipe.get("name") or "Untitled recipe"),
+                "ext": str(recipe.get("ext") or ""),
+                "dest": str(recipe.get("dest") or ""),
+                "opts": recipe.get("opts") if isinstance(recipe.get("opts"), dict) else {},
+                "saved": True,
+            }
+            for recipe in recipes
+            if isinstance(recipe, dict) and recipe.get("id")
+        ][:RECIPE_LIMIT]
+        with self.lock:
+            self._data["creatorRecipes"] = kept
+            self._save()
+        return kept
 
     def current_folder(self) -> Path:
         with self.lock:
@@ -730,6 +758,7 @@ class Handler(BaseHTTPRequestHandler):
             "busy": QUEUE.busy(),
             "outputFolder": str(QUEUE.output_folder),
             "outputFolders": QUEUE.output_folders(),
+            "recipes": QUEUE.settings_store.recipes(),
         }
 
     def do_GET(self) -> None:
@@ -763,6 +792,20 @@ class Handler(BaseHTTPRequestHandler):
                     temporary=False,
                     converter_id=body.get("converter"),
                 )
+            elif route == "/api/probe":
+                # What the Creator can say about its items before it builds.
+                raw = body.get("paths") if isinstance(body.get("paths"), list) else []
+                probed = []
+                for entry in raw:
+                    try:
+                        probed.append(formats.probe_item(Path(str(entry))))
+                    except ValueError as exc:
+                        probed.append({"path": str(entry), "name": Path(str(entry)).name, "error": str(exc)})
+                self.send_json({"items": probed})
+                return
+            elif route == "/api/recipes":
+                raw = body.get("recipes") if isinstance(body.get("recipes"), list) else []
+                QUEUE.settings_store.set_recipes(raw)
             elif route == "/api/create":
                 self.send_json({"id": self.create(body), **self.state()})
                 return

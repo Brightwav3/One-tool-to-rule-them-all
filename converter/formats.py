@@ -1687,26 +1687,59 @@ def repack_convert(source: Path, out: Path, opts: dict, progress) -> int:
 # --------------------------------------------------------------------------- #
 
 
-def _staged_items(items: list[Path]) -> list[tuple[str, Path]]:
+def creator_flag(opts: dict, key: str, default: bool = False) -> bool:
+    """Read a Creator toggle. The UI sends JSON booleans as strings."""
+    raw = opts.get(key)
+    if raw is None or raw == "":
+        return default
+    return str(raw).strip().casefold() in {"1", "true", "on", "yes"}
+
+
+# Store means "packed but not compressed", which every container spells its own
+# way. Anything unrecognised falls back to the middle setting rather than failing.
+COMPRESSION_LEVELS = {"store": 0, "normal": 6, "max": 9}
+SEVEN_ZIP_LEVELS = {"store": "0", "normal": "5", "max": "9"}
+TIFF_COMPRESSION = {"store": "none", "normal": "lzw", "max": "zip"}
+
+
+def creator_level(opts: dict) -> str:
+    level = str(opts.get("compress") or "Normal").strip().casefold()
+    return level if level in COMPRESSION_LEVELS else "normal"
+
+
+def _staged_items(items: list[Path], opts: dict | None = None) -> list[tuple[str, Path]]:
     """Flatten the picked items into (archive name, file) pairs.
 
     A picked folder contributes its whole tree under its own name; a picked file
     contributes itself. Names are made unique so two files called `cover.jpg`
     from different folders cannot silently overwrite one another.
+
+    `flatten` drops the folders and keeps the files; `rename` renumbers the pages
+    of a comic so a reader keeps the order the Creator showed.
     """
+    opts = opts or {}
+    flatten = creator_flag(opts, "flatten")
     pairs: list[tuple[str, Path]] = []
     for item in items:
         item = item.expanduser()
         if item.is_dir():
             for member in sorted(item.rglob("*"), key=lambda p: natural(str(p))):
                 if member.is_file():
-                    pairs.append((f"{item.name}/{member.relative_to(item).as_posix()}", member))
+                    relative = member.relative_to(item).as_posix()
+                    pairs.append((member.name if flatten else f"{item.name}/{relative}", member))
         elif item.is_file():
             pairs.append((item.name, item))
         else:
             raise ValueError(f"{item.name} is no longer at its saved path")
     if not pairs:
         raise ValueError("there is nothing to pack — every item is empty or missing")
+
+    if creator_flag(opts, "rename") and all(p.suffix.casefold() in IMAGE_SUFFIXES for _, p in pairs):
+        width = max(3, len(str(len(pairs))))
+        return [
+            (f"{index:0{width}d}{path.suffix.casefold()}", path)
+            for index, (_, path) in enumerate(pairs, start=1)
+        ]
 
     seen: dict[str, int] = {}
     unique: list[tuple[str, Path]] = []
@@ -1721,33 +1754,114 @@ def _staged_items(items: list[Path]) -> list[tuple[str, Path]]:
     return unique
 
 
-def _item_images(items: list[Path]) -> list[Path]:
+def _item_images(items: list[Path], opts: dict | None = None) -> list[Path]:
     """The images inside the picked items, in the order the user sees them."""
-    pages: list[Path] = []
-    for name, path in _staged_items(items):
-        if path.suffix.casefold() in IMAGE_SUFFIXES:
-            pages.append(path)
+    pages = [path for _, path in _staged_items(items, opts) if path.suffix.casefold() in IMAGE_SUFFIXES]
     if not pages:
         raise ValueError("none of the chosen items are images this can pack")
     return pages
 
 
-def items_to_zip_convert(items: list[Path], out: Path, opts: dict, progress) -> int:
-    staged = _staged_items(items)
-    return zip_files(
-        [path for _, path in staged],
-        Path(out).parent,
-        out,
-        progress,
-        archive_names=[name for name, _ in staged],
+def comic_info(title: str, pages: int, creator: str = "") -> bytes:
+    """The metadata file most comic readers look for. Deliberately minimal:
+    only fields the Creator actually knows are written."""
+    fields = [("Title", title), ("Series", title), ("Writer", creator), ("PageCount", str(pages))]
+    body = "".join(
+        f"  <{tag}>{value.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')}</{tag}>\n"
+        for tag, value in fields if value
     )
+    return (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<ComicInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n'
+        f"{body}</ComicInfo>\n"
+    ).encode("utf-8")
+
+
+ARCHIVE_SUFFIXES = {".zip", ".cbz", ".epub"}
+
+
+def probe_item(path: Path) -> dict:
+    """What the Creator can honestly say about one item before building.
+
+    `pages` is None when nothing here can open the file, and the row is left
+    blank rather than showing a guessed number.
+    """
+    path = Path(path).expanduser()
+    kind, pages, size = "File", None, 0
+    if path.is_dir():
+        members = [p for p in path.rglob("*") if p.is_file()]
+        return {
+            "path": str(path), "name": path.name, "ext": "DIR", "kind": "Folder",
+            "pages": len([p for p in members if p.suffix.casefold() in IMAGE_SUFFIXES]) or None,
+            "files": len(members),
+            "size": sum(p.stat().st_size for p in members),
+        }
+    if not path.is_file():
+        raise ValueError(f"{path.name} is no longer at its saved path")
+
+    suffix = path.suffix.casefold()
+    size = path.stat().st_size
+    if suffix in IMAGE_SUFFIXES:
+        kind, pages = "Image", 1
+    elif suffix in ARCHIVE_SUFFIXES:
+        kind = "Archive"
+        try:
+            with zipfile.ZipFile(path) as archive:
+                pages = len([n for n in archive.namelist() if Path(n).suffix.casefold() in IMAGE_SUFFIXES]) or None
+        except (OSError, zipfile.BadZipFile):
+            pages = None
+    elif suffix == ".pdf":
+        kind = "Document"
+        try:
+            pages = _pdf_page_count(path)
+        except Exception:  # an unreadable PDF is blank, not an error on a list
+            pages = None
+    elif suffix in {".txt", ".md"}:
+        kind = "Text"
+    return {
+        "path": str(path), "name": path.name, "ext": (suffix.lstrip(".") or "file").upper()[:4],
+        "kind": kind, "pages": pages, "files": 1, "size": size,
+    }
+
+
+def items_to_zip_convert(items: list[Path], out: Path, opts: dict, progress) -> int:
+    staged = _staged_items(items, opts)
+    level = COMPRESSION_LEVELS[creator_level(opts)]
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with _atomic_output(out) as partial:
+        with zipfile.ZipFile(
+            partial, "w",
+            compression=zipfile.ZIP_STORED if level == 0 else zipfile.ZIP_DEFLATED,
+            compresslevel=None if level == 0 else level,
+        ) as archive:
+            for index, (name, path) in enumerate(staged, start=1):
+                # An already-compressed image gains nothing from a second pass.
+                archive.write(
+                    path, name,
+                    compress_type=(
+                        zipfile.ZIP_STORED
+                        if level == 0 or path.suffix.casefold() in IMAGE_SUFFIXES
+                        else zipfile.ZIP_DEFLATED
+                    ),
+                )
+                progress(index, len(staged))
+            if creator_flag(opts, "meta"):
+                archive.writestr(
+                    "ComicInfo.xml",
+                    comic_info(opts.get("title") or out.stem, len(staged), opts.get("creator") or ""),
+                )
+    return len(staged)
 
 
 def items_to_tgz_convert(items: list[Path], out: Path, opts: dict, progress) -> int:
-    staged = _staged_items(items)
+    staged = _staged_items(items, opts)
+    level = COMPRESSION_LEVELS[creator_level(opts)]
     out.parent.mkdir(parents=True, exist_ok=True)
     with _atomic_output(out) as partial:
-        with tarfile.open(partial, "w:gz") as archive:
+        # gzip has no level 0, so Store writes a plain tar inside the same name.
+        mode = "w" if level == 0 else "w:gz"
+        opened = tarfile.open(partial, mode) if level == 0 else tarfile.open(partial, mode, compresslevel=level)
+        with opened as archive:
             for index, (name, path) in enumerate(staged, start=1):
                 archive.add(path, arcname=name)
                 progress(index, len(staged))
@@ -1757,7 +1871,7 @@ def items_to_tgz_convert(items: list[Path], out: Path, opts: dict, progress) -> 
 def items_to_7z_convert(items: list[Path], out: Path, opts: dict, progress) -> int:
     """Pack with 7-Zip. Items are staged under their archive names first so the
     archive's layout matches what the Creator listed, not the disk's."""
-    staged = _staged_items(items)
+    staged = _staged_items(items, opts)
     progress(0, len(staged))
     out.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="onetool-create-7z-") as tmp:
@@ -1767,12 +1881,20 @@ def items_to_7z_convert(items: list[Path], out: Path, opts: dict, progress) -> i
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, target)
             progress(index, len(staged), "staging")
+        if creator_flag(opts, "meta"):
+            (room / "ComicInfo.xml").write_bytes(
+                comic_info(opts.get("title") or out.stem, len(staged), opts.get("creator") or "")
+            )
         with _atomic_output(out) as partial:
             # 7-Zip expands the wildcard itself and stores names relative to it,
             # so the archive's layout is the staged layout.
-            command = [which("7z", "7za", "7zz"), "a", "-t7z", str(partial), str(room / "*"), "-y"]
+            command = [
+                which("7z", "7za", "7zz"), "a", "-t7z", str(partial), str(room / "*"), "-y",
+                f"-mx{SEVEN_ZIP_LEVELS[creator_level(opts)]}",
+            ]
             if opts.get("password"):
-                command.append(f"-p{opts['password']}")
+                # -mhe hides the file names too, which is what "encrypted" implies.
+                command += [f"-p{opts['password']}", "-mhe=on"]
             run(command, "7-Zip")
             if not partial.is_file() or partial.stat().st_size == 0:
                 raise ValueError("7-Zip produced no archive")
@@ -1781,7 +1903,7 @@ def items_to_7z_convert(items: list[Path], out: Path, opts: dict, progress) -> i
 
 
 def items_to_epub_convert(items: list[Path], out: Path, opts: dict, progress) -> int:
-    pages = _item_images(items)
+    pages = _item_images(items, opts)
     return cbz_to_epub.convert_paths(
         pages,
         out,
@@ -1792,14 +1914,14 @@ def items_to_epub_convert(items: list[Path], out: Path, opts: dict, progress) ->
 
 
 def items_to_pdf_convert(items: list[Path], out: Path, opts: dict, progress) -> int:
-    return images_to_pdf_convert(_item_images(items), out, opts, progress)
+    return images_to_pdf_convert(_item_images(items, opts), out, opts, progress)
 
 
 def items_to_tiff_convert(items: list[Path], out: Path, opts: dict, progress) -> int:
-    pages = _item_images(items)
+    pages = _item_images(items, opts)
     progress(0, len(pages), "writing")
     out.parent.mkdir(parents=True, exist_ok=True)
-    compression = (opts.get("compression") or "lzw").strip() or "lzw"
+    compression = TIFF_COMPRESSION[creator_level(opts)]
     names = [str(page.resolve()) for page in pages]
     with _atomic_output(out) as partial:
         # The partial file has no .tiff extension, so name the format explicitly
@@ -1979,6 +2101,19 @@ TITLE_OPTS = (Option("title", "Title", "from filename"), Option("creator", "Crea
 PDF_IMAGE_OPTS = (Option("dpi", "DPI", "150"), Option("quality", "JPEG quality", "90"))
 RASTER_IMAGE_OPTS = (Option("quality", "Quality", "90"), Option("resize", "Max edge (px)", "original"))
 PDF_PAGE_IMAGE_OPTS = (Option("page", "Page", "1"), Option("dpi", "DPI", "150"))
+
+# Creator option sets. Every key here is read by a builder — nothing is declared
+# that the container would then ignore.
+CREATE_COMPRESS = Option("compress", "Compression", "Normal")
+CREATE_FLATTEN = Option("flatten", "Flatten folders", "off")
+CREATE_RENUMBER = Option("rename", "Renumber pages", "on")
+CREATE_COMICINFO = Option("meta", "Write ComicInfo.xml", "on")
+CREATE_PASSWORD = Option("password", "Password", "none")
+CREATE_ARCHIVE_OPTS = (CREATE_COMPRESS, CREATE_FLATTEN)
+CREATE_COMIC_OPTS = (CREATE_COMPRESS, CREATE_RENUMBER, CREATE_COMICINFO)
+CREATE_BOOK_OPTS = TITLE_OPTS + (CREATE_RENUMBER,)
+CREATE_PAGE_OPTS = (CREATE_COMPRESS, CREATE_RENUMBER) + PDF_IMAGE_OPTS
+CREATE_TIFF_OPTS = (CREATE_COMPRESS, CREATE_RENUMBER)
 
 CONVERTERS = [
     Converter(
@@ -2384,55 +2519,59 @@ CONVERTERS = [
     # Creator — many items into one container. These claim no extensions, so a
     # dropped file can never route to them; the Creator asks for them by id.
     Converter(
-        id="items-zip", src="Items", dst="ZIP", category="Create", kind="doc", glyph="ZI", ext=".zip",
+        id="items-zip", src="Items", dst="ZIP", category="Archives", kind="doc", glyph="ZI", ext=".zip",
         title="Items → ZIP", sub="one archive from everything on the list",
         blurb="Pack the chosen files and folders into a ZIP archive.",
+        options=CREATE_ARCHIVE_OPTS,
         dependencies=("Python standard library",), multi=True, convert=items_to_zip_convert,
     ),
     Converter(
-        id="items-cbz", src="Items", dst="CBZ", category="Create", kind="comic", glyph="CB", ext=".cbz",
+        id="items-cbz", src="Items", dst="CBZ", category="Comics", kind="comic", glyph="CB", ext=".cbz",
         title="Items → CBZ", sub="a comic archive in reading order",
         blurb="Pack images into a CBZ comic archive.",
+        options=CREATE_COMIC_OPTS,
         dependencies=("Python standard library",), multi=True, convert=items_to_zip_convert,
     ),
     Converter(
-        id="items-tgz", src="Items", dst="TGZ", category="Create", kind="doc", glyph="TG", ext=".tar.gz",
+        id="items-tgz", src="Items", dst="TGZ", category="Archives", kind="doc", glyph="TG", ext=".tar.gz",
         title="Items → TAR.GZ", sub="gzip-compressed tar",
         blurb="Pack the chosen files and folders into a gzipped tar archive.",
+        options=CREATE_ARCHIVE_OPTS,
         dependencies=("Python standard library",), multi=True, convert=items_to_tgz_convert,
     ),
     Converter(
-        id="items-7z", src="Items", dst="7Z", category="Create", kind="doc", glyph="7Z", ext=".7z",
+        id="items-7z", src="Items", dst="7Z", category="Archives", kind="doc", glyph="7Z", ext=".7z",
         title="Items → 7Z", sub="7-Zip's own format",
         blurb="Pack the chosen files and folders into a 7z archive.",
-        options=(Option("password", "Password", "none"),),
+        options=CREATE_ARCHIVE_OPTS + (CREATE_PASSWORD,),
         helper=SEVEN_ZIP, dependencies=("7-Zip",), multi=True, convert=items_to_7z_convert,
     ),
     Converter(
-        id="items-cb7", src="Items", dst="CB7", category="Create", kind="comic", glyph="CB", ext=".cb7",
+        id="items-cb7", src="Items", dst="CB7", category="Comics", kind="comic", glyph="CB", ext=".cb7",
         title="Items → CB7", sub="a 7z-packed comic archive",
         blurb="Pack images into a CB7 comic archive.",
+        options=CREATE_COMIC_OPTS + (CREATE_PASSWORD,),
         helper=SEVEN_ZIP, dependencies=("7-Zip",), multi=True, convert=items_to_7z_convert,
     ),
     Converter(
-        id="items-epub", src="Items", dst="EPUB", category="Create", kind="comic", glyph="EP", ext=".epub",
+        id="items-epub", src="Items", dst="EPUB", category="Comics", kind="comic", glyph="EP", ext=".epub",
         title="Items → EPUB", sub="fixed-layout, one page per image",
         blurb="Build a fixed-layout EPUB from images.",
-        options=TITLE_OPTS, dependencies=("Python standard library",),
+        options=CREATE_BOOK_OPTS,
         multi=True, convert=items_to_epub_convert,
     ),
     Converter(
-        id="items-pdf", src="Items", dst="PDF", category="Create", kind="doc", glyph="PD", ext=".pdf",
+        id="items-pdf", src="Items", dst="PDF", category="Documents", kind="doc", glyph="PD", ext=".pdf",
         title="Items → PDF", sub="JPEG and PNG pages embedded without re-encoding",
         blurb="Build a PDF from images.",
-        options=PDF_IMAGE_OPTS, helper=IMAGEMAGICK, dependencies=("ImageMagick",),
+        options=CREATE_PAGE_OPTS,
         multi=True, convert=items_to_pdf_convert,
     ),
     Converter(
-        id="items-tiff", src="Items", dst="TIFF", category="Create", kind="image", glyph="TI", ext=".tiff",
+        id="items-tiff", src="Items", dst="TIFF", category="Documents", kind="image", glyph="TI", ext=".tiff",
         title="Items → multi-page TIFF", sub="one frame per image",
         blurb="Build a single multi-page TIFF from images.",
-        options=(Option("compression", "Compression", "lzw"),),
+        options=CREATE_TIFF_OPTS,
         helper=IMAGEMAGICK, dependencies=("ImageMagick",), multi=True, convert=items_to_tiff_convert,
     ),
 ]

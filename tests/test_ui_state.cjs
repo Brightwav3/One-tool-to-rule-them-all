@@ -474,12 +474,37 @@ const {createCreatorState, fmtSize} = require('../converter/ui/creator-state.js'
   assert.equal(cr.canCreate({}), false);
   assert.equal(cr.canCreate({'7-Zip': true}), true);
 
-  // A recipe sets the format, destination and every option in one go.
-  cr.pickRecipe('pdfa');
-  assert.equal(cr.state.fmt, 'PDF');
-  assert.equal(cr.state.dest, '~/Converted/Documents');
-  assert.equal(cr.value('ocr'), true);
-  assert.equal(cr.outputPath(), '~/Converted/Documents/Ultimates v01.pdf');
+  // A recipe sets the format and every option in one go. Its destination is
+  // empty, which means "leave it where the app is already saving".
+  const dest = cr.state.dest;
+  cr.pickRecipe('bk');
+  assert.equal(cr.state.fmt, '7Z');
+  assert.equal(cr.state.dest, dest);
+  assert.equal(cr.value('compress'), 'Max');
+  assert.equal(cr.outputPath(), `${dest}/Ultimates v01.7z`);
+
+  // A recipe that names a folder still moves the destination to it.
+  cr.state.recipes = [...cr.state.recipes, {id: 'far', name: 'Elsewhere', ext: 'ZIP', dest: 'D:/out', opts: {}}];
+  cr.pickRecipe('far');
+  assert.equal(cr.state.dest, 'D:/out');
+
+  // The registry replaces the declared containers, so the picker can only offer
+  // what this machine can actually write.
+  assert.equal(cr.setContainers([{name: 'Archives', items: [
+    {id: 'ZIP', converter: 'items-zip', title: 'ZIP', desc: '', ext: '.zip', unit: 'Files', opts: ['compress']},
+  ]}]), true);
+  assert.deepEqual(cr.GROUPS.map(g => g.name), ['Archives']);
+  assert.equal(cr.state.fmt, 'ZIP', 'a container that no longer exists is left behind');
+  assert.equal(cr.format().converter, 'items-zip');
+  assert.equal(cr.outputName(), 'Ultimates v01.zip', 'the extension comes from the registry');
+  // An empty list is ignored rather than emptying the picker.
+  assert.equal(cr.setContainers([]), false);
+  assert.deepEqual(cr.GROUPS.map(g => g.name), ['Archives']);
+  // A real extension is used verbatim, so tar.gz is not shortened to .tgz.
+  cr.setContainers([{name: 'Archives', items: [
+    {id: 'TGZ', converter: 'items-tgz', title: 'tar.gz', desc: '', ext: '.tar.gz', unit: 'Files', opts: []},
+  ]}]);
+  assert.equal(cr.outputName(), 'Ultimates v01.tar.gz');
 
   // Saving captures the current configuration under a new recipe.
   const before = cr.state.recipes.length;

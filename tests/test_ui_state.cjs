@@ -206,12 +206,12 @@ assert.match(indexHtml, /input,textarea,\[contenteditable="true"\]\{-webkit-user
 // ---- Convert view: two top-level views, one list ----
 // Convert is the only nav item; Settings is the cog, and History is not a page.
 const navPages = [...indexHtml.matchAll(/data-page="([a-z]+)"/g)].map(m => m[1]);
-assert.deepEqual([...new Set(navPages)].sort(), ['convert']);
+assert.deepEqual([...new Set(navPages)].sort(), ['convert', 'creator', 'editor']);
 assert.doesNotMatch(indexHtml, /data-page="queue"/);
 assert.doesNotMatch(indexHtml, /data-page="history"/);
 assert.doesNotMatch(indexHtml, /data-page="helpers"/);
 assert.doesNotMatch(indexHtml, /<section class="page" id="pageHistory"/);
-assert.match(indexHtml, /const pages = \{ convert: \$\('pageConvert'\) \};/);
+assert.match(indexHtml, /const pages = \{ convert: \$\('pageConvert'\), creator: \$\('pageCreator'\), editor: \$\('pageEditor'\) \};/);
 assert.match(indexHtml, /let page='convert',/);
 
 // ---- Settings: a sheet over the app, Helpers as a category ----
@@ -244,7 +244,7 @@ assert.match(indexHtml, /function renderConvert\(\)/);
 assert.match(indexHtml, /function unifiedRow\(row, index, lastActive\)/);
 assert.doesNotMatch(indexHtml, /function renderQueue\(\)/);
 assert.doesNotMatch(indexHtml, /function renderHistory\(\)/);
-assert.match(indexHtml, /renderConvert\(\); renderSettings\(\); renderPanel\(\); renderOverlays\(\);/);
+assert.match(indexHtml, /renderConvert\(\); renderCreator\(\); renderEditor\(\); renderSettings\(\); renderPanel\(\); renderOverlays\(\);/);
 // a file that is both queued and already written appears once, from the queue
 assert.match(indexHtml, /const inQueue = new Set\(files\.map\(file => `\$\{file\.sourcePath\}\|\$\{file\.to\}`\)\);/);
 // the history has to be loaded at boot now that it is part of the default view
@@ -315,5 +315,162 @@ assert.match(indexHtml, /const locked = state === 'missing';/);
 // Enter commits, Escape puts the old name back, blur commits — as for the queue
 assert.match(indexHtml, /if \(key === 'enter'\) \{ event\.preventDefault\(\); commitHistoryRename\(event\.target\); return; \}/);
 assert.match(indexHtml, /if \(event\.target\?\.dataset\?\.act === 'rename-history-file'\) commitHistoryRename\(event\.target\);/);
+
+// ---- Editor: one page model behind grid, reader and pair ----
+const {createEditorState, makePages} = require('../converter/ui/editor-state.js');
+
+{
+  const ed = createEditorState({pages: makePages(6)});
+  const [a, b, c] = ed.state.pages;
+
+  // Click selects one page; clicking the only selected page turns it off again.
+  ed.select(a.id);
+  assert.deepEqual(ed.selectedIds(), [a.id]);
+  ed.select(a.id);
+  assert.deepEqual(ed.selectedIds(), []);
+
+  // Modifier-click adds to the selection rather than replacing it.
+  ed.select(a.id);
+  ed.select(b.id, {additive: true});
+  assert.deepEqual(ed.selectedIds().sort((x, y) => x - y), [a.id, b.id].sort((x, y) => x - y));
+
+  // The reader opens on the first selected page, and the grid keeps that page selected.
+  ed.openReader();
+  assert.equal(ed.state.mode, 'reader');
+  assert.equal(ed.state.focus, a.id);
+  ed.toGrid();
+  assert.equal(ed.state.mode, 'grid');
+  assert.deepEqual(ed.selectedIds(), [a.id]);
+
+  // Arrow steps clamp at both ends instead of wrapping.
+  ed.openReader(a.id);
+  ed.step(-1);
+  assert.equal(ed.state.focus, a.id);
+  ed.step(1);
+  assert.equal(ed.state.focus, b.id);
+
+  // Rotation accumulates on the page it is applied to.
+  ed.rotate(90);
+  assert.equal(ed.state.pages.find(p => p.id === b.id).rot, 90);
+
+  // Deleting lands on the next surviving page, not on nothing.
+  ed.remove();
+  assert.equal(ed.state.pages.some(p => p.id === b.id), false);
+  assert.equal(ed.state.focus, c.id);
+
+  // Insert puts a blank page after the selection and selects it.
+  ed.toGrid();
+  ed.select(a.id);
+  const inserted = ed.insert();
+  assert.equal(ed.state.pages.indexOf(inserted), 1);
+  assert.deepEqual(ed.selectedIds(), [inserted.id]);
+  assert.equal(inserted.kind, 'Blank');
+
+  // The edit list is newest first and never grows past six.
+  for (let i = 0; i < 9; i += 1) ed.log(`edit ${i}`);
+  assert.equal(ed.state.edits.length, 6);
+  assert.equal(ed.state.edits[0].text, 'edit 8');
+
+  // Marks belong to the focused page and only the redact tool can drop them.
+  ed.openReader(a.id);
+  ed.state.tool = 'select';
+  assert.equal(ed.addMark(50, 50), null);
+  ed.state.tool = 'redact';
+  const mark = ed.addMark(50, 50);
+  assert.equal(ed.totalMarks(), 1);
+  ed.removeMark(mark.id);
+  assert.equal(ed.totalMarks(), 0);
+
+  // Zoom is clamped to the range the toolbar offers.
+  ed.state.zoom = 40; ed.setZoom(-16);
+  assert.equal(ed.state.zoom, 40);
+  ed.state.zoom = 200; ed.setZoom(16);
+  assert.equal(ed.state.zoom, 200);
+}
+
+{
+  // Pair mode moves pages both ways and never leaves a page in two places.
+  const ed = createEditorState({pages: makePages(4)});
+  ed.openPair('extras.pdf', makePages(2, 900));
+  assert.equal(ed.state.mode, 'pair');
+  const first = ed.state.pages[0];
+  ed.select(first.id);
+  ed.moveRight();
+  assert.equal(ed.state.pages.some(p => p.id === first.id), false);
+  assert.equal(ed.state.bPages.length, 3);
+  // Copy leaves the original where it was.
+  const next = ed.state.pages[0];
+  ed.select(next.id);
+  ed.moveRight({copy: true});
+  assert.equal(ed.state.pages.some(p => p.id === next.id), true);
+  assert.equal(ed.state.bPages.length, 4);
+  ed.closePair();
+  assert.equal(ed.state.mode, 'grid');
+  assert.equal(ed.state.bPages.length, 0);
+}
+
+// ---- Creator: format first, then contents ----
+const {createCreatorState, fmtSize} = require('../converter/ui/creator-state.js');
+
+{
+  const cr = createCreatorState({name: 'Ultimates v01', dest: '~/Converted/Comics'});
+
+  // Nothing can be created from an empty list.
+  assert.equal(cr.state.stage, 'pick');
+  assert.equal(cr.canCreate({}), false);
+  cr.chooseFormat('CBZ');
+  cr.toBuild();
+  assert.equal(cr.state.stage, 'build');
+
+  cr.addItems([
+    {ext: 'PNG', name: 'b.png', kind: 'Image', pages: 1, size: 4},
+    {ext: 'PNG', name: 'a.png', kind: 'Image', pages: 1, size: 8},
+  ]);
+  assert.equal(cr.canCreate({}), true);
+  assert.equal(cr.totalUnits(), 2);
+
+  // Sorting is a view; nudging a row puts the list back under manual control.
+  cr.state.sort = 'name';
+  assert.deepEqual(cr.sortedItems().map(i => i.name), ['a.png', 'b.png']);
+  cr.moveItem(cr.state.items[0].id, 1);
+  assert.equal(cr.state.sort, 'manual');
+  assert.deepEqual(cr.state.items.map(i => i.name), ['a.png', 'b.png']);
+
+  // Only the options the container declares are offered, and unset ones read as defaults.
+  assert.deepEqual(cr.format().opts, ['compress', 'meta', 'rename']);
+  assert.equal(cr.value('compress'), 'Normal');
+  cr.setValue('compress', 'Max');
+  assert.equal(cr.value('compress'), 'Max');
+
+  // A container that needs a missing helper cannot be created, but stays selectable.
+  cr.chooseFormat('CBR');
+  assert.equal(cr.isBlocked({}), true);
+  assert.equal(cr.canCreate({}), false);
+  assert.equal(cr.canCreate({'7-Zip': true}), true);
+
+  // A recipe sets the format, destination and every option in one go.
+  cr.pickRecipe('pdfa');
+  assert.equal(cr.state.fmt, 'PDF');
+  assert.equal(cr.state.dest, '~/Converted/Documents');
+  assert.equal(cr.value('ocr'), true);
+  assert.equal(cr.outputPath(), '~/Converted/Documents/Ultimates v01.pdf');
+
+  // Saving captures the current configuration under a new recipe.
+  const before = cr.state.recipes.length;
+  const id = cr.saveRecipe();
+  assert.equal(cr.state.recipes.length, before + 1);
+  assert.equal(cr.state.recipe, id);
+}
+
+assert.equal(fmtSize(0.5), '512 KB');
+assert.equal(fmtSize(31.2), '31.2 MB');
+assert.equal(fmtSize(2048), '2.0 GB');
+
+// Both screens carry their own inspector, so the shared panel steps aside.
+assert.match(indexHtml, /const ownsInspector = page === 'creator' \|\| page === 'editor';/);
+// The editor only takes the keyboard when it is the visible page.
+assert.match(indexHtml, /if \(page === 'editor' && !settingsOpen && !paletteOpen/);
+// Neither screen ships the design-canvas runtime.
+assert.doesNotMatch(indexHtml, /support\.js|<sc-for|<sc-if|data-dc-script/);
 
 console.log('UI action-state regression tests passed');

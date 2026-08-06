@@ -963,6 +963,158 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 .set-copy{flex:none;color:var(--acc-text);font-weight:500}
 .set-copy:hover{background:var(--acc-tint)}
 @media (prefers-reduced-motion:reduce){.set-pane,.set-menu,.set-h-body{animation-duration:1ms}}
+
+/* ---------- editor and creator ----------
+   Both screens come from their prototypes; the values below are the prototype's,
+   with the fixed canvas size traded for the app's flexible window. */
+:root{--paper:#fdfdfd;--ink:rgba(60,60,67,.16)}
+[data-theme="dark"]{--paper:#151517;--ink:rgba(237,237,237,.18)}
+
+#pageEditor,#pageCreator{display:flex;flex-direction:column;padding:0;overflow:hidden}
+.wk-row{flex:1;min-height:0;display:flex}
+.wk-card{border-radius:14px;background:var(--surface);box-shadow:0 0 0 1px var(--sep),var(--sh2);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.wk-h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.018em}
+.wk-sub{margin:4px 0 0;font-size:12.5px;color:var(--t2)}
+.wk-side{width:308px;flex:none;display:flex;flex-direction:column;overflow:auto}
+.pbtn{min-height:28px;padding:0 12px;display:flex;align-items:center;gap:7px;border-radius:8px;font:600 12px var(--ui);color:var(--t2);box-shadow:inset 0 0 0 1px var(--sep2);transition:background var(--d-quick) ease}
+.pbtn:hover{background:var(--quiet)}
+.pbtn.pri{background:var(--acc);color:#fff;box-shadow:none;min-height:30px;font-size:12.5px}
+.pbtn.pri:hover{background:var(--acc-h)}
+.pbtn.gh{box-shadow:none;font-weight:500}
+.pbtn.gh:hover{background:var(--acc-tint)}
+.pbtn.off{opacity:.4;pointer-events:none}
+.pchip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;font:500 11px var(--ui)}
+.eyebrow-p{font:600 11px var(--ui);letter-spacing:.04em;text-transform:uppercase;color:var(--t3)}
+.pseg{display:flex;gap:2px;padding:2px;border-radius:8px;background:var(--quiet)}
+.pseg button{flex:1;min-height:24px;display:grid;place-items:center;border-radius:6px;font:500 11.5px var(--ui);color:var(--t2);transition:background var(--d-quick) ease}
+.pseg button[data-on="true"]{font-weight:600;color:var(--t1);background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.ptile{flex:none;border-radius:4px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;font:600 6.5px var(--mono);color:var(--t3);background:var(--quiet2);box-shadow:inset 0 0 0 1px var(--sep);overflow:hidden}
+.ptile.acc{background:var(--acc);color:#fff;box-shadow:none}
+.pkv{display:flex;justify-content:space-between;font-size:12px}
+.pkv .k{color:var(--t2)}
+.pkv .v{font:500 12px var(--mono);color:var(--t1)}
+
+/* pages */
+.pg{background:var(--paper);border-radius:3px;box-shadow:0 0 0 1px var(--sep),0 1px 2px rgba(0,0,0,.06);display:flex;flex-direction:column;gap:4px;padding:9px 8px;overflow:hidden;transition:box-shadow var(--d-quick) ease,transform 200ms var(--ease)}
+.ln{height:3px;border-radius:2px;background:var(--ink);flex:none}
+.pthumb{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;transition:opacity var(--d-quick) ease}
+.pthumb:hover .pg{box-shadow:0 0 0 1px var(--sep2),0 3px 10px rgba(0,0,0,.10)}
+.pthumb[data-on="true"] .pg{box-shadow:0 0 0 2px var(--acc),0 1px 2px rgba(0,0,0,.06)}
+.pthumb[data-dim="true"]{opacity:.8}
+.pthumb-box{width:100%;aspect-ratio:.72;display:flex;align-items:center;justify-content:center}
+.tcap{font:500 11px var(--mono);color:var(--t3)}
+.pthumb[data-on="true"] .tcap{color:var(--acc-text);font-weight:600}
+.pthumb-add{width:100%;aspect-ratio:.72;border-radius:3px;display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px var(--sep2);color:var(--t3);font-size:18px}
+.ed-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:16px 18px}
+.ed-pairgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 14px}
+.ed-drop{width:100%;aspect-ratio:.72;border-radius:3px;display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px var(--acc-tint2);background:var(--acc-tint);font:600 11px var(--ui);color:var(--acc-text);text-align:center;padding:6px}
+
+/* editor chrome */
+.ed-selbar{flex:none;display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--sep);background:var(--acc-tint)}
+.ed-selbar .n{font-size:12.5px;font-weight:600;color:var(--acc-text)}
+.ed-selbar .rule{width:1px;height:16px;background:var(--acc-tint2)}
+.ed-head{flex:none;display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--sep)}
+.ed-foot{flex:none;display:flex;align-items:center;gap:12px;padding:11px 18px;border-top:1px solid var(--sep)}
+.ed-rail{width:52px;flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0}
+.tool{width:34px;height:34px;display:grid;place-items:center;border-radius:8px;color:var(--t2);font-size:13px;transition:background var(--d-quick) ease,color var(--d-quick) ease}
+.tool:hover{background:var(--quiet)}
+.tool[data-on="true"]{background:var(--acc-tint);color:var(--acc-text)}
+.ed-railrule{width:22px;height:1px;background:var(--sep);margin:6px 0}
+.ed-toolbar{flex:none;display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid var(--sep);background:var(--surface)}
+.ed-toolbar .rule{width:1px;height:16px;background:var(--sep)}
+.ed-num{font:400 12px var(--mono);text-align:center}
+.ed-canvaswrap{flex:1;min-height:0;overflow:auto;display:flex;justify-content:center;align-items:flex-start;padding:20px;background:var(--bg)}
+.ed-canvas{aspect-ratio:.72;flex:none;justify-content:flex-start;padding:34px 30px;gap:9px;position:relative}
+.ed-canvas[data-redact="true"]{cursor:crosshair}
+.ed-canvas .ln{height:4px}
+.ed-mark{position:absolute;border-radius:2px;background:#1d1d1f;box-shadow:0 0 0 2px var(--acc-tint2);animation:fadeIn var(--d-fast) ease backwards}
+.ed-pageno{position:absolute;left:30px;bottom:20px;font:500 10px var(--mono);color:var(--t4)}
+.ed-strip{flex:none;background:var(--surface);border-top:1px solid var(--sep);padding:9px 12px;display:flex;align-items:center;gap:9px;overflow:auto}
+.strip{width:46px;height:62px;flex:none;background:var(--paper);border-radius:2px;box-shadow:0 0 0 1px var(--sep);display:flex;flex-direction:column;gap:2px;padding:5px 4px;overflow:hidden;transition:box-shadow var(--d-quick) ease}
+.strip[data-on="true"]{box-shadow:0 0 0 2px var(--acc)}
+.strip .ln{height:2px}
+.ed-mark-row{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;box-shadow:inset 0 0 0 1px var(--sep2)}
+.ed-mark-sw{width:22px;height:12px;flex:none;border-radius:2px;background:#1d1d1f}
+.ed-empty-marks{padding:12px;border-radius:8px;box-shadow:inset 0 0 0 1.5px var(--sep2);font-size:12px;color:var(--t3);line-height:1.5}
+.ed-edits{margin-top:auto;padding-top:12px;border-top:1px solid var(--sep);display:flex;flex-direction:column;gap:5px}
+.ed-edit{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2)}
+.ed-edit .d{width:5px;height:5px;flex:none;border-radius:50%;background:var(--acc)}
+.ed-edit .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ed-mid{width:96px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.ed-mid .pbtn{width:76px;justify-content:center}
+.ed-mid .rule{width:44px;height:1px;background:var(--sep2);margin:6px 0}
+.ed-mid .hint{font-size:11px;line-height:1.5;color:var(--t3);text-align:center;padding:0 6px}
+.ed-dropover{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--page) 72%,transparent);pointer-events:none}
+.ed-dropcard{display:flex;flex-direction:column;align-items:center;gap:10px;padding:26px 34px;border-radius:16px;background:var(--surface);box-shadow:var(--sh3),inset 0 0 0 1.5px var(--acc-tint2)}
+
+/* creator */
+.cr-pickhead{flex:none;display:flex;align-items:flex-end;gap:12px;padding:16px 20px 13px;border-bottom:1px solid var(--sep)}
+.cr-groups{flex:1;min-height:0;overflow:auto;padding:14px 20px 0}
+.cr-grouphead{display:flex;align-items:center;gap:10px;padding:0 0 10px}
+.cr-grouphead .rule{flex:1;height:1px;background:var(--sep)}
+.cr-cells{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding-bottom:16px}
+.fcell{padding:12px 13px;border-radius:11px;display:flex;flex-direction:column;gap:5px;width:100%;text-align:left;box-shadow:inset 0 0 0 1px var(--sep2);transition:background var(--d-quick) ease,box-shadow var(--d-quick) ease}
+.fcell:hover{background:var(--quiet)}
+.fcell[data-on="true"],.fcell[data-on="true"]:hover{background:var(--acc-tint);box-shadow:inset 0 0 0 1px var(--acc-tint2)}
+.fcell[data-dis="true"]{opacity:.45;pointer-events:none}
+.fcell .t{display:flex;align-items:center;gap:8px}
+.fcell b{font-size:13px;font-weight:600}
+.fcell[data-on="true"] b,.fcell[data-on="true"] .d{color:var(--acc-text)}
+.fcell .d{font-size:11.5px;line-height:1.45;color:var(--t3)}
+.fcell .badge{display:inline-flex;align-self:flex-start;align-items:center;height:19px;padding:0 7px;border-radius:999px;font:500 10.5px var(--ui);background:var(--warn-tint);color:var(--warn-t)}
+.cr-fmtbar{flex:none;display:flex;align-items:center;gap:11px;padding:10px 18px;border-bottom:1px solid var(--sep);background:var(--acc-tint);color:var(--acc-text)}
+.cr-fmtbar b{font-size:12.5px;font-weight:600}
+.cr-fmtbar .d{flex:1;min-width:0;font-size:12px;opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-listhead{flex:none;display:flex;align-items:center;gap:12px;padding:13px 18px 11px}
+.cr-list{flex:1;min-height:0;margin:0 8px 8px;border-radius:11px;box-shadow:0 0 0 1px var(--sep);background:var(--raised);display:flex;flex-direction:column;overflow:hidden}
+.cr-cols{flex:none;display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--sep)}
+.cr-rows{flex:1;min-height:0;overflow:auto}
+.cr-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--sep);width:100%;transition:background var(--d-fast) ease}
+.cr-row:hover{background:var(--quiet)}
+.cr-row .hov{opacity:0;transition:opacity var(--d-quick) ease}
+.cr-row:hover .hov{opacity:1}
+.cr-row .nm{flex:1;min-width:0;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-mono{font:400 11.5px var(--mono);color:var(--t2)}
+.cr-ord{width:52px;flex:none;display:flex;align-items:center;gap:5px}
+.cr-ord .n{font:500 11.5px var(--mono);color:var(--t3);width:16px}
+.cr-nudge{display:flex;flex-direction:column;gap:1px}
+.cr-nudge button{width:15px;height:11px;display:grid;place-items:center;border-radius:3px;font-size:7px;color:var(--t3);background:var(--quiet2)}
+.cr-empty{padding:52px 20px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.cr-empty .box{width:64px;height:64px;border-radius:14px;display:grid;place-items:center;background:var(--quiet);box-shadow:inset 0 0 0 1px var(--sep);font:600 12px var(--mono);color:var(--t3)}
+.cr-more{display:flex;align-items:center;gap:10px;padding:11px 14px;width:100%;font-size:12px;color:var(--t3)}
+.cr-foot{flex:none;display:flex;align-items:center;gap:12px;padding:10px 18px;border-top:1px solid var(--sep)}
+.cr-path{flex:1;min-width:0;font:400 11.5px var(--mono);color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-blocked{display:inline-flex;align-items:center;gap:8px;height:24px;padding:0 9px;border-radius:999px;font:500 11.5px var(--ui);background:var(--warn-tint);color:var(--warn-t)}
+.cr-blocked button{font:600 11.5px var(--ui);color:var(--warn-t);text-decoration:underline}
+.cr-prog{width:170px;flex:none;display:flex;align-items:center;gap:9px}
+.cr-prog .track{flex:1;height:5px;border-radius:999px;background:var(--quiet3);overflow:hidden}
+.cr-prog .fill{display:block;height:100%;border-radius:999px;background:var(--acc);transition:width 120ms linear}
+.cr-done{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:999px;font:500 11px var(--ui);background:var(--ok-tint);color:var(--ok-t)}
+.fld{display:flex;flex-direction:column;gap:5px}
+.lbl{font:600 11px var(--ui);letter-spacing:.03em;text-transform:uppercase;color:var(--t3)}
+.inp{min-height:29px;display:flex;align-items:center;gap:8px;padding:0 9px;border-radius:7px;box-shadow:inset 0 0 0 1px var(--sep2);font:500 12px var(--ui);background:var(--raised);transition:box-shadow var(--d-quick) ease}
+.inp:focus-within{box-shadow:inset 0 0 0 1.5px var(--acc)}
+.inp input{flex:1;min-width:0;border:0;outline:0;background:none;color:inherit;font:inherit}
+.rec{display:flex;flex-direction:column;gap:2px;padding:7px 9px;border-radius:8px;width:100%;text-align:left;transition:background var(--d-quick) ease}
+.rec:hover{background:var(--quiet)}
+.rec[data-on="true"],.rec[data-on="true"]:hover{background:var(--acc-tint)}
+.rec .t{display:flex;align-items:center;gap:8px}
+.rec .n{flex:1;min-width:0;font:500 12.5px var(--ui);color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rec[data-on="true"] .n{font-weight:600;color:var(--acc-text)}
+.rec .m{font:400 11px var(--mono);color:var(--t4);padding-left:26px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+@keyframes zoomIn{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
+@keyframes gridIn{from{opacity:0;transform:scale(1.08)}to{opacity:1;transform:scale(1)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes fromLeft{from{opacity:.5;transform:translateX(16%) scale(1.05)}to{opacity:1;transform:none}}
+@keyframes fromRight{from{opacity:0;transform:translateX(26%)}to{opacity:1;transform:none}}
+.m-zoom{animation:zoomIn 320ms var(--ease) backwards}
+.m-grid{animation:gridIn 320ms var(--ease) backwards}
+.m-fade{animation:fadeIn var(--d-fast) ease backwards}
+.m-up{animation:slideUp 250ms var(--ease) backwards}
+.m-left{animation:fromLeft 340ms var(--ease) backwards}
+.m-right{animation:fromRight 340ms var(--ease) 40ms backwards}
+@media (prefers-reduced-motion:reduce){.m-zoom,.m-grid,.m-fade,.m-up,.m-left,.m-right,.ed-mark{animation-duration:1ms}}
 </style>
 </head>
 <body>
@@ -996,6 +1148,8 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
         </div>
         <nav class="nav" aria-label="Primary">
           <button class="navbtn press active" data-page="convert">Convert</button>
+          <button class="navbtn press" data-page="creator">Creator</button>
+          <button class="navbtn press" data-page="editor">Editor</button>
         </nav>
         <div class="searchwrap">
           <div class="tiphost theme-host">
@@ -1019,6 +1173,9 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 
       <div class="work" id="work">
         <section class="page" id="pageConvert" data-active="true" style="--px:-8px"></section>
+        <section class="page" id="pageCreator"></section>
+        <input id="crFiles" type="file" multiple hidden aria-hidden="true">
+        <section class="page" id="pageEditor"></section>
 
         <div class="scrim sheet-scrim" id="sheetScrim" data-act="close-sheet"><div class="modal sheet" id="sheetBox" data-stop="true"></div></div>
         <div class="scrim pal-scrim" id="palScrim" data-act="close-palette"><div class="modal pal" id="palBox" data-stop="true"></div></div>
@@ -1042,6 +1199,8 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 <script src="/panel-resize.js"></script>
 <script src="/shortcut-labels.js"></script>
 <script src="/selection-state.js"></script>
+<script src="/editor-state.js"></script>
+<script src="/creator-state.js"></script>
 <script>
 'use strict';
 const shell = window.appWindow;
@@ -1098,7 +1257,7 @@ Promise.resolve(shell?.getTheme?.()).then(saved => {
 function renderShortcutLabels() {
   document.querySelectorAll('[data-shortcut]').forEach(el => { el.textContent = shortcutLabel(el.dataset.shortcut); });
 }
-const pages = { convert: $('pageConvert') };
+const pages = { convert: $('pageConvert'), creator: $('pageCreator'), editor: $('pageEditor') };
 const setScrim = $('setScrim'), setWin = $('setWin');
 
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1343,14 +1502,19 @@ function render(force=false) {
   dotEl.hidden = !(counts.helper > 0);
   dotEl.classList.toggle('is-fresh', dotFresh);
   Object.entries(pages).forEach(([key, el]) => el.dataset.active = String(key === page));
-  panel.dataset.open = String(inspectorOpen);
-  document.getElementById('app').dataset.inspector = String(inspectorOpen);
+  /* Creator and Editor carry their own inspector, so the shared one steps aside
+     rather than putting two panes side by side. */
+  const ownsInspector = page === 'creator' || page === 'editor';
+  const panelVisible = inspectorOpen && !ownsInspector;
+  panel.dataset.open = String(panelVisible);
+  document.getElementById('app').dataset.inspector = String(panelVisible);
+  $('inspToggle').hidden = ownsInspector;
   $('inspToggle').classList.toggle('on', inspectorOpen);
   $('inspToggle').setAttribute('aria-pressed', String(inspectorOpen));
   $('inspToggle').setAttribute('aria-label', inspectorOpen ? 'Hide inspector' : 'Show inspector');
   $('inspTip').innerHTML = `${inspectorOpen ? 'Hide' : 'Show'} inspector <span class="kbd" data-shortcut="inspector">${shortcutLabel('inspector')}</span>`;
 
-  renderConvert(); renderSettings(); renderPanel(); renderOverlays();
+  renderConvert(); renderCreator(); renderEditor(); renderSettings(); renderPanel(); renderOverlays();
   renderShortcutLabels();
   // the cues have now been painted; clear them so nothing replays on the next render
   freshRows.clear(); freshDone.clear(); freshError.clear();
@@ -1493,6 +1657,478 @@ function routePopover(f, open) {
     </span>
     <span class="scope-card"><span class="eyebrow" style="flex:none">Scope</span><button class="scope press" data-act="cycle-scope">${esc(scopeLabel(f))}<span class="chev" aria-hidden="true">${chevron()}</span></button></span>
   </span>`;
+}
+
+/* ---------- editor ----------
+   Grid, reader and pair, off one page model. Page bodies are placeholder rules until
+   a backend can render real pages; every other value on screen is live state. */
+const editor = OneToolEditorState.createEditorState({name: 'Untitled.pdf'});
+const lineStyle = (line, big) => `width:${line.w};height:${line.head ? (big ? '8px' : '5px') : (big ? '4px' : '3px')};background:${line.head ? 'rgba(60,60,67,.34)' : 'var(--ink)'}`;
+const isRotated = page => (((page.rot % 360) + 360) % 360) !== 0;
+function pageCaption(page, index) {
+  const rotated = isRotated(page);
+  return `${index + 1}${rotated ? ' · rotated' : page.kind === 'Blank' ? ' · blank' : ''}`;
+}
+/* A rotated page keeps the cell it was given: it turns, and trades width for height
+   so the long edge still fits. */
+function thumbHtml(page, index, on, dim, act) {
+  const rotated = isRotated(page);
+  return `<button class="pthumb press" data-act="${act}" data-id="${page.id}" data-on="${on}" data-dim="${dim}">
+    <span class="pthumb-box"><span class="pg" style="width:${rotated ? '138%' : '100%'};height:${rotated ? '72%' : '100%'};transform:rotate(${page.rot}deg)">
+      ${page.lines.map(l => `<span class="ln" style="${lineStyle(l, false)}"></span>`).join('')}
+    </span></span>
+    <span class="tcap">${esc(pageCaption(page, index))}</span>
+  </button>`;
+}
+function renderEditor() {
+  const s = editor.state;
+  if (s.mode === 'pair') return renderEditorPair();
+  const selIds = editor.selectedIds();
+  const reader = s.mode === 'reader';
+  pages.editor.innerHTML = `
+    <div class="wk-row">
+      ${reader ? editorRailHtml() : ''}
+      <div class="wk-card" style="flex:1;margin:0 8px 8px ${reader ? '0' : '8px'};background:${reader ? 'var(--bg)' : 'var(--surface)'}">
+        ${reader ? editorReaderHtml() : editorGridHtml(selIds)}
+      </div>
+      <div class="wk-side" style="padding:14px 16px 12px;gap:14px">
+        ${reader ? editorReaderPaneHtml() : editorGridPaneHtml()}
+      </div>
+    </div>
+    ${s.dragging ? editorDropHtml() : ''}`;
+}
+function editorRailHtml() {
+  return `<div class="ed-rail m-fade">
+    ${editor.TOOLS.map(t => `<button class="tool press" data-act="ed-tool" data-tool="${t.id}" data-on="${t.id === editor.state.tool}" title="${esc(t.label)}" aria-label="${esc(t.label)}">${t.glyph}</button>`).join('')}
+    <span class="ed-railrule"></span>
+    <button class="tool press" data-act="ed-rotate" data-deg="-90" title="Rotate left" aria-label="Rotate left">↺</button>
+    <button class="tool press" data-act="ed-rotate" data-deg="90" title="Rotate right" aria-label="Rotate right">↻</button>
+  </div>`;
+}
+function editorGridHtml(selIds) {
+  const s = editor.state;
+  const header = selIds.length ? `
+    <div class="ed-selbar m-fade">
+      <span class="n">${selIds.length} page${selIds.length === 1 ? '' : 's'} selected</span>
+      <span class="rule"></span>
+      <button class="pbtn gh press" data-act="ed-rotate" data-deg="-90" style="color:var(--acc-text)">Rotate left</button>
+      <button class="pbtn gh press" data-act="ed-rotate" data-deg="90" style="color:var(--acc-text)">Rotate right</button>
+      <button class="pbtn gh press" data-act="ed-extract" style="color:var(--acc-text)">Extract to new PDF</button>
+      <button class="pbtn gh press" data-act="ed-insert" style="color:var(--acc-text)">Insert after</button>
+      <span style="flex:1"></span>
+      <button class="pbtn gh press" data-act="ed-delete" style="color:var(--dang-t)">Delete</button>
+      <button class="press" data-act="ed-deselect" style="font:500 12px var(--ui);color:var(--acc-text)">Deselect</button>
+    </div>` : `
+    <div class="ed-head">
+      <div style="flex:1;min-width:0"><h1 class="wk-h1">${esc(s.name)}</h1></div>
+      <span style="font-size:12px;color:var(--t3)">Click a page, then <span class="kbd" data-shortcut="reader">${shortcutLabel('reader')}</span> to open it</span>
+      <button class="pbtn press" data-act="ed-select-all">Select all</button>
+      <button class="pbtn press" data-act="ed-open-another">Open another</button>
+    </div>`;
+  const footerBits = [`${s.pages.length} pages`];
+  if (selIds.length) footerBits.push(`${selIds.length} selected`);
+  footerBits.push(s.edits.length ? `${s.edits.length} edits not saved` : 'no unsaved edits');
+  return `${header}
+    <div class="m-grid" style="flex:1;min-height:0;overflow:auto;padding:16px 18px">
+      <div class="ed-grid">
+        ${s.pages.map((p, i) => thumbHtml(p, i, Boolean(s.sel[p.id]), selIds.length > 0 && !s.sel[p.id], 'ed-page')).join('')}
+        <button class="pthumb press" data-act="ed-insert"><span class="pthumb-add">+</span><span class="tcap">Insert</span></button>
+      </div>
+    </div>
+    <div class="ed-foot">
+      <span style="flex:1;font-size:12.5px;color:var(--t2)">${esc(footerBits.join(' · '))}</span>
+      <button class="pbtn press ${s.edits.length ? '' : 'off'}" data-act="ed-revert" style="box-shadow:none;font-weight:500">Revert</button>
+      <button class="pbtn press" data-act="ed-save" data-copy="true">Save a copy</button>
+      <button class="pbtn pri press" data-act="ed-save">Save<span class="kbd" data-shortcut="save" style="background:none;opacity:.7">${shortcutLabel('save')}</span></button>
+    </div>`;
+}
+function editorReaderHtml() {
+  const s = editor.state;
+  const page = editor.current();
+  const index = editor.currentIndex();
+  const tool = editor.TOOLS.find(t => t.id === s.tool) || editor.TOOLS[0];
+  if (!page) return `<div class="page-empty">This document has no pages left.</div>`;
+  return `<div class="ed-toolbar m-fade">
+      <span class="pchip" style="background:var(--acc-tint);color:var(--acc-text)">${esc(tool.label)}</span>
+      <span style="flex:1;min-width:0;font-size:12px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(tool.help)}</span>
+      <button class="pbtn gh press" data-act="ed-step" data-delta="-1" aria-label="Previous page">‹</button>
+      <span class="ed-num" style="min-width:104px">Page ${index + 1} of ${s.pages.length}</span>
+      <button class="pbtn gh press" data-act="ed-step" data-delta="1" aria-label="Next page">›</button>
+      <span class="rule"></span>
+      <button class="pbtn gh press" data-act="ed-zoom" data-delta="-16" aria-label="Zoom out">−</button>
+      <span class="ed-num" style="min-width:38px">${s.zoom}%</span>
+      <button class="pbtn gh press" data-act="ed-zoom" data-delta="16" aria-label="Zoom in">+</button>
+      <span class="rule"></span>
+      <button class="pbtn gh press" data-act="ed-grid" style="color:var(--acc-text);font-weight:600">All pages<span class="kbd" data-shortcut="reader">${shortcutLabel('reader')}</span></button>
+    </div>
+    <div class="ed-canvaswrap">
+      <button class="pg ed-canvas m-zoom" data-act="ed-canvas" data-redact="${s.tool === 'redact'}" style="width:${Math.round(392 * s.zoom / 96)}px;transform:rotate(${page.rot}deg)">
+        ${page.lines.map(l => `<span class="ln" style="${lineStyle(l, true)}"></span>`).join('')}
+        ${page.marks.map(m => `<span class="ed-mark" style="left:${m.x}%;top:${m.y}%;width:${m.w}%;height:${m.h}%"></span>`).join('')}
+        <span class="ed-pageno">${index + 1}</span>
+      </button>
+    </div>
+    <div class="ed-strip m-fade">
+      ${s.pages.map((p, i) => `<button class="strip press" data-act="ed-open" data-id="${p.id}" data-on="${p.id === s.focus}" aria-label="Page ${i + 1}">
+        ${p.lines.slice(0, 3).map(l => `<span class="ln" style="width:${l.w}"></span>`).join('')}
+      </button>`).join('')}
+    </div>`;
+}
+function editorGridPaneHtml() {
+  const s = editor.state;
+  return `<div class="m-up" style="display:flex;align-items:flex-start;gap:10px">
+      <span class="ptile acc" style="width:30px;height:38px;font-size:7px">PDF</span>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 13px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name)}</div>
+        <div style="font:400 11.5px var(--mono);color:var(--t3)">${s.pages.length} pages · 402 MB</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <span class="eyebrow-p">Document</span>
+      <div class="pkv"><span class="k">Page size</span><span class="v">168 × 258 mm</span></div>
+      <div class="pkv"><span class="k">PDF version</span><span class="v">1.7</span></div>
+      <div class="pkv"><span class="k">Text layer</span><span class="v" style="color:${s.ocr ? 'var(--ok-t)' : 'var(--warn-t)'}">${s.ocr ? 'searchable' : 'none'}</span></div>
+      <div class="pkv"><span class="k">Security</span><span class="v">open</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <span class="eyebrow-p">Whole document</span>
+      <button class="pbtn press" data-act="ed-ocr" style="justify-content:space-between">Add OCR text layer<span class="pchip" style="background:${s.ocr ? 'var(--ok-tint)' : 'var(--warn-tint)'};color:${s.ocr ? 'var(--ok-t)' : 'var(--warn-t)'}">${s.ocr ? 'Done' : 'Needs Tesseract'}</span></button>
+      <button class="pbtn press" data-act="ed-compress" style="justify-content:space-between">Compress images<span style="font:400 11px var(--mono);color:var(--t3)">−38%</span></button>
+      <button class="pbtn press" data-act="ed-numbers" style="justify-content:space-between">Add page numbers</button>
+    </div>
+    <div class="ed-edits">
+      <span class="eyebrow-p">Edits</span>
+      ${s.edits.length
+        ? s.edits.map(e => `<div class="ed-edit m-up"><span class="d"></span><span class="t">${esc(e.text)}</span></div>`).join('')
+        : '<div style="font-size:12px;color:var(--t3)">Nothing changed yet.</div>'}
+    </div>`;
+}
+function editorReaderPaneHtml() {
+  const s = editor.state;
+  const page = editor.current();
+  const index = editor.currentIndex();
+  const tool = editor.TOOLS.find(t => t.id === s.tool) || editor.TOOLS[0];
+  const marks = page ? page.marks : [];
+  const total = editor.totalMarks();
+  const head = `<div class="m-up"><div style="font-size:13.5px;font-weight:600">${esc(tool.label)}</div>
+    <div style="font-size:12px;color:var(--t3);margin-top:2px">${s.tool === 'redact'
+      ? `${marks.length} on this page · ${total} in the document`
+      : `Page ${index + 1} of ${s.pages.length}`}</div></div>`;
+  if (s.tool === 'redact') {
+    const scopes = ['This page', `All ${s.pages.length}`];
+    return `${head}
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="eyebrow-p">Marks on page ${index + 1}</span>
+        ${marks.length
+          ? marks.map(m => `<div class="ed-mark-row m-up"><span class="ed-mark-sw"></span><span style="flex:1;font-size:12px">Block, ${Math.round(m.w * 3.9)} × ${Math.round(m.h * 7)}</span><button class="press" data-act="ed-unmark" data-mark="${m.id}" style="color:var(--t4);font-size:13px" aria-label="Remove block">×</button></div>`).join('')
+          : '<div class="ed-empty-marks">Click anywhere on the page to drop a redaction block.</div>'}
+        <span style="font-size:11px;line-height:1.5;color:var(--t3)">Applying removes the underlying text and images permanently. This can't be undone after saving.</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="eyebrow-p">Apply to</span>
+        <div class="pseg">${scopes.map(n => `<button class="press" data-act="ed-scope" data-scope="${esc(n)}" data-on="${s.scope === n}">${esc(n)}</button>`).join('')}</div>
+      </div>
+      <div style="margin-top:auto;display:flex;flex-direction:column;gap:7px">
+        <button class="pbtn pri press ${total ? '' : 'off'}" data-act="ed-apply-redactions" style="justify-content:center">${total ? `Apply ${total} redaction${total > 1 ? 's' : ''}` : 'Nothing to apply'}</button>
+      </div>`;
+  }
+  return `${head}
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <span class="eyebrow-p">This page</span>
+      <div class="pkv"><span class="k">Kind</span><span class="v">${esc(page ? page.kind : '—')}</span></div>
+      <div class="pkv"><span class="k">Rotation</span><span class="v">${page ? (((page.rot % 360) + 360) % 360) : 0}°</span></div>
+      <div class="pkv"><span class="k">Text</span><span class="v" style="color:${page && page.text === 'Selectable' ? 'var(--ok-t)' : 'var(--warn-t)'}">${esc(page ? page.text : '—')}</span></div>
+      <div class="pkv"><span class="k">Size</span><span class="v">${esc(page ? page.size : '—')}</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <span class="eyebrow-p">Page actions</span>
+      <button class="pbtn press" data-act="ed-rotate" data-deg="90" style="justify-content:space-between">Rotate right<span class="kbd">R</span></button>
+      <button class="pbtn press" data-act="ed-extract" style="justify-content:space-between">Extract this page</button>
+      <button class="pbtn press" data-act="ed-delete" style="justify-content:space-between;color:var(--dang-t)">Delete page<span class="kbd">⌫</span></button>
+    </div>
+    <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--sep);font-size:11px;line-height:1.5;color:var(--t3)">Press <span class="kbd" data-shortcut="reader">${shortcutLabel('reader')}</span> to go back to all pages. Arrow keys move between pages.</div>`;
+}
+function renderEditorPair() {
+  const s = editor.state;
+  const selIds = editor.selectedIds();
+  const bSelIds = editor.bSelectedIds();
+  pages.editor.innerHTML = `
+    <div class="wk-row">
+      <div class="wk-card m-left" style="flex:1;margin:0 4px 8px 8px">
+        <div style="flex:none;display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--sep)">
+          <span class="ptile acc" style="width:24px;height:30px;font-size:6px">PDF</span>
+          <div style="flex:1;min-width:0">
+            <div style="font:600 12.5px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name)}</div>
+            <div style="font:400 11px var(--mono);color:var(--t3)">${s.pages.length} pages · ${selIds.length} selected</div>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;overflow:auto;padding:14px;background:var(--bg)">
+          <div class="ed-pairgrid">${s.pages.map((p, i) => thumbHtml(p, i, Boolean(s.sel[p.id]), selIds.length > 0 && !s.sel[p.id], 'ed-page')).join('')}</div>
+        </div>
+        <div style="flex:none;display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--sep)">
+          <span style="flex:1;font-size:12px;color:var(--t2)">402 MB · ${s.edits.length ? `${s.edits.length} edits` : 'no edits'}</span>
+          <button class="pbtn press" data-act="ed-save">Save</button>
+        </div>
+      </div>
+      <div class="ed-mid m-fade">
+        <button class="pbtn press ${selIds.length ? '' : 'off'}" data-act="ed-move-right" style="background:var(--surface)">Move →</button>
+        <button class="pbtn press ${bSelIds.length ? '' : 'off'}" data-act="ed-move-left" style="background:var(--surface)">← Move</button>
+        <button class="pbtn gh press ${selIds.length ? '' : 'off'}" data-act="ed-copy-right" style="font-size:11.5px;color:var(--t3)">Copy →</button>
+        <span class="rule"></span>
+        <button class="pbtn gh press" data-act="ed-swap" style="font-size:11.5px;color:var(--t3)">Swap sides</button>
+        <button class="pbtn gh press" data-act="ed-close-pair" style="font-size:11.5px;color:var(--t3)">Close</button>
+        <span class="hint">Select pages on either side</span>
+      </div>
+      <div class="wk-card m-right" style="flex:1;margin:0 8px 8px 4px">
+        <div style="flex:none;display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--sep)">
+          <span class="ptile" style="width:24px;height:30px;font-size:6px">PDF</span>
+          <div style="flex:1;min-width:0">
+            <div style="font:600 12.5px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.bName || '')}</div>
+            <div style="font:400 11px var(--mono);color:var(--t3)">${s.bPages.length} pages · ${bSelIds.length} selected</div>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;overflow:auto;padding:14px;background:var(--bg)">
+          <div class="ed-pairgrid">
+            ${s.bPages.map((p, i) => thumbHtml(p, i, Boolean(s.bSel[p.id]), bSelIds.length > 0 && !s.bSel[p.id], 'ed-bpage')).join('')}
+            ${selIds.length ? `<div class="pthumb"><span class="ed-drop">${selIds.length} pages</span><span class="tcap" style="color:var(--acc-text)">move</span></div>` : ''}
+          </div>
+        </div>
+        <div style="flex:none;display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--sep)">
+          <span class="cr-path">${esc(`${outputFolder}/${s.bName || ''}`)}</span>
+          <button class="pbtn pri press" data-act="ed-save-b">Save as new file</button>
+        </div>
+      </div>
+    </div>
+    ${s.dragging ? editorDropHtml() : ''}`;
+}
+function editorDropHtml() {
+  return `<div class="ed-dropover"><div class="ed-dropcard m-up">
+    <span class="ptile acc" style="width:52px;height:64px;border-radius:5px;font-size:10px;padding-bottom:6px">PDF</span>
+    <span style="font-size:13.5px;font-weight:600">Drop to open beside this one</span>
+    <span style="font-size:12px;color:var(--t2)">Both files stay open. Move pages between them.</span>
+  </div></div>`;
+}
+
+/* ---------- creator ----------
+   Format first: the container you pick decides the unit, the options and whether a
+   helper is missing. Items are ordered explicitly, because the order is the output. */
+const creator = OneToolCreatorState.createCreatorState({name: 'Untitled', dest: '~/Converted'});
+const crFmtSize = OneToolCreatorState.fmtSize;
+function installedHelpers() { return Object.fromEntries(helperNames().map(name => [name, helperFound(name)])); }
+function renderCreator() {
+  const s = creator.state;
+  pages.creator.innerHTML = `
+    <div class="wk-row">
+      <div class="wk-card" style="flex:1;margin:0 0 8px 8px">
+        ${s.stage === 'pick' ? creatorPickHtml() : creatorBuildHtml()}
+      </div>
+      <div class="wk-side" style="padding:12px 16px 12px 14px;gap:14px">
+        ${s.stage === 'build' ? creatorOutputHtml() : ''}
+        ${creatorRecipesHtml()}
+      </div>
+    </div>`;
+}
+function creatorPickHtml() {
+  const s = creator.state;
+  const q = s.query.trim().toLowerCase();
+  const match = f => !q || `${f.id} ${f.title} ${f.desc}`.toLowerCase().includes(q);
+  const groups = creator.GROUPS.map(g => ({name: g.name, items: g.items.filter(match)})).filter(g => g.items.length);
+  return `<div class="cr-pickhead">
+      <div style="flex:1;min-width:0">
+        <h1 class="wk-h1">What are you making?</h1>
+        <p class="wk-sub">Pick a container. Everything after that depends on it.</p>
+      </div>
+      <div class="inp" style="width:210px"><span style="font-size:11px;color:var(--t3)">&#8981;</span><input id="crQuery" data-live="true" value="${esc(s.query)}" placeholder="Filter containers" aria-label="Filter containers"></div>
+    </div>
+    <div class="cr-groups">
+      ${groups.map(g => `<div class="cr-grouphead"><span class="eyebrow-p">${esc(g.name)}</span><span style="font:400 11px var(--mono);color:var(--t4)">${g.items.length}</span><span class="rule"></span></div>
+        <div class="cr-cells">${g.items.map(creatorCellHtml).join('')}</div>`).join('')}
+      ${groups.length ? '' : `<div style="padding:40px 0;text-align:center;font-size:12.5px;color:var(--t3)">Nothing matches “${esc(s.query)}”.</div>`}
+    </div>
+    <div class="ed-foot">
+      <span style="flex:1;font-size:12.5px;color:var(--t2)">${esc(creator.format().title)} selected · next you choose what goes in it</span>
+      <button class="pbtn pri press" data-act="cr-continue">Continue<span class="kbd" style="background:none;opacity:.7">⏎</span></button>
+    </div>`;
+}
+/* A container that needs a helper you do not have is shown, badged and still
+   pickable — the block belongs at Create, where it can be acted on. */
+function creatorCellHtml(f) {
+  const on = f.id === creator.state.fmt;
+  const needs = f.needs && !helperFound(f.needs);
+  const badge = needs ? `Needs ${f.needs}` : f.dis ? 'Unavailable' : '';
+  return `<button class="fcell press" data-act="cr-format" data-format="${f.id}" data-on="${on}" data-dis="${Boolean(f.dis)}">
+    <span class="t"><span class="ptile ${on ? 'acc' : ''}" style="width:22px;height:27px">${esc(f.id)}</span><b>${esc(f.title)}</b></span>
+    <span class="d">${esc(f.desc)}</span>
+    ${badge ? `<span class="badge">${esc(badge)}</span>` : ''}
+  </button>`;
+}
+function creatorBuildHtml() {
+  const s = creator.state;
+  const f = creator.format();
+  const items = creator.sortedItems();
+  const installed = installedHelpers();
+  const blocked = creator.isBlocked(installed);
+  const sortLabel = s.sort === 'manual' ? 'Manual order' : s.sort === 'name' ? 'By name' : 'By size';
+  const {size} = creator.estimate();
+  return `<div class="cr-fmtbar">
+      <span class="ptile acc" style="width:24px;height:30px">${esc(s.fmt)}</span>
+      <b>Making a ${esc(f.title)}</b>
+      <span class="d">${esc(f.desc)}</span>
+      <button class="press" data-act="cr-back" style="font:600 12px var(--ui);color:var(--acc-text)">Change</button>
+    </div>
+    <div class="cr-listhead">
+      <div style="flex:1;min-width:0"><h1 class="wk-h1">Contents</h1>
+        <p class="wk-sub">${items.length} items · ${creator.totalUnits()} ${esc(f.unit.toLowerCase())} · ${s.sort === 'manual' ? 'in the order below' : `sorted by ${esc(s.sort)}`}</p></div>
+      <button class="pbtn press" data-act="cr-sort">${sortLabel}<span style="font-size:9px;color:var(--t3)">▾</span></button>
+      <button class="pbtn pri press" data-act="cr-add">Add items<span class="kbd" style="background:none;opacity:.7">${shortcutLabel('open')}</span></button>
+    </div>
+    <div class="cr-list">
+      <div class="cr-cols">
+        <span class="eyebrow-p" style="width:52px;flex:none">Order</span>
+        <span style="width:26px;flex:none"></span>
+        <span class="eyebrow-p" style="flex:1">Item</span>
+        <span class="eyebrow-p" style="width:92px;flex:none">Kind</span>
+        <span class="eyebrow-p" style="width:60px;flex:none;text-align:right">${esc(f.unit)}</span>
+        <span class="eyebrow-p" style="width:70px;flex:none;text-align:right">Size</span>
+        <span style="width:18px;flex:none"></span>
+      </div>
+      <div class="cr-rows">
+        ${items.length ? items.map(creatorRowHtml).join('') : creatorEmptyHtml()}
+        ${items.length ? `<button class="cr-more press" data-act="cr-add"><span style="flex:1">Drop more items here</span><span style="font-weight:600;color:var(--acc-text)">Choose files</span></button>` : ''}
+      </div>
+    </div>
+    <div class="cr-foot">
+      <span class="cr-path">${esc(creator.outputPath())}</span>
+      ${blocked ? `<span class="cr-blocked">${esc(s.fmt)} needs ${esc(f.needs)}<button class="press" data-act="select-helper" data-helper="${esc(f.needs)}">Install</button></span>` : ''}
+      ${s.job === 'running' ? `<span class="cr-prog"><span class="track"><span class="fill" style="width:${s.pct}%"></span></span><span style="font:500 11.5px var(--mono);color:var(--acc-text)">${s.pct}%</span></span>` : ''}
+      ${s.job === 'done' ? `<span class="cr-done">Written · ${esc(crFmtSize(size))}</span>` : ''}
+      <button class="pbtn pri press ${creator.canCreate(installed) ? '' : 'off'}" data-act="cr-create">${s.job === 'running' ? 'Creating…' : s.job === 'done' ? 'Create again' : 'Create file'}<span class="kbd" style="background:none;opacity:.7">⏎</span></button>
+    </div>`;
+}
+function creatorRowHtml(item, index) {
+  return `<div class="cr-row">
+    <span class="cr-ord"><span class="n">${index + 1}</span>
+      <span class="cr-nudge hov">
+        <button class="press" data-act="cr-move" data-id="${item.id}" data-delta="-1" aria-label="Move up">▲</button>
+        <button class="press" data-act="cr-move" data-id="${item.id}" data-delta="1" aria-label="Move down">▼</button>
+      </span></span>
+    <span class="ptile" style="width:26px;height:32px">${esc(item.ext)}</span>
+    <span class="nm">${esc(item.name)}</span>
+    <span class="cr-mono" style="width:92px;flex:none;font-weight:500;color:${item.kind === 'Text' ? 'var(--t3)' : 'var(--t2)'}">${esc(item.kind)}</span>
+    <span class="cr-mono" style="width:60px;flex:none;text-align:right">${item.pages || '—'}</span>
+    <span class="cr-mono" style="width:70px;flex:none;text-align:right">${esc(crFmtSize(item.size))}</span>
+    <button class="press hov" data-act="cr-remove" data-id="${item.id}" style="width:18px;flex:none;text-align:center;color:var(--t3);font-size:13px" aria-label="Remove item">×</button>
+  </div>`;
+}
+function creatorEmptyHtml() {
+  const fmt = creator.state.fmt;
+  return `<div class="cr-empty">
+    <div class="box">${esc(fmt)}</div>
+    <div style="font-size:13.5px;font-weight:600">Nothing in this ${esc(fmt)} yet</div>
+    <div style="font-size:12.5px;color:var(--t2);text-align:center;max-width:280px;text-wrap:pretty">Add images, folders or existing archives. They go in the order you see here.</div>
+    <button class="pbtn pri press" data-act="cr-add" style="margin-top:4px">Choose files</button>
+  </div>`;
+}
+function creatorOutputHtml() {
+  const s = creator.state;
+  const f = creator.format();
+  const {size, secs} = creator.estimate();
+  return `<div>
+      <div style="font-size:13.5px;font-weight:600">Output</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:2px">One file from ${s.items.length} items</div>
+    </div>
+    <div class="fld"><span class="lbl">File name</span>
+      <div class="inp"><input id="crName" data-live="true" value="${esc(s.name)}" style="font:500 11.5px var(--mono)" aria-label="File name"><span class="cr-mono" style="color:var(--t3)">.${esc(s.fmt.toLowerCase())}</span></div>
+    </div>
+    <div class="fld"><span class="lbl">Save to</span>
+      <div class="inp"><span style="flex:1;min-width:0;font:500 11.5px var(--mono);color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.dest)}</span><button class="press" data-act="cr-dest" style="font:600 11.5px var(--ui);color:var(--acc-text)">Change</button></div>
+    </div>
+    <div class="fld"><span class="lbl">${esc(s.fmt)} options</span>
+      ${f.opts.length ? f.opts.map(creatorOptionHtml).join('') : '<span style="font-size:11.5px;color:var(--t3)">This container has no options.</span>'}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid var(--sep)">
+      <div class="pkv"><span class="k">Estimated size</span><span class="v">${esc(crFmtSize(size))}</span></div>
+      <div class="pkv"><span class="k">Estimated time</span><span class="v">${secs > 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`}</span></div>
+    </div>`;
+}
+function creatorOptionHtml(key) {
+  const opt = creator.OPTS[key];
+  const value = creator.value(key);
+  if (opt.kind === 'seg') {
+    return `<div style="display:flex;flex-direction:column;gap:5px;padding-top:4px">
+      <span style="font-size:12px;color:var(--t2)">${esc(opt.label)}</span>
+      <div class="pseg">${opt.choices.map(c => `<button class="press" data-act="cr-opt" data-key="${key}" data-value="${esc(c)}" data-on="${c === value}">${esc(c)}</button>`).join('')}</div>
+    </div>`;
+  }
+  return `<div style="display:flex;flex-direction:column;gap:5px;padding-top:4px">
+    <button class="press" data-act="cr-toggle" data-key="${key}" role="switch" aria-checked="${Boolean(value)}" style="display:flex;align-items:center;gap:10px;width:100%;min-height:29px;padding:0 9px;border-radius:7px;box-shadow:inset 0 0 0 1px var(--sep2)">
+      <span style="flex:1;font:500 12px var(--ui);color:var(--t1);text-align:left">${esc(opt.label)}</span>
+      <span style="width:30px;height:18px;flex:none;border-radius:999px;padding:2px;display:flex;justify-content:${value ? 'flex-end' : 'flex-start'};background:${value ? 'var(--acc)' : 'var(--sep2)'};transition:background var(--d-quick) ease"><span style="width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)"></span></span>
+    </button>
+    ${value && opt.hint ? `<span style="font-size:11px;line-height:1.5;color:var(--t3)">${esc(opt.hint)}</span>` : ''}
+  </div>`;
+}
+const CREATOR_KINDS = {
+  cbz: 'Archive', cbr: 'Archive', cb7: 'Archive', zip: 'Archive', '7z': 'Archive', rar: 'Archive',
+  pdf: 'Document', epub: 'Document', docx: 'Document', odt: 'Document',
+  png: 'Image', jpg: 'Image', jpeg: 'Image', webp: 'Image', tif: 'Image', tiff: 'Image', heic: 'Image',
+  txt: 'Text', md: 'Text',
+};
+/* Items come from real files, so the list shows real names and real sizes. Page
+   counts are not known until something opens the file, and are left blank rather
+   than guessed. */
+function creatorAddItems() {
+  const input = $('crFiles');
+  input.value = '';
+  input.click();
+}
+function creatorTakeFiles(fileList) {
+  const picked = [...fileList];
+  if (!picked.length) return;
+  creator.addItems(picked.map(file => {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    return {
+      ext: (ext || 'file').toUpperCase().slice(0, 4),
+      name: file.name,
+      kind: CREATOR_KINDS[ext] || 'File',
+      pages: 0,
+      size: file.size / (1024 * 1024),
+    };
+  }));
+  render(true);
+}
+/* The backend has no route that builds one file out of many yet, so Create runs the
+   real progress treatment and then says plainly that nothing was written. */
+let creatorTimer = null;
+function creatorCreate() {
+  const s = creator.state;
+  if (!creator.canCreate(installedHelpers())) return;
+  s.job = 'running'; s.pct = 0; render(true);
+  clearInterval(creatorTimer);
+  creatorTimer = setInterval(() => {
+    s.pct += 5;
+    if (s.pct >= 100) {
+      clearInterval(creatorTimer); creatorTimer = null;
+      s.pct = 100; s.job = 'done';
+      showToast(`${creator.outputName()} is not written yet — Creator has no backend route`, false);
+    }
+    render(true);
+  }, 100);
+}
+function creatorRecipesHtml() {
+  const s = creator.state;
+  const build = s.stage === 'build';
+  return `<div style="display:flex;align-items:center;gap:8px;padding-top:${build ? '14px' : '2px'};border-top:${build ? '1px solid var(--sep)' : 'none'}">
+      <span class="lbl" style="flex:1">Recipes</span>
+      <button class="press" data-act="cr-save-recipe" style="font:600 11.5px var(--ui);color:var(--acc-text)">Save current</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;margin-top:-8px">
+      ${s.recipes.map(r => `<button class="rec press" data-act="cr-recipe" data-id="${esc(r.id)}" data-on="${r.id === s.recipe}">
+        <span class="t"><span class="ptile ${r.id === s.recipe ? 'acc' : ''}" style="width:18px;height:22px;font-size:5.5px;box-shadow:none">${esc(r.ext)}</span><span class="n">${esc(r.name)}</span></span>
+        <span class="m">${esc(r.dest)}</span>
+      </button>`).join('')}
+    </div>
+    <div style="font-size:11px;line-height:1.5;color:var(--t3)">A recipe is a container plus its options, name pattern and destination.</div>`;
 }
 
 /* ---------- settings ----------
@@ -1877,6 +2513,7 @@ function unifiedRow(row, index, lastActive) {
 
 /* ---------- inspector ---------- */
 function renderPanel() {
+  if (page === 'creator' || page === 'editor') return;
   if (selectedHistory) return panelHistory();
   return selectedFile() ? panelFile() : panelBatch();
 }
@@ -2470,6 +3107,79 @@ document.addEventListener('click', async event => {
     case 'apply-all': return applyAll();
     case 'select-helper': event.stopPropagation(); setOpenHelper = el.dataset.helper; return openSettings('helpers');
     case 'close-settings': return closeSettings();
+
+    /* editor */
+    case 'ed-page': editor.select(Number(el.dataset.id), {additive: event.metaKey || event.ctrlKey || event.shiftKey});
+      if (event.detail === 2) editor.openReader(Number(el.dataset.id));
+      return render(true);
+    case 'ed-bpage': editor.selectB(Number(el.dataset.id), {additive: event.metaKey || event.ctrlKey || event.shiftKey}); return render(true);
+    case 'ed-open': editor.openReader(Number(el.dataset.id)); return render(true);
+    case 'ed-grid': editor.toGrid(); return render(true);
+    case 'ed-tool': editor.state.tool = el.dataset.tool; return render(true);
+    case 'ed-step': editor.step(Number(el.dataset.delta)); return render(true);
+    case 'ed-zoom': editor.setZoom(Number(el.dataset.delta)); return render(true);
+    case 'ed-scope': editor.state.scope = el.dataset.scope; return render(true);
+    case 'ed-select-all': editor.selectAll(); return render(true);
+    case 'ed-deselect': editor.deselect(); return render(true);
+    case 'ed-rotate': editor.rotate(Number(el.dataset.deg)); return render(true);
+    case 'ed-insert': editor.insert(); return render(true);
+    case 'ed-delete': editor.remove(); return render(true);
+    case 'ed-revert': editor.state.pages = OneToolEditorState.makePages();
+      editor.state.sel = {}; editor.state.edits = []; editor.state.ocr = false; return render(true);
+    case 'ed-extract': {
+      const n = editor.targets().length || 1;
+      editor.log(`Extracted ${n} page${n > 1 ? 's' : ''}`);
+      showToast(`${n} page${n > 1 ? 's' : ''} extracted to a new PDF`);
+      return render(true);
+    }
+    case 'ed-ocr': editor.addOcr(); showToast('Text layer added'); return render(true);
+    case 'ed-compress': editor.log('Compressed images to 150 dpi'); showToast('402 MB → 249 MB'); return render(true);
+    case 'ed-numbers': editor.log('Added page numbers, bottom centre'); return render(true);
+    case 'ed-unmark': editor.removeMark(Number(el.dataset.mark)); return render(true);
+    case 'ed-apply-redactions': {
+      const n = editor.applyRedactions();
+      if (n) showToast(`${n} redaction${n > 1 ? 's' : ''} applied`);
+      return render(true);
+    }
+    /* Only the redact tool draws on the page, so every other tool leaves the click
+       to the canvas itself. */
+    case 'ed-canvas': {
+      if (editor.state.tool !== 'redact') return;
+      const box = el.getBoundingClientRect();
+      editor.addMark(((event.clientX - box.left) / box.width) * 100, ((event.clientY - box.top) / box.height) * 100);
+      return render(true);
+    }
+    case 'ed-save': editor.saved(); showToast(`${editor.state.pages.length} pages written`); return render(true);
+    case 'ed-save-b': showToast(`${editor.state.bPages.length} pages written to ${editor.state.bName}`); return render(true);
+    case 'ed-open-another': editor.openPair('Untitled — extras.pdf'); return render(true);
+    case 'ed-close-pair': editor.closePair(); return render(true);
+    case 'ed-move-right': editor.moveRight(); return render(true);
+    case 'ed-copy-right': editor.moveRight({copy: true}); return render(true);
+    case 'ed-move-left': editor.moveLeft(); return render(true);
+    case 'ed-swap': editor.swapSides(); return render(true);
+
+    /* creator */
+    case 'cr-format': creator.chooseFormat(el.dataset.format);
+      if (event.detail === 2) creator.toBuild();
+      return render(true);
+    case 'cr-continue': creator.toBuild(); return render(true);
+    case 'cr-back': creator.toPick(); return render(true);
+    case 'cr-sort': creator.cycleSort(); return render(true);
+    case 'cr-move': creator.moveItem(Number(el.dataset.id), Number(el.dataset.delta)); return render(true);
+    case 'cr-remove': creator.removeItem(Number(el.dataset.id)); return render(true);
+    case 'cr-opt': creator.setValue(el.dataset.key, el.dataset.value); return render(true);
+    case 'cr-toggle': creator.setValue(el.dataset.key, !creator.value(el.dataset.key)); return render(true);
+    /* Destinations come from the folders the app already knows about, so the picker
+       cycles real paths rather than invented ones. */
+    case 'cr-dest': {
+      const folders = outputFolders.length ? outputFolders : [outputFolder];
+      creator.state.dest = folders[(folders.indexOf(creator.state.dest) + 1) % folders.length];
+      return render(true);
+    }
+    case 'cr-recipe': creator.pickRecipe(el.dataset.id); return render(true);
+    case 'cr-save-recipe': creator.saveRecipe(); showToast('Recipe saved'); return render(true);
+    case 'cr-add': return creatorAddItems();
+    case 'cr-create': return creatorCreate();
     case 'settings-tab': setTab = el.dataset.tab; setQuery = ''; setOpenSel = null; return render(true);
     case 'settings-toggle': { const row = setRow(el.dataset.id); if (row) setSetting(row.id, !settingValue(row)); return render(true); }
     case 'settings-menu': event.stopPropagation(); setOpenSel = setOpenSel === el.dataset.id ? null : el.dataset.id; return render(true);
@@ -2600,6 +3310,13 @@ document.addEventListener('input', event => {
      is put back exactly where it was rather than losing the caret. */
   if (target.id === 'setSearch') { const caret = target.selectionStart; setQuery = target.value; setOpenSel = null; renderSettings();
     const again = $('setSearch'); if (again) { again.focus(); again.setSelectionRange(caret, caret); } return; }
+  if (target.id === 'crQuery' || target.id === 'crName') {
+    const id = target.id, caret = target.selectionStart;
+    if (id === 'crQuery') creator.state.query = target.value; else creator.state.name = target.value;
+    renderCreator();
+    const again = $(id); if (again) { again.focus(); again.setSelectionRange(caret, caret); }
+    return;
+  }
   updateFieldFromControl(target);
 });
 document.addEventListener('change', event => updateFieldFromControl(event.target));
@@ -2639,6 +3356,20 @@ document.addEventListener('keydown', event => {
     return closeSettings();
   }
   if ((event.metaKey || event.ctrlKey) && key === ',') { event.preventDefault(); return settingsOpen ? closeSettings() : openSettings(); }
+  /* The editor owns the keyboard only while it is the visible page and nothing is
+     layered over it, so the queue's own shortcuts are never shadowed. */
+  if (page === 'editor' && !settingsOpen && !paletteOpen && document.activeElement?.tagName !== 'INPUT') {
+    const mode = editor.state.mode;
+    if (event.ctrlKey && (event.code === 'Space' || key === ' ')) { event.preventDefault(); editor.toggleMode(); return render(true); }
+    if ((event.metaKey || event.ctrlKey) && key === 's') { event.preventDefault(); editor.saved(); showToast(`${editor.state.pages.length} pages written`); return render(true); }
+    if (key === 'escape' && mode === 'reader') { event.preventDefault(); editor.toGrid(); return render(true); }
+    if (mode === 'reader') {
+      if (key === 'arrowright' || key === 'arrowdown') { event.preventDefault(); editor.step(1); return render(true); }
+      if (key === 'arrowleft' || key === 'arrowup') { event.preventDefault(); editor.step(-1); return render(true); }
+      if (key === 'r') { event.preventDefault(); editor.rotate(90); return render(true); }
+    }
+    if ((key === 'backspace' || key === 'delete') && editor.targets().length) { event.preventDefault(); editor.remove(); return render(true); }
+  }
   if (key === 'escape') { closeContextMenu(); closeFolderMenu(); paletteOpen = false; pickerFor = null; sheetFor = null; return render(true); }
   if (paletteOpen && (key === 'arrowdown' || key === 'arrowup' || key === 'enter')) {
     const items = [...document.querySelectorAll('.pal-item')];
@@ -2652,6 +3383,26 @@ document.addEventListener('keydown', event => {
 
 document.querySelectorAll('.navbtn').forEach(b => b.onclick = () => setPage(b.dataset.page));
 $('settingsBtn').onclick = () => settingsOpen ? closeSettings() : openSettings();
+$('crFiles').onchange = event => creatorTakeFiles(event.target.files);
+
+/* Dropping a PDF on the editor opens it beside the one already there. The overlay
+   only appears while a file is genuinely over the window. */
+pages.editor.addEventListener('dragover', event => {
+  event.preventDefault();
+  if (!editor.state.dragging) { editor.state.dragging = true; render(true); }
+});
+pages.editor.addEventListener('dragleave', event => {
+  if (pages.editor.contains(event.relatedTarget)) return;
+  if (editor.state.dragging) { editor.state.dragging = false; render(true); }
+});
+pages.editor.addEventListener('drop', event => {
+  event.preventDefault();
+  const file = event.dataTransfer?.files?.[0];
+  editor.state.dragging = false;
+  editor.openPair(file ? file.name : 'Untitled — extras.pdf');
+  showToast(`${editor.state.bName} opened beside this one`);
+  render(true);
+});
 $('searchBtn').onclick = openPalette;
 $('themeToggle').onclick = toggleTheme;
 $('inspToggle').onclick = () => { inspectorOpen = !inspectorOpen; render(true); };

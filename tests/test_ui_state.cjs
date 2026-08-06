@@ -91,19 +91,19 @@ assert.match(indexHtml, /Show output in Explorer/);
 assert.match(indexHtml, /reveal-queue-output/);
 assert.match(indexHtml, /reveal-history-input/);
 assert.match(indexHtml, /function revealTargetForRow/);
-// A queued file is not on disk yet, so double-click renames it; a history record
-// is a real file, so double-click still reveals it.
-assert.match(indexHtml, /event\.detail === 2 && act === 'select-row'/);
-assert.match(indexHtml, /event\.detail === 2 && act === 'select-history'/);
+// Double-click opens the output file on any row that has written one, and falls
+// back to renaming when there is nothing to open yet.
+assert.match(indexHtml, /event\.detail === 2 && \(act === 'select-row' \|\| act === 'select-history'\)/);
+assert.match(indexHtml, /const target = revealTargetForRow\(el\);\n\s+if \(target\.path\) return revealFile\(target\.path, target\.history\)/);
+assert.match(indexHtml, /if \(file\?\.status === 'done' && file\.out\) return \{path: file\.out, history: true\};/);
 assert.match(indexHtml, /return startRename\(file\.id\)/);
 assert.match(indexHtml, /contextItem\('Rename output…', 'rename-queue'/);
 assert.match(indexHtml, /id="renameField"/);
-assert.match(indexHtml, /data-act="reveal-file"/);
-assert.match(indexHtml, /data-reveal-kind/);
-// the queue's folder button opens the file you dropped, which exists, rather
-// than the output, which does not exist until the conversion has run
-assert.match(indexHtml, /\$\{folderIcon\(f\.sourcePath, 'queue'\)\}/);
+// The one list has no per-row folder button; revealing is a context-menu action
+// and a double-click, and each still opens the file that actually exists — the
+// source for queued work, the output for something already written.
 assert.match(indexHtml, /\$\{folderIcon\(r\.outputPath, 'history'\)\}/);
+assert.match(indexHtml, /contextItem\('Show input in Explorer', 'reveal-history-input'/);
 assert.match(indexHtml, /history \? '\/api\/history\/reveal' : '\/api\/reveal'/);
 assert.match(indexHtml, /data-multi-selected/);
 assert.match(indexHtml, /selectedQueueIds/);
@@ -144,7 +144,6 @@ assert.match(indexHtml, /\.canvas-inspector \.status\{flex:none;flex-shrink:0\}/
 assert.match(indexHtml, /\.canvas-inspector\.inspector\{background:var\(--bg\)!important;border:0!important;box-shadow:none!important;border-radius:0!important\}/);
 assert.match(indexHtml, /#app \.panel\{background:var\(--bg\)\}/);
 assert.match(indexHtml, /<section class="canvas-inspector inspector batch-inspector">/);
-assert.match(indexHtml, /@media \(max-width:640px\)\{\.app\{min-width:0\}\.left\{display:none\}\.panel\[data-open="true"\]\{width:100%!important\}\}/);
 
 assert.deepEqual(selectionState.updateSelection({
   ids: ['a', 'b', 'c'], selected: [], anchorId: null, targetId: 'a',
@@ -177,9 +176,6 @@ assert.match(fidelioB, /<path d="M963\.41/);
 assert.match(fidelioW, /fill:rgb\(234,234,234\)/);
 assert.doesNotMatch(indexHtml, /<span class="kbd">⌘K<\/span>/);
 assert.doesNotMatch(indexHtml, /<span class="kbd">⌥I<\/span>/);
-assert.match(indexHtml, /<div class="empty-glyph">\s*<svg[^>]*viewBox="0 0 48 48"[^>]*aria-label="Drop files here"/s);
-assert.match(indexHtml, /<g class="ia-drop"><path d="M24 10v18"\/><path d="M17 21l7 7 7-7"\/><\/g>\s*<path class="ia-tray" d="M12 32v4a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2v-4"\/>/);
-assert.doesNotMatch(indexHtml, /\.empty-glyph\{[^}]*background:/);
 assert.match(mainJs, /backgroundColor:\s*'#f2f2f4'/);
 assert.match(indexHtml, /\.topbar\{[^}]*position:relative;z-index:12/);
 assert.match(indexHtml, /<div class="body">\s*<div class="left">\s*<header class="topbar">/s);
@@ -202,9 +198,97 @@ assert.match(indexHtml, /\.work\{margin:0;border:1px solid var\(--sep\);border-l
 assert.match(indexHtml, /class="folder" width="48" height="48" viewBox="0 0 48 48"/);
 assert.match(indexHtml, /\.folder:hover \.fdr-front\{transform:scaleY\(\.72\) rotate\(4deg\)\}/);
 assert.match(indexHtml, /\.folder:hover \.fdr-sheet\{transform:translateY\(-11px\)\}/);
-assert.doesNotMatch(indexHtml, /data-act="reveal-file"[^>]* disabled/);
+
 assert.doesNotMatch(indexHtml, /class="thumb" aria-hidden="true"><span>\$\{esc\(thumbLabel\(f\)\)/);
 assert.match(indexHtml, /html,body,\*\{-webkit-user-select:none;user-select:none\}/);
 assert.match(indexHtml, /input,textarea,\[contenteditable="true"\]\{-webkit-user-select:text;user-select:text\}/);
+
+// ---- Convert view: two top-level views, one list ----
+// Only Convert and Helpers are navigable; History is no longer a page of its own.
+const navPages = [...indexHtml.matchAll(/data-page="([a-z]+)"/g)].map(m => m[1]);
+assert.deepEqual([...new Set(navPages)].sort(), ['convert', 'helpers']);
+assert.doesNotMatch(indexHtml, /data-page="queue"/);
+assert.doesNotMatch(indexHtml, /data-page="history"/);
+assert.doesNotMatch(indexHtml, /<section class="page" id="pageHistory"/);
+assert.match(indexHtml, /const pages = \{ convert: \$\('pageConvert'\), helpers: \$\('pageHelpers'\) \};/);
+assert.match(indexHtml, /let page='convert',/);
+
+// Queued work and written output render as one table, status as a column.
+assert.match(indexHtml, /function convertRows\(\)/);
+assert.match(indexHtml, /function renderConvert\(\)/);
+assert.match(indexHtml, /function unifiedRow\(row, index, lastActive\)/);
+assert.doesNotMatch(indexHtml, /function renderQueue\(\)/);
+assert.doesNotMatch(indexHtml, /function renderHistory\(\)/);
+assert.match(indexHtml, /renderConvert\(\); renderHelpers\(\); renderPanel\(\); renderOverlays\(\);/);
+// a file that is both queued and already written appears once, from the queue
+assert.match(indexHtml, /const inQueue = new Set\(files\.map\(file => `\$\{file\.sourcePath\}\|\$\{file\.to\}`\)\);/);
+// the history has to be loaded at boot now that it is part of the default view
+assert.match(indexHtml, /absorb\(state\); loadHistory\(\);/);
+
+// The prototype's header: filter pills, sort, Add files.
+['All', 'Active', 'Completed', 'Stopped', 'Missing', 'Comics', 'Images', 'Documents', 'Video'].forEach(name => {
+  assert.match(indexHtml, new RegExp(`name:'${name}'`), `missing the ${name} filter`);
+});
+assert.match(indexHtml, /const SORTS = \{newest:'Newest', oldest:'Oldest', name:'Name', largest:'Largest'\};/);
+assert.match(indexHtml, /class="u-add press" data-act="add">Add files/);
+// its column headers, empty state and footer copy, verbatim
+['File', 'Conversion', 'Status', 'Size', 'Written'].forEach(col => {
+  assert.match(indexHtml, new RegExp(`>${col}<`), `missing the ${col} column header`);
+});
+assert.match(indexHtml, /<b>Nothing matches<\/b><span>Nothing in this view yet\.<\/span>/);
+assert.match(indexHtml, /\$\{ready\} ready · \$\{blocked\} waiting on \$\{blockingHelper\(\)\} · \$\{written\} written/);
+assert.match(indexHtml, /All done<\/span>/);
+
+// The prototype's motion survives the port.
+assert.match(indexHtml, /@keyframes u-cascade\{from\{opacity:0;transform:translateY\(10px\);filter:blur\(2px\)\}/);
+assert.match(indexHtml, /@keyframes u-shimmer/);
+assert.match(indexHtml, /\.u-fill\{[^}]*transition:width var\(--d-fast\) linear\}/);
+assert.match(indexHtml, /animation-delay:\$\{Math\.min\(index, 7\) \* 50\}ms/);
+
+// This app's own thumbnails and route picker stay in the ported row.
+assert.match(indexHtml, /fileThumb\(file, 'u-tile'\)/);
+assert.match(indexHtml, /\$\{routePopover\(file, open\)\}/);
+
+// The split pane it replaces is gone.
+assert.doesNotMatch(indexHtml, /convert-split/);
+assert.doesNotMatch(indexHtml, /data-split-resize/);
+assert.doesNotMatch(indexHtml, /one-tool\.convert-split/);
+
+// Tick boxes span the whole list, and deleting reaches both stores.
+assert.match(indexHtml, /function applyRowCheck\(event, id\)/);
+assert.match(indexHtml, /const rows = visibleRows\(\);\n\s+const allOn = rows\.length > 0/);
+assert.match(indexHtml, /if \(queued\.length\) await api\('\/api\/remove-many', \{ids: queued\}\);/);
+assert.match(indexHtml, /if \(written\.length\) await historyAction\('\/api\/history\/delete'/);
+
+// Existing queue and history actions all survive the merge.
+['convert', 'add', 'history-sort', 'history-filter', 'history-requeue', 'history-delete',
+ 'history-deselect', 'check-history', 'check-all', 'select-history', 'select-row',
+ 'toggle-picker', 'requeue-one', 'reveal-history'].forEach(act => {
+  assert.match(indexHtml, new RegExp(`data-act="${act}"`), `missing data-act="${act}"`);
+});
+assert.match(indexHtml, /if \(next === 'convert'\) loadHistory\(\);/);
+// Enter still converts from the Convert view.
+assert.match(indexHtml, /page === 'convert'\) \{ event\.preventDefault\(\); convert\(\); \}/);
+// The inspector serves the history record when one is picked, the queue otherwise.
+assert.match(indexHtml, /if \(selectedHistory\) return panelHistory\(\);/);
+
+// A narrow window keeps the list; the inspector collapses rather than taking over.
+assert.match(indexHtml, /@media \(max-width:640px\)\{\.app\{min-width:0\}\.panel\[data-open="true"\]\{width:0\}/);
+assert.doesNotMatch(indexHtml, /@media \(max-width:640px\)[^}]*\.left\{display:none\}/);
+
+// Every row can be renamed from its context menu — a queued row renames what it
+// will write, a written row renames the file on disk.
+assert.match(indexHtml, /contextItem\('Rename output…', 'rename-queue'/);
+assert.match(indexHtml, /contextItem\('Rename file…', 'rename-history', ICON\.rename, \{disabled: target\.state === 'missing'\}\)/);
+assert.match(indexHtml, /if \(action === 'rename-history'\) return startHistoryRename\(target\.id\);/);
+assert.match(indexHtml, /function startHistoryRename\(id\)/);
+assert.match(indexHtml, /function historyRenameFieldHtml\(r, state\)/);
+assert.match(indexHtml, /data-act="rename-history-file"/);
+assert.match(indexHtml, /api\('\/api\/history\/rename', \{id: record\.id, name: next\}/);
+// a file that is no longer where it was saved cannot be renamed
+assert.match(indexHtml, /const locked = state === 'missing';/);
+// Enter commits, Escape puts the old name back, blur commits — as for the queue
+assert.match(indexHtml, /if \(key === 'enter'\) \{ event\.preventDefault\(\); commitHistoryRename\(event\.target\); return; \}/);
+assert.match(indexHtml, /if \(event\.target\?\.dataset\?\.act === 'rename-history-file'\) commitHistoryRename\(event\.target\);/);
 
 console.log('UI action-state regression tests passed');

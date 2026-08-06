@@ -251,26 +251,89 @@ body.is-mac .topbar{padding-left:82px}
   transition:opacity var(--d-fast) var(--ease),transform var(--d-fast) var(--ease),filter var(--d-fast) var(--ease)}
 .page[data-active="true"]{opacity:1;transform:none;filter:blur(0);pointer-events:auto}
 
-h1{margin:0;font-size:var(--text-2xl);font-weight:var(--weight-medium);line-height:var(--leading-tight)}
-.page-sub{margin:var(--space-2) 0 0;font-size:var(--text-sm);line-height:var(--leading-normal);color:var(--text-secondary);max-width:64ch}
-.eyebrow{display:block;font-size:var(--text-xs);font-weight:var(--weight-medium);letter-spacing:.04em;text-transform:uppercase;color:var(--text-tertiary)}
+/* ---------- convert view (one list, status is a column) ----------
+   Adapted from the One Tool 1a prototype: filter pills, sort and Add files sit
+   above a single table that holds queued work and written output alike, and the
+   footer carries the summary and the convert button. The sizes are the
+   prototype's own; the thumbnails, icons and route picker are this app's. */
+.u-wrap{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;container:queue / inline-size}
+/* Two lines, not one: the destination, sort and Add files hold the top line, and
+   the filter pills run underneath and wrap along the row rather than stacking
+   into a column when the controls crowd them. */
+.u-head{flex:none;display:flex;flex-direction:column;gap:10px;padding:14px 18px 12px}
+.u-controls{display:flex;align-items:center;gap:var(--space-2)}
+.u-controls .dest{margin-right:auto;min-width:0}
+.u-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.u-chip{min-height:26px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;border-radius:var(--radius-pill);font-size:12px;font-weight:500;color:var(--text-secondary);
+  box-shadow:inset 0 0 0 1px var(--border-default);transition:background-color var(--d-quick) var(--ease),color var(--d-quick) var(--ease),box-shadow var(--d-quick) var(--ease)}
+.u-chip:hover{background:var(--surface-hover)}
+.u-chip[data-on="true"]{font-weight:600;color:var(--text-accent);background:var(--accent-soft);box-shadow:none}
+.u-chip .n{font-family:var(--font-mono);font-size:10px;font-weight:500;opacity:.65}
+.u-sort{min-height:28px;padding:0 11px;display:flex;align-items:center;gap:7px;border-radius:8px;font-size:12px;font-weight:600;color:var(--text-secondary);box-shadow:inset 0 0 0 1px var(--border-default)}
+.u-sort:hover{background:var(--surface-hover)}
+.u-add{min-height:28px;padding:0 12px;display:flex;align-items:center;gap:7px;border-radius:8px;font-size:12px;font-weight:600;background:var(--accent);color:var(--text-inverse)}
+.u-add:hover{background:var(--accent-hover)}
+.u-add .k{font-family:var(--font-mono);font-size:9.5px;opacity:.7}
+.u-list{flex:1;min-height:0;margin:0 8px 8px;border-radius:11px;box-shadow:0 0 0 1px var(--border-subtle);background:var(--surface-card);display:flex;flex-direction:column;overflow:hidden}
+.u-list.over{box-shadow:0 0 0 1px var(--accent);background:var(--accent-soft)}
+.u-headrow{flex:none;display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--border-subtle)}
+.u-headrow span{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-tertiary)}
+.u-scroll{flex:1;min-height:0;overflow:auto;position:relative}
+.u-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border-subtle);position:relative;cursor:default;
+  transition:background-color var(--d-fast) var(--ease),opacity var(--d-fast) var(--ease)}
+.u-row:hover{background:var(--surface-hover)}
+.u-row[data-live="true"]{background:var(--accent-soft)}
+.u-row[data-selected="true"],.u-row[data-selected="true"]:hover{background:var(--accent-soft)}
+.u-row[data-multi-selected="true"],.u-row[data-multi-selected="true"]:hover{background:var(--accent-soft)}
+.u-row[data-dim="true"]{opacity:.8}
+.u-row[data-open="true"]{z-index:9}
+.u-row[data-rule="true"]{border-top:1px solid var(--border-default)}
+/* rows cascade in on arrival; only the first eight are staggered */
+@keyframes u-cascade{from{opacity:0;transform:translateY(10px);filter:blur(2px)}to{opacity:1;transform:none;filter:blur(0)}}
+.u-row.is-new{animation:u-cascade var(--d-slow) var(--ease) backwards}
+.u-tile{width:26px;height:32px;flex:none;display:block}
+.u-tile svg{display:block;width:100%;height:100%}
+.u-name{flex:1;min-width:0;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.u-row[data-missing="true"] .u-name{color:var(--text-tertiary);text-decoration:line-through}
+.u-conv{width:104px;flex:none;position:relative}
+.u-pill{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 7px;border-radius:6px;font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.02em;
+  background:var(--surface-active);color:var(--text-secondary);transition:background-color var(--d-quick) var(--ease),color var(--d-quick) var(--ease)}
+.u-pill[data-open="true"]{background:var(--accent);color:var(--text-inverse)}
+.u-pill[data-blocked="true"]{background:var(--warning-soft);color:var(--amber-600)}
+.u-pill .chev{font-size:7px;opacity:.6;display:inline-flex}
+.u-status{width:168px;flex:none;display:flex;align-items:center;gap:9px}
+.u-track{flex:1;height:4px;border-radius:var(--radius-pill);background:var(--surface-active);overflow:hidden}
+.u-fill{display:block;height:100%;border-radius:var(--radius-pill);background:var(--accent);transition:width var(--d-fast) linear}
+.u-fill[data-tone="warn"]{background:var(--warning)}
+.u-done{width:13px;height:13px;flex:none;display:grid;place-items:center;border-radius:var(--radius-pill);background:var(--success);color:var(--text-inverse)}
+.u-state{flex:none;min-width:0;font-family:var(--font-mono);font-size:11.5px;font-weight:500;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.u-state[data-tone="ok"]{color:var(--green-600)}
+.u-state[data-tone="run"]{color:var(--text-accent)}
+.u-state[data-tone="warn"]{color:var(--amber-600)}
+.u-state[data-tone="quiet"]{color:var(--text-tertiary)}
+.u-state[data-tone="bad"]{color:var(--danger-hover)}
+@keyframes u-shimmer{from{background-position:150% 0}to{background-position:-50% 0}}
+.u-state.shimmer{background:linear-gradient(100deg,var(--text-tertiary) 30%,var(--text-primary) 50%,var(--text-tertiary) 70%);background-size:400% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:u-shimmer 2s linear infinite}
+.u-size{width:64px;flex:none;text-align:right;font-family:var(--font-mono);font-size:11.5px;color:var(--text-secondary)}
+.u-when{width:92px;flex:none;text-align:right;font-family:var(--font-mono);font-size:11.5px;color:var(--text-tertiary)}
+.u-h-tile{width:26px;flex:none}
+.u-h-conv{width:104px;flex:none}
+.u-h-status{width:168px;flex:none}
+.u-h-size{width:64px;flex:none;text-align:right}
+.u-h-when{width:92px;flex:none;text-align:right}
+.u-empty{padding:56px 20px;text-align:center}
+.u-empty b{display:block;font-size:13.5px;font-weight:600}
+.u-empty span{display:block;font-size:12.5px;color:var(--text-secondary);margin-top:6px}
+.u-foot{flex:none;display:flex;align-items:center;gap:12px;padding:11px 18px;border-top:1px solid var(--border-subtle)}
+.u-foot .summary{flex:1;min-width:0;font-size:12.5px;color:var(--text-secondary)}
+/* the columns drop away in the order the queue's always have */
+@container queue (max-width:700px){.u-when,.u-h-when{display:none}}
+@container queue (max-width:560px){.u-size,.u-h-size{display:none}}
+@container queue (max-width:460px){.u-status,.u-h-status{display:none}}
+@container queue (max-width:380px){.u-tile,.u-h-tile{display:none}}
 
-/* ---------- buttons ---------- */
-.btn{min-height:32px;padding:0 var(--pad-control-x);display:inline-flex;align-items:center;justify-content:center;gap:var(--gap-inline);border-radius:var(--radius-pill);font-size:var(--text-sm);font-weight:var(--weight-medium);white-space:nowrap}
-.btn-primary{background:var(--surface-inverse);color:var(--text-inverse)}
-.btn-primary:hover:not([disabled]){background:#1c1c1c}
-.btn-primary[disabled]{background:var(--gray-300);color:var(--text-disabled)}
-.btn-secondary{color:var(--text-primary);box-shadow:inset 0 0 0 1px var(--border-default)}
-.btn-secondary:hover:not([disabled]){background:var(--surface-hover)}
-.btn-accent{background:var(--accent-soft);color:var(--text-accent)}
-.btn-accent:hover:not([disabled]){background:var(--blue-100)}
-.btn-ghost{color:var(--text-secondary)}
-.btn-ghost:hover:not([disabled]){background:var(--surface-hover)}
-.btn-danger{background:var(--danger-soft);color:var(--danger-hover);box-shadow:inset 0 0 0 1px rgba(220,59,59,.24)}
-.btn-danger:hover:not([disabled]){background:#f8dede}
-.btn-sm{min-height:28px;padding:0 10px;font-size:var(--text-xs)}
-.link{color:var(--text-accent);font-weight:var(--weight-medium);text-decoration:underline;text-underline-offset:2px}
-
+/* ---------- queue ---------- */
 /* ---------- queue ---------- */
 .q-wrap{flex:1;min-height:0;padding:var(--space-4) var(--space-5) 0;display:flex;flex-direction:column;overflow:hidden;position:relative;
   container:queue / inline-size}
@@ -557,7 +620,6 @@ body.is-resizing-panel{cursor:ew-resize;user-select:none}
 .canvas-inspector .section,.canvas-inspector .file,.canvas-inspector>.body,.canvas-inspector .foot,.canvas-inspector .i-sec,.canvas-inspector .i-body{background:var(--bg)!important}
 .canvas-inspector .file-folder{width:48px;height:48px;flex:none;margin:-3px 0 0 -2px}.canvas-inspector .file-folder .folder{position:static;width:48px;height:48px;margin:0}.canvas-inspector .file-folder .folder:before,.canvas-inspector .file-folder .folder:after{content:none}
 #app .panel{background:var(--bg)}
-@media (max-width:640px){.app{min-width:0}.left{display:none}.panel[data-open="true"]{width:100%!important}}
 .i-thumb{width:44px;height:56px;flex:none;display:block}
 .i-thumb svg{display:block;width:100%;height:100%;overflow:visible}
 .i-route{display:inline-flex;align-items:center;margin-top:var(--space-2);height:22px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-medium);background:var(--accent-soft);color:var(--text-accent)}
@@ -811,6 +873,10 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
   .tick.is-fresh svg path{stroke-dasharray:none;stroke-dashoffset:0}
   .spin{border-top-color:var(--text-inverse)}
 }
+
+/* A narrow window belongs to the list. The inspector is the thing that gives
+   way — it used to take the whole window and hide the list entirely. */
+@media (max-width:640px){.app{min-width:0}.panel[data-open="true"]{width:0}.panel-resize{display:none}}
 </style>
 </head>
 <body>
@@ -827,9 +893,8 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
   <!--
   <header class="legacy-topbar">
         <nav class="nav" aria-label="Primary">
-          <button class="navbtn press active" data-page="queue">Queue</button>
+          <button class="navbtn press active" data-page="convert">Convert</button>
           <button class="navbtn press" data-page="helpers">Helpers<span class="navdot" id="helperDot" hidden></span></button>
-          <button class="navbtn press" data-page="history">History</button>
         </nav>
         <div class="searchwrap">
           <div class="tiphost theme-host">
@@ -855,9 +920,8 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 
       <header class="topbar">
         <nav class="nav" aria-label="Primary">
-          <button class="navbtn press active" data-page="queue">Queue</button>
+          <button class="navbtn press active" data-page="convert">Convert</button>
           <button class="navbtn press" data-page="helpers">Helpers<span class="navdot" id="helperDot" hidden></span></button>
-          <button class="navbtn press" data-page="history">History</button>
         </nav>
         <div class="searchwrap">
           <div class="tiphost theme-host">
@@ -880,9 +944,8 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
 
       <template data-legacy-topbar>
         <nav class="nav" aria-label="Primary">
-          <button class="navbtn press active" data-page="queue">Queue</button>
+          <button class="navbtn press active" data-page="convert">Convert</button>
           <button class="navbtn press" data-page="helpers">Helpers<span class="navdot" id="helperDot" hidden></span></button>
-          <button class="navbtn press" data-page="history">History</button>
         </nav>
         <div class="searchwrap">
           <div class="tiphost theme-host">
@@ -904,9 +967,8 @@ h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
       </template>
 
       <div class="work" id="work">
-        <section class="page" id="pageQueue" data-active="true" style="--px:-8px"></section>
+        <section class="page" id="pageConvert" data-active="true" style="--px:-8px"></section>
         <section class="page" id="pageHelpers"></section>
-        <section class="page" id="pageHistory"></section>
 
         <div class="scrim sheet-scrim" id="sheetScrim" data-act="close-sheet"><div class="modal sheet" id="sheetBox" data-stop="true"></div></div>
         <div class="scrim pal-scrim" id="palScrim" data-act="close-palette"><div class="modal pal" id="palBox" data-stop="true"></div></div>
@@ -980,7 +1042,7 @@ Promise.resolve(shell?.getTheme?.()).then(saved => {
 function renderShortcutLabels() {
   document.querySelectorAll('[data-shortcut]').forEach(el => { el.textContent = shortcutLabel(el.dataset.shortcut); });
 }
-const pages = { queue: $('pageQueue'), helpers: $('pageHelpers'), history: $('pageHistory') };
+const pages = { convert: $('pageConvert'), helpers: $('pageHelpers') };
 
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtSize = bytes => { const n = Number(bytes || 0); if (!n) return ''; const u=['B','KB','MB','GB']; let v=n,i=0; while(v>=1024&&i<u.length-1){v/=1024;i++} return `${v.toFixed(v>=10||i===0?0:1)} ${u[i]}`; };
@@ -990,7 +1052,7 @@ const byId = (items, key) => items.reduce((m, i) => { m[i[key]] = i; return m; }
 
 let tools=[], toolMap={}, files=[], counts={ready:0,helper:0,soon:0}, historyRecords=[];
 let outputFolder='~/Converted', outputFolders=[];
-let page='queue', selectedId=null, inspectorOpen=true, pickerFor=null, sheetFor=null, sheetPick=null, sheetCat=null, sheetQuery='';
+let page='convert', selectedId=null, inspectorOpen=true, pickerFor=null, sheetFor=null, sheetPick=null, sheetCat=null, sheetQuery='';
 let paletteOpen=false, query='', commandIndex=0;
 let scope='this', advanced=true, keepNames=true, selectedHelper=null, selectedHistory=null;
 let histFilter='all', histSort='newest', checked=new Set(), historyAnchorId=null;
@@ -1019,9 +1081,23 @@ function applyQueueSelection(event, id) {
   queueAnchorId = result.anchorId;
   selectedId = selectedQueueIds.has(id) ? id : [...selectedQueueIds][0] || null;
   pickerFor = null;
+  selectedHistory = null;
   inspectorOpen = Boolean(selectedId);
   render(true);
 }
+/* Ticking a box is about the list, not about which kind of row it is, so the
+   range a shift-click covers is the visible list in full. */
+function applyRowCheck(event, id) {
+  const rows = visibleRows();
+  const result = OneToolSelectionState.updateSelection({
+    ids: rows.map(row => row.id), selected: [...checked], anchorId: historyAnchorId, targetId: id,
+    shift: event.shiftKey, toggle: true,
+  });
+  checked = new Set(result.selected);
+  historyAnchorId = result.anchorId;
+  render(true);
+}
+const checkedOfKind = kind => { const rows = convertRows(); return [...checked].filter(id => rows.find(row => row.id === id)?.kind === kind); };
 function applyHistorySelection(event, id, forceToggle=false) {
   const rows = visibleHistory();
   const result = OneToolSelectionState.updateSelection({
@@ -1031,6 +1107,7 @@ function applyHistorySelection(event, id, forceToggle=false) {
   checked = new Set(result.selected);
   historyAnchorId = result.anchorId;
   selectedHistory = id;
+  selectedQueueIds = new Set(); queueAnchorId = null; selectedId = null;
   inspectorOpen = true;
   render(true);
 }
@@ -1096,6 +1173,7 @@ function finishPanelResize() {
   document.body.classList.remove('is-resizing-panel');
   setPanelWidth(panelWidth);
 }
+
 setPanelWidth(readPanelWidth(), false);
 panelResizeHandle?.addEventListener('pointerdown', startPanelResize);
 panelResizeHandle?.addEventListener('keydown', event => {
@@ -1161,7 +1239,7 @@ function noteTransitions() {
   if (nextActionStatus !== actionStatus) {
     actionStatus = nextActionStatus;
   }
-  if (settled && anyDone && !batchAnnounced) { batchAnnounced = true; haptic(18); showToast('Batch finished', true, commonFolder()); }
+  if (settled && anyDone && !batchAnnounced) { batchAnnounced = true; haptic(18); showToast('Batch finished', true, commonFolder()); loadHistory(); }
   if (!settled) batchAnnounced = false;
 
   bootstrapped = true;
@@ -1206,7 +1284,7 @@ function render(force=false) {
   $('inspToggle').setAttribute('aria-label', inspectorOpen ? 'Hide inspector' : 'Show inspector');
   $('inspTip').innerHTML = `${inspectorOpen ? 'Hide' : 'Show'} inspector <span class="kbd" data-shortcut="inspector">${shortcutLabel('inspector')}</span>`;
 
-  renderQueue(); renderHelpers(); renderHistory(); renderPanel(); renderOverlays();
+  renderConvert(); renderHelpers(); renderPanel(); renderOverlays();
   renderShortcutLabels();
   // the cues have now been painted; clear them so nothing replays on the next render
   freshRows.clear(); freshDone.clear(); freshError.clear();
@@ -1335,94 +1413,6 @@ function destinationHtml() {
     ${folderMenuHtml()}
   </div>`;
 }
-function renderQueue() {
-  const ready = files.filter(f => f.status === 'idle' && !isBlocked(f)).length;
-  const blocked = files.filter(isBlocked).length;
-  const done = files.filter(f => f.status === 'done').length;
-  const busy = files.filter(f => f.status === 'queued' || f.status === 'running').length;
-
-  if (!files.length && pendingAdd) {
-    pages.queue.innerHTML = `<div class="q-wrap"><div class="q-head"><div class="grow"><h1><span class="digit is-fresh">0</span> files queued</h1><p class="page-sub">Routed by extension · every file has a converter</p></div>${destinationHtml()}</div><div class="q-list" style="position:relative">${skeletonHtml()}</div></div>`;
-    return;
-  }
-  if (!files.length) {
-    pages.queue.innerHTML = `
-      <div class="empty">
-        <div class="empty-inner empty-drop" id="dropZone" style="padding:var(--space-8)">
-          <div class="empty-glyph"><svg class="ic" width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Drop files here">
-            <g class="ia-drop"><path d="M24 10v18"/><path d="M17 21l7 7 7-7"/></g>
-            <path class="ia-tray" d="M12 32v4a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2v-4"/>
-          </svg></div>
-          <h1>Drop the files. We'll work out the rest.</h1>
-          <p>Each file is routed to the converter that handles it — change any route before you convert. Nothing leaves this machine.</p>
-          <div class="actions">
-            <button class="btn btn-primary press" data-act="add">Choose files…</button>
-            <button class="btn btn-secondary press" data-act="palette">Browse conversions <span class="kbd" data-shortcut="palette">${shortcutLabel('palette')}</span></button>
-          </div>
-        </div>
-      </div>`;
-    wireDrop($('dropZone'));
-    return;
-  }
-
-  const sub = `Routed by extension · ${ready} convert now${blocked ? ` · ${blocked} needs a helper` : ''}`;
-  const summary = busy ? `Converting — ${done} of ${files.length - blocked} done`
-    : `${ready} ready${blocked ? ` · ${blocked} needs a helper` : ''}`;
-  const goLabel = ready > 1 ? `Convert ${ready}` : 'Convert';
-
-  pages.queue.innerHTML = `
-    <div class="q-wrap">
-      <div class="q-head">
-        <div class="grow">
-          <h1><span class="digit ${countFresh ? 'is-fresh' : ''}">${files.length}</span> files queued</h1>
-          <p class="page-sub">${esc(sub)}</p>
-        </div>
-        ${destinationHtml()}
-      </div>
-      <div class="q-list" id="dropZone">
-        ${pendingAdd ? skeletonHtml() : ''}
-        ${files.map(queueRow).join('')}
-        <button class="dropmore row press" data-act="add"><span class="plus" aria-hidden="true"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" ${STROKE}><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>Drop more files here · <span class="link">Choose files</span><span class="k" data-shortcut="open">${shortcutLabel('open')}</span></button>
-        <div class="q-fill"></div>
-      </div>
-    </div>
-    <div class="foot">
-      <div class="summary">${esc(summary)}</div>
-      <button class="btn btn-ghost press" data-act="clear">Clear</button>
-      <button class="${OneToolActionState.actionButtonClass(actionStatus)}" data-act="convert" ${ready && !busy && actionStatus === 'idle' ? '' : 'disabled'}>
-        <span data-on="${actionStatus === 'idle' && !busy}">${esc(goLabel)}<span class="kbd" style="background:rgba(255,255,255,.16);color:rgba(255,255,255,.72)">⏎</span></span>
-        <span data-on="${Boolean(actionStatus === 'pending' || busy)}"><span class="spin"></span>Converting…</span>
-        <span data-on="${actionStatus === 'success'}">${tickIcon(13, 'draw')}Converted all</span>
-      </button>
-    </div>`;
-  wireDrop($('dropZone'));
-}
-
-function queueRow(f) {
-  const multiSelected = selectedQueueIds.has(f.id), selected = multiSelected || f.id === selectedId, open = f.id === pickerFor, blocked = isBlocked(f);
-  const p = pct(f), sc = statusClass(f);
-  const barClass = f.status === 'done' ? 'prog-bar done' : 'prog-bar';
-  const isNew = freshRows.has(f.id), errored = freshError.has(f.id);
-  const delay = isNew ? ` style="animation-delay:${Math.min(files.indexOf(f), 5) * 50}ms"` : '';
-  return `<div class="q-row row ${selected ? 'selected' : ''} ${selectedQueueIds.size && !multiSelected && !open ? 'dim' : ''} ${open ? 'open' : ''} ${isNew ? 'is-new' : ''} ${errored ? 'is-error' : ''}" data-act="select-row" data-context="queue-file" data-multi-selected="${multiSelected}" data-id="${esc(f.id)}"${delay}>
-    ${fileThumb(f)}
-    <div class="f-copy"><div class="f-name" title="${esc(f.name)}">${esc(f.name)}</div><div class="f-meta">${esc(metaLine(f))}</div></div>
-    <span class="pill-wrap">
-      <button class="pill press ${blocked ? 'blocked' : ''} ${open ? 'open' : ''}" data-act="toggle-picker" data-id="${esc(f.id)}" aria-expanded="${open}">${esc(f.from)} → ${esc(f.to || 'Choose')}<span class="chev" aria-hidden="true">${chevron()}</span></button>
-      ${routePopover(f, open)}
-    </span>
-    <div class="prog">
-      <div class="prog-track"><div class="${barClass} bar-fill" style="width:${p}%"></div></div>
-      <div class="prog-foot">
-        ${f.status === 'done' ? `<span class="tick ${freshDone.has(f.id) ? 'is-fresh' : ''}" aria-hidden="true">${tickIcon(9)}</span>` : ''}
-        <span class="status ${sc} ${indeterminate(f) ? 'indeterminate' : ''}">${esc(statusText(f))}</span>
-      </div>
-    </div>
-    ${folderIcon(f.sourcePath, 'queue')}
-    <button class="rm press" data-act="remove" data-id="${esc(f.id)}" aria-label="Remove ${esc(f.name)}">${ICON.remove}</button>
-  </div>`;
-}
-
 function routePopover(f, open) {
   const candidates = routeCandidates(f);
   const body = candidates.length
@@ -1468,76 +1458,193 @@ function helperRow(name) {
   </div>`;
 }
 
-/* ---------- history ---------- */
-const HIST_FILTERS = [
-  {id:'all', name:'All'}, {id:'missing', name:'Missing files'}, {id:'active', name:'Active'},
-  {id:'completed', name:'Completed'}, {id:'uncompleted', name:'Uncompleted'}, {id:'video', name:'Video'},
-  {id:'music', name:'Music'}, {id:'documents', name:'Documents'}, {id:'images', name:'Images'}, {id:'archive', name:'Archive'},
+/* ---------- one list ----------
+   Queued work and written output share a single table; the state a row is in is
+   a column, not a separate view. Rows from the queue keep their live progress
+   and route picker; rows from the history keep their presence check. A written
+   file that is still in the queue is shown once, from the queue. */
+const U_FILTERS = [
+  {id:'all', name:'All'}, {id:'active', name:'Active'}, {id:'completed', name:'Completed'},
+  {id:'stopped', name:'Stopped'}, {id:'missing', name:'Missing'}, {id:'comics', name:'Comics'},
+  {id:'images', name:'Images'}, {id:'documents', name:'Documents'}, {id:'video', name:'Video'},
 ];
-const SORTS = {newest:'Newest first', oldest:'Oldest first', name:'Name', largest:'Largest first'};
+const SORTS = {newest:'Newest', oldest:'Oldest', name:'Name', largest:'Largest'};
 const HIST_STATE = {
   completed:{label:'On disk', cls:'ok'}, active:{label:'Converting', cls:'run'},
   uncompleted:{label:'Stopped', cls:'warn'}, missing:{label:'Missing', cls:'grey'},
 };
 const histCategory = r => String(toolMap[r.conv]?.cat || 'documents').toLowerCase();
 const histState = r => r.presence === 'missing' ? 'missing' : (r.state || 'completed');
-function histMatches(r, id) { return id === 'all' || histState(r) === id || histCategory(r) === id; }
-function visibleHistory() {
-  const rows = historyRecords.filter(r => !r.deleted && histMatches(r, histFilter));
-  return rows.sort((a,b) =>
-    histSort === 'newest' ? String(b.finishedAt).localeCompare(String(a.finishedAt))
-    : histSort === 'oldest' ? String(a.finishedAt).localeCompare(String(b.finishedAt))
-    : histSort === 'name' ? String(a.name).localeCompare(String(b.name))
-    : Number(b.size || 0) - Number(a.size || 0));
+/* Live states come first, in the order work moves through them; the chosen sort
+   decides everything after that. */
+const U_RANK = ['running', 'queued', 'blocked', 'idle', 'error', 'stopped'];
+const U_ACTIVE = ['running', 'queued', 'blocked', 'idle', 'stopped'];
+const uRank = row => (U_RANK.indexOf(row.state) + 1) || 99;
+
+function convertRows() {
+  /* A file that has just been written is still in the queue and already in the
+     history; it is shown once, from the queue, borrowing the record's timestamp
+     so the Written column is filled the moment the row turns green. */
+  const writtenAt = new Map(historyRecords.map(record => [`${record.sourcePath}|${record.to}`, record.finishedAt]));
+  const queued = files.map(file => ({
+    kind: 'queue', id: file.id, file, name: file.name, from: file.from, to: file.to,
+    state: isBlocked(file) ? 'blocked' : file.status,
+    cat: String(toolMap[file.conv]?.cat || 'documents').toLowerCase(),
+    size: file.status === 'done' ? fmtSize(file.size) : '',
+    when: file.status === 'done' ? fmtWhen(writtenAt.get(`${file.sourcePath}|${file.to}`)) : '',
+  }));
+  const inQueue = new Set(files.map(file => `${file.sourcePath}|${file.to}`));
+  const written = historyRecords
+    .filter(record => !record.deleted && !inQueue.has(`${record.sourcePath}|${record.to}`))
+    .map(record => {
+      const state = histState(record);
+      return {
+        kind: 'history', id: record.id, record, name: record.name, from: record.from, to: record.to,
+        state: state === 'completed' ? 'done' : state === 'uncompleted' ? 'stopped' : state === 'active' ? 'running' : 'missing',
+        cat: histCategory(record), size: fmtSize(record.size), when: fmtWhen(record.finishedAt),
+      };
+    });
+  return [...queued, ...written];
 }
-function renderHistory() {
-  const rows = visibleHistory();
-  const missing = historyRecords.filter(r => histState(r) === 'missing').length;
-  const allOn = rows.length > 0 && rows.every(r => checked.has(r.id));
-  pages.history.innerHTML = `
-    <div class="q-wrap x-wrap">
-      <div class="q-head">
-        <div class="grow"><h1>History</h1><p class="page-sub">Every file this tool has written, checked against where it was saved.</p></div>
-        <button class="btn btn-secondary press" data-act="history-sort">${esc(SORTS[histSort])}<span class="chev" aria-hidden="true">${chevron(12, 'ia-spin')}</span></button>
-      </div>
-      <div class="chips">
-        ${HIST_FILTERS.map(f => `<button class="chip press ${histFilter === f.id ? 'active' : ''}" data-act="history-filter" data-filter="${f.id}">${f.name}<span class="n">${historyRecords.filter(r => !r.deleted && histMatches(r, f.id)).length}</span></button>`).join('')}
-      </div>
-      <div class="x-list">
-        <div class="x-head">
-          <button class="check press ${allOn ? 'on' : ''}" data-act="check-all" aria-label="Select all">${allOn ? tickIcon(10) : ''}</button>
-          <span class="x-h-tile"></span>
-          <span class="x-h-name">File</span><span class="x-h-route">Conversion</span>
-          <span class="x-h-size">Size</span><span class="x-h-when">Written</span>
+function uMatches(row, id) {
+  if (id === 'all') return true;
+  if (id === 'active') return U_ACTIVE.includes(row.state);
+  if (id === 'completed') return row.state === 'done';
+  if (id === 'stopped') return row.state === 'stopped' || row.state === 'error';
+  if (id === 'missing') return row.state === 'missing';
+  return row.cat === id;
+}
+function visibleRows() {
+  const all = convertRows();
+  const order = all.map(row => row.id);
+  return all.filter(row => uMatches(row, histFilter)).sort((a, b) => {
+    const rank = uRank(a) - uRank(b);
+    if (rank !== 0) return rank;
+    if (histSort === 'name') return String(a.name).localeCompare(String(b.name));
+    if (histSort === 'largest') return Number(b.record?.size || b.file?.size || 0) - Number(a.record?.size || a.file?.size || 0);
+    if (histSort === 'oldest') return order.indexOf(b.id) - order.indexOf(a.id);
+    return order.indexOf(a.id) - order.indexOf(b.id);
+  });
+}
+/* The selection helpers and the inspector still speak in history records. */
+function visibleHistory() { return visibleRows().filter(row => row.kind === 'history').map(row => row.record); }
+
+const U_STATE = {
+  idle:    () => ({label:'ready', tone:''}),
+  queued:  () => ({label:'waiting', tone:'quiet', bar:true}),
+  running: row => ({label: statusText(row.file), tone:'run', bar:true, shimmer: indeterminate(row.file)}),
+  done:    () => ({label:'on disk', tone:'ok'}),
+  stopped: () => ({label:'stopped', tone:'warn', bar:true}),
+  missing: () => ({label:'missing', tone:'quiet'}),
+  blocked: row => ({label: statusText(row.file), tone:'warn'}),
+  error:   row => ({label: row.file ? statusText(row.file) : 'stopped', tone:'bad'}),
+};
+const blockingHelper = () => {
+  const stuck = files.find(isBlocked);
+  return stuck ? ((stuck.errorTitle || '').replace(/ isn.t installed.*/i, '').trim() || 'a helper') : 'a helper';
+};
+
+function renderConvert() {
+  const rows = visibleRows(), all = convertRows();
+  const ready = files.filter(f => f.status === 'idle' && !isBlocked(f)).length;
+  const blocked = files.filter(isBlocked).length;
+  const busy = files.filter(f => f.status === 'queued' || f.status === 'running').length;
+  const done = files.filter(f => f.status === 'done').length;
+  const written = all.filter(row => row.state === 'done').length;
+  const shown = rows.filter(row => checked.has(row.id));
+  const allOn = rows.length > 0 && shown.length === rows.length;
+  const someOn = shown.length > 0 && !allOn;
+  const summary = busy
+    ? `Converting ${done} of ${done + busy} · ${blocked} waiting on ${blockingHelper()}`
+    : `${ready} ready · ${blocked} waiting on ${blockingHelper()} · ${written} written`;
+  const goLabel = ready > 1 ? `Convert ${ready}` : 'Convert';
+  /* the last live row carries the rule that divides work from written output */
+  const lastActive = rows.reduce((last, row, i) => U_ACTIVE.includes(row.state) ? i : last, -1);
+
+  pages.convert.innerHTML = `
+    <div class="u-wrap">
+      <div class="u-head">
+        <div class="u-controls">
+          ${destinationHtml()}
+          <button class="u-sort press" data-act="history-sort">${esc(SORTS[histSort])}<span class="chev" aria-hidden="true">${chevron(12, 'ia-spin')}</span></button>
+          <button class="u-add press" data-act="add">Add files<span class="k" data-shortcut="open">${shortcutLabel('open')}</span></button>
         </div>
-        ${rows.length ? rows.map(historyRow).join('') : '<div class="page-empty">Nothing has been converted yet.</div>'}
+        <div class="u-chips">
+          ${U_FILTERS.map(f => `<button class="u-chip press" data-act="history-filter" data-filter="${f.id}" data-on="${histFilter === f.id}">${f.name}<span class="n">${all.filter(row => uMatches(row, f.id)).length}</span></button>`).join('')}
+        </div>
       </div>
-      <div class="x-foot">
-        <span class="summary">${historyRecords.length} files written${missing ? ` · ${missing} no longer at their saved path` : ''}</span>
+      <div class="u-list" id="dropZone">
+        <div class="u-headrow">
+          <button class="check press ${allOn ? 'on' : ''}" data-act="check-all" aria-label="Select all" role="checkbox" aria-checked="${allOn}">${allOn ? tickIcon(10) : someOn ? '<span style="font-size:9px">–</span>' : ''}</button>
+          <span class="u-h-tile"></span>
+          <span style="flex:1;min-width:0">File</span>
+          <span class="u-h-conv">Conversion</span><span class="u-h-status">Status</span>
+          <span class="u-h-size">Size</span><span class="u-h-when">Written</span>
+        </div>
+        <div class="u-scroll">
+          ${pendingAdd ? skeletonHtml() : ''}
+          ${rows.map((row, i) => unifiedRow(row, i, lastActive)).join('')}
+          ${!rows.length && !pendingAdd ? '<div class="u-empty"><b>Nothing matches</b><span>Nothing in this view yet.</span></div>' : ''}
+        </div>
+      </div>
+      <div class="u-foot">
+        <span class="summary">${esc(summary)}</span>
         ${checked.size ? `<button class="btn btn-ghost btn-sm press" data-act="history-deselect">Deselect</button>
-          <button class="btn btn-primary btn-sm press" data-act="history-requeue">Convert ${checked.size} again</button>
+          <button class="btn btn-secondary btn-sm press" data-act="history-requeue">Requeue ${checked.size}</button>
           <button class="btn btn-danger btn-sm press" data-act="history-delete">Delete ${checked.size}</button>` : ''}
+        <button class="${OneToolActionState.actionButtonClass(actionStatus)}" data-act="convert" ${ready && !busy && actionStatus === 'idle' ? '' : 'disabled'}>
+          <span data-on="${actionStatus === 'idle' && !busy}">${esc(goLabel)}<span class="kbd" style="background:rgba(255,255,255,.16);color:rgba(255,255,255,.72)">⏎</span></span>
+          <span data-on="${Boolean(actionStatus === 'pending' || busy)}"><span class="spin"></span>Converting…</span>
+          <span data-on="${actionStatus === 'success'}">${tickIcon(13, 'draw')}All done</span>
+        </button>
       </div>
     </div>`;
+  wireDrop($('dropZone'));
 }
-function historyRow(r) {
-  const state = histState(r), meta = HIST_STATE[state] || HIST_STATE.completed;
-  const on = checked.has(r.id), selected = r.id === selectedHistory;
-  return `<div class="x-row row" role="button" tabindex="0" data-act="select-history" data-context="history-file" data-multi-selected="${on}" data-id="${esc(r.id)}" ${selected ? 'data-selected="true"' : ''} ${state === 'missing' ? 'data-missing="true"' : ''}>
-    <button class="check press ${on ? 'on' : ''}" data-act="check-history" data-id="${esc(r.id)}" role="checkbox" aria-checked="${on}">${on ? tickIcon(10) : ''}</button>
-    <span class="x-tile">${folderIcon(r.outputPath, 'history')}</span>
-    <span class="x-name"><span class="t">${esc(r.name || r.outputPath || 'Untitled output')}</span><span class="badge ${meta.cls}">${meta.label}</span></span>
-    <span class="x-route">${esc(r.from || '')} → ${esc(r.to || '')}</span>
-    <span class="x-size">${esc(fmtSize(r.size) || '—')}</span>
-    <span class="x-when">${esc(fmtWhen(r.finishedAt))}</span>
+
+function unifiedRow(row, index, lastActive) {
+  const meta = (U_STATE[row.state] || U_STATE.idle)(row);
+  const file = row.file, open = Boolean(file && file.id === pickerFor);
+  const on = checked.has(row.id);
+  const selected = row.kind === 'queue'
+    ? (selectedQueueIds.has(row.id) || row.id === selectedId)
+    : row.id === selectedHistory;
+  const dim = row.kind === 'queue' && selectedQueueIds.size > 0 && !selectedQueueIds.has(row.id) && !open;
+  const isNew = freshRows.has(row.id);
+  const delay = isNew ? ` style="animation-delay:${Math.min(index, 7) * 50}ms"` : '';
+  const bar = meta.bar
+    ? `<span class="u-track"><span class="u-fill" data-tone="${row.state === 'stopped' ? 'warn' : 'run'}" style="width:${file ? pct(file) : 0}%"></span></span>`
+    : '';
+  const tick = freshDone.has(row.id) ? `<span class="u-done">${tickIcon(8, 'draw')}</span>` : '';
+  const thumb = file
+    ? fileThumb(file, 'u-tile')
+    : fileThumb({sourceExt: `.${String(row.to || '').toLowerCase()}`, kind: 'doc'}, 'u-tile');
+  const route = file
+    ? `<button class="u-pill press" data-act="toggle-picker" data-id="${esc(file.id)}" data-open="${open}" data-blocked="${row.state === 'blocked'}" aria-expanded="${open}">${esc(row.from)} → ${esc(row.to || 'Choose')}<span class="chev" aria-hidden="true">${open ? '▴' : '▾'}</span></button>${routePopover(file, open)}`
+    : `<span class="u-pill">${esc(row.from || '')} → ${esc(row.to || '')}</span>`;
+  /* Queued work and written output answer to different handlers and different
+     context menus, so each row declares which it is. */
+  const hooks = row.kind === 'queue'
+    ? 'data-act="select-row" data-context="queue-file"'
+    : 'data-act="select-history" data-context="history-file"';
+  return `<div class="u-row row ${isNew ? 'is-new' : ''}" ${hooks} data-id="${esc(row.id)}" data-multi-selected="${on}"
+    data-selected="${selected}" data-live="${row.state === 'running'}" data-dim="${dim}" data-open="${open}"
+    data-missing="${row.state === 'missing'}" data-rule="${index === lastActive + 1 && lastActive >= 0}" role="button" tabindex="0"${delay}>
+    <button class="check press ${on ? 'on' : ''}" data-act="check-history" data-id="${esc(row.id)}" role="checkbox" aria-checked="${on}">${on ? tickIcon(10) : ''}</button>
+    ${thumb}
+    <span class="u-name" title="${esc(row.name)}">${esc(row.name)}</span>
+    <span class="u-conv">${route}</span>
+    <span class="u-status">${bar}${tick}<span class="u-state ${meta.shimmer ? 'shimmer' : ''}" data-tone="${meta.tone}">${esc(meta.label)}</span></span>
+    <span class="u-size">${esc(row.size || '—')}</span>
+    <span class="u-when">${esc(row.when || '')}</span>
   </div>`;
 }
 
 /* ---------- inspector ---------- */
 function renderPanel() {
-  if (page === 'queue') return selectedFile() ? panelFile() : panelBatch();
   if (page === 'helpers') return panelHelper();
-  return panelHistory();
+  if (selectedHistory) return panelHistory();
+  return selectedFile() ? panelFile() : panelBatch();
 }
 function panelFile() {
   const f = selectedFile(), tool = selectedTool(f), options = tool?.options || [];
@@ -1595,6 +1702,25 @@ function outputExt(f) {
   const name = outputName(f.out) || '';
   const dot = name.lastIndexOf('.');
   return dot > 0 ? name.slice(dot) : '';
+}
+function historyRenameFieldHtml(r, state) {
+  const name = String(r.name || '');
+  const dot = name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : '';
+  const locked = state === 'missing';
+  return `<div class="divider inspector-rename">
+    <div class="field">
+      <label for="renameField">File name</label>
+      <div class="rename-row">
+        <input id="renameField" data-act="rename-history-file" data-id="${esc(r.id)}" value="${esc(stem)}"
+          spellcheck="false" autocomplete="off" ${locked ? 'disabled' : ''}
+          aria-describedby="renameHint">
+        <span class="rename-ext" aria-hidden="true">${esc(ext)}</span>
+      </div>
+      <p class="rename-hint" id="renameHint">${locked ? 'The file is no longer where it was saved.' : 'Enter to save, Escape to undo. This renames the file on disk.'}</p>
+    </div>
+  </div>`;
 }
 function renameFieldHtml(f) {
   const locked = f.status === 'queued' || f.status === 'running';
@@ -1679,6 +1805,7 @@ function panelHistory() {
     <div class="i-file history-inspector">${folderIcon(r.outputPath, 'history')}<div style="min-width:0"><b style="display:block;font-size:var(--text-base);font-weight:var(--weight-medium);line-height:var(--leading-snug);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name || 'Output file')}</b><span class="badge ${meta.cls}" style="margin-top:var(--space-2)">${meta.label}</span></div></div>
     <div class="i-body history-inspector">
       <div class="stack"><div class="history-stat"><span class="k">Output size</span><span class="v">${esc(fmtSize(r.size) || '—')}</span></div><div class="history-stat"><span class="k">Conversion</span><span class="v">${esc(r.conv || 'Recorded run')}</span></div></div>
+      ${historyRenameFieldHtml(r, state)}
       <div class="divider"><span class="eyebrow" style="margin-bottom:var(--space-2)">Source file</span><div class="history-path">${esc(r.sourcePath || r.sourceName || 'Source path unavailable')}</div></div>
       <div class="divider"><span class="eyebrow" style="margin-bottom:var(--space-2)">Saved output</span><div class="history-path">${esc(r.outputPath || 'Output path unavailable')}</div></div>
       ${settings.length ? `<div class="divider"><span class="eyebrow" style="margin-bottom:var(--space-2)">Settings used</span><div class="stack">${settings.map(([k, v]) => `<div class="kv"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join('')}</div></div>` : ''}
@@ -1758,7 +1885,7 @@ function paletteItems() {
   const actions = [
     {id:'add', label:'Add files', detail:'Open the file picker'},
     {id:'helpers', label:'Open Helpers', detail:'See missing dependencies'},
-    {id:'history', label:'Open History', detail:'Browse output files'},
+    {id:'history', label:'Show converted files', detail:'Jump to the history below the queue'},
   ].filter(a => !q || `${a.label} ${a.detail}`.toLowerCase().includes(q));
   return {conversions, actions};
 }
@@ -1869,9 +1996,9 @@ async function historyAction(route, body, message) {
 }
 function setPage(next) {
   page = next; pickerFor = null; sheetFor = null; paletteOpen = false;
-  if (next !== 'history') selectedHistory = null;
+  if (next !== 'convert') selectedHistory = null;
   if (next === 'helpers' && !selectedHelper) selectedHelper = helperNames()[0] || null;
-  if (next === 'history') loadHistory();
+  if (next === 'convert') loadHistory();
   render(true);
 }
 
@@ -1910,6 +2037,7 @@ function contextItems(target) {
   ];
   if (target.type === 'history-file') return [
     contextItem('Select output', 'select-history', ICON.select),
+    contextItem('Rename file…', 'rename-history', ICON.rename, {disabled: target.state === 'missing'}),
     contextItem('Show input in Explorer', 'reveal-history-input', ICON.reveal, {disabled: !target.sourcePath}),
     contextItem('Show output in Explorer', 'reveal-output', ICON.reveal, {disabled: target.state === 'missing'}),
     contextItem('Copy output path', 'copy-output', ICON.copy, {disabled: !target.outputPath}),
@@ -1945,6 +2073,10 @@ function renderContextMenu() {
 }
 function openContextMenu(event, row) {
   closeFolderMenu(false);
+  /* cancel a fade still running from the last menu, or it will hide this one */
+  if (contextMenuTimer) { clearTimeout(contextMenuTimer); contextMenuTimer = null; }
+  contextMenu.classList.remove('is-closing');
+  contextMenu.setAttribute('aria-hidden', 'false');
   if (row.dataset.context === 'queue-file') {
     if (!selectedQueueIds.has(row.dataset.id)) {
       selectedQueueIds = new Set([row.dataset.id]);
@@ -1980,31 +2112,34 @@ function closeContextMenu(animate=true) {
   if (!contextTarget) return;
   if (contextMenuTimer) clearTimeout(contextMenuTimer);
   contextMenu.classList.remove('is-open');
+  /* The menu is closed the moment it is asked to close; only the fade is left
+     on a timer. Holding the target until the timer fired meant a right-click
+     during the fade reopened the menu and was then torn down by the old timer. */
+  contextTarget = null;
   if (!animate) {
     contextMenu.classList.remove('is-closing');
     contextMenu.setAttribute('aria-hidden', 'true');
-    contextTarget = null;
     return;
   }
   contextMenu.classList.add('is-closing');
   contextMenuTimer = setTimeout(() => {
     contextMenu.classList.remove('is-closing');
     contextMenu.setAttribute('aria-hidden', 'true');
-    contextTarget = null;
     contextMenuTimer = null;
   }, dropdownCloseMs());
 }
 async function handleContextAction(action, target) {
   if (!target) return;
   if (action === 'select-queue' || action === 'route-queue') {
-    selectedId = target.id; inspectorOpen = true; pickerFor = action === 'route-queue' ? target.id : null; return render(true);
+    selectedId = target.id; selectedHistory = null; inspectorOpen = true; pickerFor = action === 'route-queue' ? target.id : null; return render(true);
   }
   if (action === 'rename-queue') return startRename(target.id);
   if (action === 'reveal-source') return api('/api/reveal', {path: target.sourcePath}, false);
   if (action === 'reveal-queue-output') return api('/api/reveal', {path: target.out}, false);
   if (action === 'copy-source') return copyText(target.sourcePath, 'Source path copied');
   if (action === 'remove-queue') { selectedQueueIds = new Set(); queueAnchorId = null; return api('/api/remove-many', {ids: target.ids}); }
-  if (action === 'select-history') { selectedHistory = target.id; inspectorOpen = true; return render(true); }
+  if (action === 'rename-history') return startHistoryRename(target.id);
+  if (action === 'select-history') { selectedHistory = target.id; selectedId = null; selectedQueueIds = new Set(); queueAnchorId = null; inspectorOpen = true; return render(true); }
   if (action === 'reveal-history-input') return api('/api/reveal', {path: target.sourcePath}, false);
   if (action === 'reveal-output') return api('/api/history/reveal', {path: target.outputPath}, false);
   if (action === 'copy-output') return copyText(target.outputPath, 'Output path copied');
@@ -2021,6 +2156,12 @@ async function copyText(value, message) {
 }
 function revealTargetForRow(row) {
   const isHistory = row?.dataset.context === 'history-file';
+  if (!isHistory) {
+    /* the output only exists once the file has been written */
+    const file = files.find(item => item.id === row?.dataset.id);
+    if (file?.status === 'done' && file.out) return {path: file.out, history: true};
+    return {path: '', history: false};
+  }
   const record = isHistory
     ? historyRecords.find(item => item.id === row?.dataset.id)
     : files.find(item => item.id === row?.dataset.id);
@@ -2063,13 +2204,17 @@ document.addEventListener('click', async event => {
   if (!el) return;
   const act = el.dataset.act;
   if ((act === 'close-sheet' || act === 'close-palette') && event.target.closest('[data-stop]')) return;
-  // A queued file has not been written yet, so double-click renames what it will
-  // become. A history record is a file on disk, so double-click still reveals it.
-  if (event.detail === 2 && act === 'select-row') {
+  // Double-click opens the output file whenever the row has written one. A row
+  // that has not been converted yet has nothing to open, so it falls back to
+  // renaming what it is going to write. Renaming itself lives in the context
+  // menu, which every row has.
+  if (event.detail === 2 && (act === 'select-row' || act === 'select-history')) {
     event.preventDefault();
+    const target = revealTargetForRow(el);
+    if (target.path) return revealFile(target.path, target.history).catch(error => showToast(error.message, false));
     const file = files.find(i => i.id === el.dataset.id);
     if (file && file.status !== 'queued' && file.status !== 'running') return startRename(file.id);
-    return revealRow(el);
+    return;
   }
   if (event.detail === 2 && act === 'select-history') {
     event.preventDefault();
@@ -2120,14 +2265,18 @@ document.addEventListener('click', async event => {
     case 'history-filter': histFilter = el.dataset.filter; return render(true);
     case 'history-sort': { const order = Object.keys(SORTS); histSort = order[(order.indexOf(histSort) + 1) % order.length]; return render(true); }
     case 'select-history': return applyHistorySelection(event, el.dataset.id);
-    case 'check-history': { event.stopPropagation(); const id = el.dataset.id;
-      return applyHistorySelection(event, id, true); }
-    case 'check-all': { event.stopPropagation(); const rows = visibleHistory();
+    case 'check-history': { event.stopPropagation(); return applyRowCheck(event, el.dataset.id); }
+    case 'check-all': { event.stopPropagation(); const rows = visibleRows();
       const allOn = rows.length > 0 && rows.every(r => checked.has(r.id));
       rows.forEach(r => allOn ? checked.delete(r.id) : checked.add(r.id)); return render(true); }
     case 'history-deselect': checked.clear(); historyAnchorId = null; return render(true);
-    case 'history-requeue': { const ids = [...checked]; await historyAction('/api/history/requeue', {ids}, `${ids.length} queued again`); checked.clear(); historyAnchorId = null; return render(true); }
-    case 'history-delete': { const ids = [...checked]; await historyAction('/api/history/delete', {ids}, `${ids.length} records deleted`); checked.clear(); historyAnchorId = null; return render(true); }
+    case 'history-requeue': { const ids = checkedOfKind('history');
+      if (ids.length) await historyAction('/api/history/requeue', {ids}, `${ids.length} queued again`);
+      checked.clear(); historyAnchorId = null; return render(true); }
+    case 'history-delete': { const queued = checkedOfKind('queue'), written = checkedOfKind('history');
+      if (queued.length) await api('/api/remove-many', {ids: queued});
+      if (written.length) await historyAction('/api/history/delete', {ids: written}, `${written.length} removed from history`);
+      checked.clear(); historyAnchorId = null; selectedQueueIds = new Set(); queueAnchorId = null; return render(true); }
     case 'requeue-one': return historyAction('/api/history/requeue', {ids: [el.dataset.id]}, 'Queued again');
     case 'reveal-history': try { await api('/api/history/reveal', {path: el.dataset.path}); } catch (e) { showToast(e.message, false); } return;
     case 'close-sheet': sheetFor = null; return render(true);
@@ -2137,17 +2286,30 @@ document.addEventListener('click', async event => {
       if (f && t) { await chooseRoute(f, t.id); sheetFor = null; render(true); } return; }
     case 'close-palette': paletteOpen = false; return render(true);
     case 'palette-conversion': { const t = toolMap[el.dataset.id]; if (!t) return;
-      page = 'queue'; const f = selectedFile();
+      page = 'convert'; const f = selectedFile();
       if (f && f.from === t.from) await chooseRoute(f, t.id);
       else showToast(`${t.label} is ${routeStateLabel(t).toLowerCase()}`, t.state === 'ready');
       paletteOpen = false; return render(true); }
     case 'palette-action': { const action = el.dataset.action; paletteOpen = false;
       if (action === 'add') { try { await api('/api/pick-files'); } catch (e) { showToast(e.message, false); } }
+      else if (action === 'history') { setPage('convert'); historySlot.scrollIntoView({behavior:'smooth', block:'start'}); }
       else setPage(action);
       return render(true); }
   }
 });
 
+async function commitHistoryRename(input) {
+  if (!input || input.disabled) return;
+  const record = historyRecords.find(i => i.id === input.dataset.id);
+  if (!record) return;
+  const name = String(record.name || '');
+  const dot = name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const next = input.value.trim();
+  if (!next || next === stem) { input.value = stem; return; }
+  try { await api('/api/history/rename', {id: record.id, name: next}, false); await loadHistory(); showToast('Renamed'); }
+  catch (error) { showToast(error.message, false); input.value = stem; }
+}
 async function commitRename(input) {
   if (!input || input.disabled) return;
   const file = files.find(i => i.id === input.dataset.id);
@@ -2157,6 +2319,14 @@ async function commitRename(input) {
   try { await api('/api/rename', {id: file.id, name: next}); showToast('Renamed'); }
   catch (error) { showToast(error.message, false); input.value = outputStem(file); }
 }
+/* Renaming a written file is the same gesture as renaming a queued one: the
+   inspector opens on that row with the name selected and ready to type. */
+function startHistoryRename(id) {
+  selectedHistory = id; selectedId = null; selectedQueueIds = new Set(); queueAnchorId = null;
+  selectedHelper = null; inspectorOpen = true; pickerFor = null;
+  render(true);
+  setTimeout(() => { const input = $('renameField'); if (input && !input.disabled) { input.focus(); input.select(); } }, 0);
+}
 function startRename(id) {
   selectedId = id; selectedHelper = null; inspectorOpen = true; pickerFor = null;
   render(true);
@@ -2165,6 +2335,7 @@ function startRename(id) {
 }
 document.addEventListener('focusout', event => {
   if (event.target?.dataset?.act === 'rename-file') commitRename(event.target);
+  if (event.target?.dataset?.act === 'rename-history-file') commitHistoryRename(event.target);
 });
 
 function updateFieldFromControl(target) {
@@ -2197,6 +2368,17 @@ document.addEventListener('keydown', event => {
       return;
     }
   }
+  if (event.target?.dataset?.act === 'rename-history-file') {
+    if (key === 'enter') { event.preventDefault(); commitHistoryRename(event.target); return; }
+    if (key === 'escape') {
+      event.preventDefault(); event.stopPropagation();
+      const record = historyRecords.find(i => i.id === event.target.dataset.id);
+      const name = String(record?.name || ''), dot = name.lastIndexOf('.');
+      event.target.value = dot > 0 ? name.slice(0, dot) : name;
+      event.target.blur();
+      return;
+    }
+  }
   if ((event.metaKey || event.ctrlKey) && key === 'k') { event.preventDefault(); paletteOpen ? (paletteOpen = false, render(true)) : openPalette(); return; }
   if (event.altKey && key === 'i') { event.preventDefault(); inspectorOpen = !inspectorOpen; return render(true); }
   if (key === 'escape') { closeContextMenu(); closeFolderMenu(); paletteOpen = false; pickerFor = null; sheetFor = null; return render(true); }
@@ -2207,7 +2389,7 @@ document.addEventListener('keydown', event => {
     else if (items[commandIndex]) { items[commandIndex].click(); event.preventDefault(); }
     return;
   }
-  if (key === 'enter' && !paletteOpen && !sheetFor && document.activeElement?.tagName !== 'INPUT' && page === 'queue') { event.preventDefault(); convert(); }
+  if (key === 'enter' && !paletteOpen && !sheetFor && document.activeElement?.tagName !== 'INPUT' && page === 'convert') { event.preventDefault(); convert(); }
 });
 
 document.querySelectorAll('.navbtn').forEach(b => b.onclick = () => setPage(b.dataset.page));
@@ -2232,7 +2414,7 @@ if (shell?.platform) {
 Promise.all([
   fetch('/api/tools').then(r => r.json()),
   fetch('/api/state').then(r => r.json()),
-]).then(([toolData, state]) => { setTools(toolData.tools || []); absorb(state); })
+]).then(([toolData, state]) => { setTools(toolData.tools || []); absorb(state); loadHistory(); })
   .catch(error => showToast(error.message, false));
 
 setInterval(async () => {

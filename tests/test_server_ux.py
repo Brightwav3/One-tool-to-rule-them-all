@@ -162,6 +162,50 @@ class ServerUxTests(unittest.TestCase):
             output.unlink()
             self.assertEqual(reloaded.records(refresh=True)[0]["presence"], "missing")
 
+    def test_history_rename_moves_the_file_and_keeps_the_record_pointing_at_it(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            output = root / "book.epub"
+            output.write_bytes(b"epub")
+            store = server.HistoryStore(root / "history.json")
+            store.append({"id": "h1", "name": output.name, "outputPath": str(output), "state": "completed"})
+
+            store.rename("h1", "Ultimates v01")
+
+            renamed = root / "Ultimates v01.epub"
+            self.assertTrue(renamed.exists())
+            self.assertFalse(output.exists())
+            record = store.records()[0]
+            self.assertEqual(record["name"], "Ultimates v01.epub")
+            self.assertEqual(record["outputPath"], str(renamed))
+            # the extension belongs to the conversion, so typing it changes nothing
+            store.rename("h1", "Ultimates v01.epub")
+            self.assertEqual(store.records()[0]["name"], "Ultimates v01.epub")
+
+    def test_history_rename_refuses_bad_names_a_collision_and_a_missing_file(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            output, neighbour = root / "book.epub", root / "taken.epub"
+            output.write_bytes(b"epub")
+            neighbour.write_bytes(b"epub")
+            store = server.HistoryStore(root / "history.json")
+            store.append({"id": "h1", "name": output.name, "outputPath": str(output), "state": "completed"})
+
+            for bad in ("", "   ", "sub/book", "..", "con", "b" * 200, 'a"b'):
+                with self.assertRaises(ValueError):
+                    store.rename("h1", bad)
+            with self.assertRaises(ValueError):
+                store.rename("h1", "taken")
+            with self.assertRaises(ValueError):
+                store.rename("nope", "book")
+            # nothing was renamed on the way through
+            self.assertTrue(output.exists())
+            self.assertEqual(store.records()[0]["outputPath"], str(output))
+
+            output.unlink()
+            with self.assertRaises(ValueError):
+                store.rename("h1", "anything")
+
     def test_history_delete_removes_records_without_touching_outputs(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

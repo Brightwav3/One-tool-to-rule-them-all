@@ -37,6 +37,34 @@ DEFAULT_HISTORY = Path(os.environ.get("ONETOOL_HISTORY_PATH", str(Path.home() / 
 DEFAULT_SETTINGS = Path(os.environ.get("ONETOOL_SETTINGS_PATH", str(Path.home() / ".one-tool-settings.json")))
 
 
+def clean_output_stem(name: str, suffix: str) -> str:
+    """Validate a user-typed output name and return it without its extension.
+
+    The extension belongs to the converter, not the user: letting it be edited
+    would let a route silently write the wrong kind of file. A typed extension
+    that already matches is accepted and trimmed, so pasting a full filename
+    does the obvious thing.
+    """
+    cleaned = str(name).strip().rstrip(". ")
+    if not cleaned:
+        raise ValueError("the name cannot be empty")
+    if cleaned != Path(cleaned).name or cleaned in {".", ".."}:
+        raise ValueError("the name cannot contain a folder path")
+    if set(cleaned) & set('<>:"/\\|?*') or any(ord(character) < 32 for character in cleaned):
+        raise ValueError('a name cannot contain any of < > : " / \\ | ? *')
+
+    stem = cleaned
+    if suffix and stem.casefold().endswith(suffix.casefold()):
+        stem = stem[: -len(suffix)].rstrip(". ") or stem
+    if not stem:
+        raise ValueError("the name cannot be empty")
+    if stem.split(".")[0].upper() in WINDOWS_RESERVED_NAMES:
+        raise ValueError(f"{stem} is a name Windows reserves for devices")
+    if len(stem) > 180:
+        raise ValueError("the name is too long")
+    return stem
+
+
 class HistoryStore:
     """Small atomic JSON store for individual conversion outputs."""
 
@@ -75,6 +103,32 @@ class HistoryStore:
                 output = Path(str(record.get("outputPath", ""))).expanduser()
                 record["presence"] = "present" if output.is_file() else "missing"
         return result
+
+    def rename(self, record_id: str, name: str) -> dict:
+        """Rename a written file on disk and keep the record pointing at it.
+
+        The folder and the extension stay put, exactly as they do for a queued
+        job. A file that has moved or gone is not renamed blindly — the record
+        is the only thing that would change, and it would then be wrong.
+        """
+        with self.lock:
+            record = next((r for r in self._records if str(r.get("id")) == str(record_id)), None)
+            if record is None:
+                raise ValueError("that file is no longer in the history")
+            current = Path(str(record.get("outputPath", ""))).expanduser()
+            if not current.is_file():
+                raise ValueError("that file is no longer where it was saved")
+            stem = clean_output_stem(name, current.suffix)
+            target = current.with_name(f"{stem}{current.suffix}")
+            if target == current:
+                return dict(record)
+            if target.exists():
+                raise ValueError(f"{target.name} already exists in that folder")
+            current.rename(target)
+            record["outputPath"] = str(target)
+            record["name"] = target.name
+            self._save()
+            return dict(record)
 
     def delete(self, ids: list[str]) -> None:
         wanted = {str(item) for item in ids}
@@ -232,32 +286,9 @@ class Job:
         self.set_converter(converter)
 
     def set_output_name(self, name: str) -> None:
-        """Rename what this job will write, keeping the folder and extension.
-
-        The extension belongs to the converter, not the user: letting it be
-        edited here would let a route silently write the wrong kind of file.
-        A typed extension that already matches is accepted and trimmed, so
-        pasting a full filename does the obvious thing.
-        """
+        """Rename what this job will write, keeping the folder and extension."""
         suffix = self.converter.ext if self.converter else self.source.suffix
-        cleaned = str(name).strip().rstrip(". ")
-        if not cleaned:
-            raise ValueError("the name cannot be empty")
-        if cleaned != Path(cleaned).name or cleaned in {".", ".."}:
-            raise ValueError("the name cannot contain a folder path")
-        if set(cleaned) & set('<>:"/\\|?*') or any(ord(character) < 32 for character in cleaned):
-            raise ValueError('a name cannot contain any of < > : " / \\ | ? *')
-
-        stem = cleaned
-        if suffix and stem.casefold().endswith(suffix.casefold()):
-            stem = stem[: -len(suffix)].rstrip(". ") or stem
-        if not stem:
-            raise ValueError("the name cannot be empty")
-        if stem.split(".")[0].upper() in WINDOWS_RESERVED_NAMES:
-            raise ValueError(f"{stem} is a name Windows reserves for devices")
-        if len(stem) > 180:
-            raise ValueError("the name is too long")
-
+        stem = clean_output_stem(name, suffix)
         self.base = stem
         self.out = str(Path(self.out).parent / f"{stem}{suffix}")
 
@@ -437,6 +468,9 @@ class Converter:
 
     def delete_history(self, ids: list[str]) -> None:
         self.history_store.delete(ids)
+
+    def rename_history(self, record_id: str, name: str) -> dict:
+        return self.history_store.rename(record_id, name)
 
     def requeue_history(self, ids: list[str]) -> list[Job]:
         wanted = {str(item) for item in ids}
@@ -730,6 +764,8 @@ class Handler(BaseHTTPRequestHandler):
             elif route == "/api/history/requeue":
                 ids = body.get("ids") if isinstance(body.get("ids"), list) else []
                 QUEUE.requeue_history(ids)
+            elif route == "/api/history/rename":
+                QUEUE.rename_history(str(body.get("id")), str(body.get("name", "")))
             elif route == "/api/history/reveal":
                 target = Path(str(body.get("path", ""))).expanduser()
                 if target.exists():

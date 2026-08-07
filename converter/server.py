@@ -800,6 +800,16 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(store.snapshot(session.id))
             elif route == "/api/editor/inspect":
                 self.send_json(store.snapshot(str(body.get("sessionId") or "")))
+            elif route == "/api/editor/operation":
+                raw = body.get("operations")
+                self.send_json(store.apply(
+                    str(body.get("sessionId") or ""),
+                    raw if isinstance(raw, list) else [],
+                    dry_run=bool(body.get("dryRun"))))
+            elif route == "/api/editor/undo":
+                self.send_json(store.undo(str(body.get("sessionId") or "")))
+            elif route == "/api/editor/redo":
+                self.send_json(store.redo(str(body.get("sessionId") or "")))
             elif route == "/api/editor/close":
                 store.close(str(body.get("sessionId") or ""))
                 self.send_json({"closed": True})

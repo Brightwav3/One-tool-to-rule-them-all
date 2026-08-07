@@ -50,6 +50,10 @@ class ServerTestCase(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp())
         self.src = self.tmp / "in.pdf"
         shutil.copy(FIXTURES / "one-page.pdf", self.src)
+        # A two-page source, for the operations that a one-page document
+        # legitimately refuses (deleting the only page, for one).
+        self.multi = self.tmp / "two-pages.pdf"
+        shutil.copy(FIXTURES / "inherited-pages.pdf", self.multi)
         self.txt = self.tmp / "notes.txt"
         self.txt.write_text("not a pdf at all", encoding="utf-8")
 
@@ -163,6 +167,39 @@ class EditorRouteTests(ServerTestCase):
         engine = self.get("/api/tools")["engine"]
         self.assertEqual(engine["distribution"], "freedf")
         self.assertEqual(engine["package"], "pdfengine")
+
+    def test_rotate_bumps_the_revision(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        body = self.post("/api/editor/operation", {"sessionId": session,
+            "operations": [{"kind": "rotate_pages", "pageIds": [page], "degrees": 90}]})
+        self.assertEqual(body["revision"], 1)
+        self.assertTrue(body["canUndo"])
+
+    def test_undo_then_redo_round_trips(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        self.post("/api/editor/operation", {"sessionId": session,
+            "operations": [{"kind": "rotate_pages", "pageIds": [page], "degrees": 90}]})
+        self.assertEqual(self.post("/api/editor/undo", {"sessionId": session})
+                         ["document"]["pages"][0]["rotation"] % 360, 0)
+        self.assertEqual(self.post("/api/editor/redo", {"sessionId": session})
+                         ["document"]["pages"][0]["rotation"] % 360, 90)
+
+    def test_an_unknown_kind_is_400_and_does_not_bump_the_revision(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session = opened["session"]["id"]
+        status, _ = self.post_raw("/api/editor/operation", {"sessionId": session,
+            "operations": [{"kind": "redact_pages", "pageIds": ["x"]}]})
+        self.assertEqual(status, 400)
+        self.assertEqual(self.post("/api/editor/inspect", {"sessionId": session})["revision"], 0)
+
+    def test_a_dry_run_does_not_bump_the_revision(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.multi)]})
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        self.post("/api/editor/operation", {"sessionId": session, "dryRun": True,
+            "operations": [{"kind": "delete_pages", "pageIds": [page]}]})
+        self.assertEqual(self.post("/api/editor/inspect", {"sessionId": session})["revision"], 0)
 
     def test_existing_routes_still_work(self):
         self.assertIn("files", self.get("/api/state"))

@@ -83,9 +83,15 @@ Two further corrections that follow from the above:
 
 ---
 
-## Decisions to validate before implementation
+## Decisions
 
-**Do not start Task 1 until D1, D2 and D3 are answered.**
+**D1, D2 and D3 were approved on 2026-08-07 as recommended.** D1 = option A,
+`RenderResult` bytes, **including** the narrow save-artifact exception. D2 =
+keep `rev`. D3 = `ONETOOL_PDFENGINE` → vendored → installed. The engine branch
+`feat/v0.2-integration` was pushed to `origin` the same day, so the vendored
+tree is no longer the only copy of that code.
+
+D4 and D5 remain open and are answered inside their tasks.
 
 ### D1 — Consume FreeDF's artifact abstraction, or take `RenderResult` bytes?
 

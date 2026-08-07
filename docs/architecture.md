@@ -86,6 +86,27 @@ converter/ui/
 
 `legacy/` is temporary. Its size is the progress metric.
 
+```text
+3544  index.html at ui-monolith-baseline
+2315  monolith.js after the inline <script> came out
+2290  formatters, icons
+2084  settings
+1975  overlays, palette, toast
+1793  convert/history list
+1643  inspector
+1403  creator
+1121  editor
+ 969  context menu, drop wiring
+```
+
+Where it stops being mechanical: everything above moved function
+declarations between files that share one global lexical environment, so
+the only failure mode was a temporal dead zone during load - which throws
+loudly. What is left in `legacy/monolith.js` is the part that can break
+quietly: listener registration order, the 92-value action switch, and the
+90 globals. Those are phase 5 proper and phase 6, and they want the
+baseline screenshots as the check rather than a click-through.
+
 ## Phases
 
 | Phase | Work | Status |
@@ -93,9 +114,9 @@ converter/ui/
 | 0 | Baseline: 17 screenshots, `ui-inventory.md`, tag `ui-monolith-baseline` | done |
 | 1 | CSS out of `index.html` → `styles/app.css` | done |
 | 2 | Inline `<script>` out → `legacy/monolith.js` | done |
-| 3 | Leaves: formatters, icons, ids, errors, api-client, toast | in progress |
-| 4 | Views: settings → overlays → history → convert → creator → editor | |
-| 5 | Action groups split out of the global handler (92 `data-act` values) | |
+| 3 | Leaves: formatters, icons | done |
+| 4 | Views: settings, overlays, palette, toast, convert list, inspector, creator, editor | done |
+| 5 | Action groups split out of the global handler (92 `data-act` values) | started |
 | 6 | 90 globals → `app/app-state.js` behind bridge getters | |
 | 7 | Controllers: separate state mutation, side effects, rendering | |
 | 8 | `legacy/monolith.js` reaches zero and is deleted | |

@@ -157,6 +157,28 @@ class Helper:
         }
 
 
+PACKAGED = "bundled with One Tool"
+
+
+@dataclass(frozen=True)
+class EngineHelper(Helper):
+    """A helper that is a bundled Python package, not a program on PATH.
+
+    `shutil.which` can say nothing useful about FreeDF, so readiness comes from
+    the adapter's own report: ready means the engine imported and speaks a
+    supported contract. `ONETOOL_PDFENGINE` is honoured because the adapter
+    honours it — see decision D3.
+    """
+
+    def locate(self) -> str | None:
+        import pdf_engine
+
+        info = pdf_engine.engine_info()
+        if info["state"] != "ready":
+            return None
+        return info["location"] or PACKAGED
+
+
 @dataclass(frozen=True)
 class Converter:
     id: str
@@ -264,8 +286,14 @@ class Registry:
 
     def recheck(self) -> None:
         """Helper lookups go through shutil.which, which caches nothing —
-        so a re-check is simply asking again. Present for intent and symmetry."""
+        so a re-check is simply asking again. Present for intent and symmetry.
+
+        The PDF engine is the exception: its adapter *is* cached, so a re-check
+        has to ask it to load again."""
         _HELPER_CACHE.clear()
+        import pdf_engine
+
+        pdf_engine.get_adapter(refresh=True)
 
 
 # Helpers shared by several converters. -------------------------------------
@@ -514,5 +542,19 @@ PDF_RENDERER = Helper(
         "win32": "winget install --id MiKTeX.MiKTeX --exact",
         "darwin": "brew install --cask mactex",
         "linux": "sudo apt install texlive-latex-base",
+    },
+)
+
+FREEDF = EngineHelper(
+    name="FreeDF PDF engine",
+    why="The Editor reads, renders and rewrites PDF files through FreeDF. It "
+        "ships with One Tool, so this is a bundled component rather than "
+        "something to install.",
+    binaries=(),
+    url="https://github.com/Brightwav3/custom-pdf-engine",
+    commands={
+        "win32": "reinstall One Tool",
+        "darwin": "reinstall One Tool",
+        "linux": "reinstall One Tool",
     },
 )

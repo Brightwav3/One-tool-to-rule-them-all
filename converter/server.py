@@ -27,6 +27,7 @@ from urllib.parse import unquote, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import formats  # noqa: E402
+import pdf_engine  # noqa: E402
 from formats import REGISTRY  # noqa: E402
 
 UI_DIR = Path(__file__).resolve().parent / "ui"
@@ -766,7 +767,13 @@ class Handler(BaseHTTPRequestHandler):
         if route in ("/", "/index.html"):
             self.serve_file(UI_DIR / "index.html")
         elif route == "/api/tools":
-            self.send_json({"tools": REGISTRY.as_list(), "counts": REGISTRY.counts()})
+            self.send_json({
+                "tools": REGISTRY.as_list(),
+                "counts": REGISTRY.counts(),
+                # The Editor is blocked rather than broken when the engine is
+                # absent, so its report travels with the tool list.
+                "engine": pdf_engine.engine_info(),
+            })
         elif route == "/api/state":
             self.send_json(self.state())
         elif route == "/api/history":
@@ -865,6 +872,7 @@ class Handler(BaseHTTPRequestHandler):
                 QUEUE.start(ids if isinstance(ids, list) else None)
             elif route == "/api/recheck":
                 REGISTRY.recheck()
+                pdf_engine.get_adapter(refresh=True)
                 QUEUE.refresh_states()
             elif route == "/api/reveal":
                 # Silence here reads as a dead button. Say what went wrong so the

@@ -136,5 +136,40 @@ class OpenTests(unittest.TestCase):
         check(self.adapter.capabilities(self.session))
 
 
+class RenderTests(unittest.TestCase):
+    def setUp(self):
+        self.adapter = engine_or_skip(self)
+        if self.adapter.capabilities()["preview"]["state"] != "ready":
+            self.skipTest("no working renderer (Poppler unavailable)")
+        self.session = self.adapter.open(str(FIXTURES / "one-page.pdf"))["sessionId"]
+        self.page = self.adapter.inspect(self.session)["document"]["pages"][0]["pageId"]
+
+    def tearDown(self):
+        self.adapter.close(self.session)
+
+    def test_render_returns_png_bytes(self):
+        out = self.adapter.render(self.session, self.page, {"width": 180})
+        self.assertTrue(out["png"].startswith(b"\x89PNG\r\n\x1a\n"))
+        self.assertEqual(out["width"], 180)
+
+    def test_second_render_hits_the_engine_cache(self):
+        self.adapter.render(self.session, self.page, {"width": 180})
+        self.assertTrue(self.adapter.render(self.session, self.page, {"width": 180})["cacheHit"])
+
+    def test_render_does_not_mint_artifacts_on_the_python_facade(self):
+        # Guards decision D1: if this ever fails, the surface changed and the
+        # artifact question must be reopened rather than worked around.
+        out = self.adapter.render(self.session, self.page, {"width": 180})
+        self.assertNotIn("artifactId", out)
+
+    def test_unknown_page_is_a_typed_error(self):
+        with self.assertRaises(pdf_engine.PdfEngineError) as caught:
+            self.adapter.render(self.session, "page_nope", {"width": 180})
+        self.assertEqual(caught.exception.code, "operation-invalid")
+
+    def test_an_absurd_width_is_rejected_before_the_engine_sees_it(self):
+        with self.assertRaises(pdf_engine.PdfEngineError):
+            self.adapter.render(self.session, self.page, {"width": 99999})
+
 if __name__ == "__main__":
     unittest.main()

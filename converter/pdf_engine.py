@@ -159,6 +159,8 @@ def _version_tuple(text):
 
 
 class FreeDFAdapter:
+    DEFAULT_THUMBNAIL_WIDTH = 180
+
     def __init__(self, module, engine_cls, api_version, source, location):
         self._module = module
         self._api_version = api_version
@@ -211,6 +213,18 @@ class FreeDFAdapter:
     def capabilities(self, session_id=None):
         session = self._engine.session(session_id) if session_id else None
         return self._engine.capabilities(session)
+
+    @_guarded
+    def render(self, session_id, page_id, options=None):
+        options = options or {}
+        width = int(options.get("width") or self.DEFAULT_THUMBNAIL_WIDTH)
+        if not 16 <= width <= 4000:
+            raise PdfEngineError("operation-invalid", f"render width out of range: {width}")
+        session = self._engine.session(session_id)
+        result = self._engine.render_page(session, page_id, width)
+        return {"pageId": result.page_id, "width": result.width,
+                "height": result.height, "png": result.image_bytes,
+                "cacheHit": result.cache_hit}
 
     @_guarded
     def close(self, session_id):

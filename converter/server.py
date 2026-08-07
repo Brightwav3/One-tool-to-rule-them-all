@@ -26,6 +26,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import editor_sessions  # noqa: E402
 import formats  # noqa: E402
 import pdf_engine  # noqa: E402
 from formats import REGISTRY  # noqa: E402
@@ -38,6 +39,36 @@ FOLDER_HISTORY_LIMIT = 12
 RECIPE_LIMIT = 40
 DEFAULT_HISTORY = Path(os.environ.get("ONETOOL_HISTORY_PATH", str(Path.home() / ".one-tool-history.json")))
 DEFAULT_SETTINGS = Path(os.environ.get("ONETOOL_SETTINGS_PATH", str(Path.home() / ".one-tool-settings.json")))
+# The editor's operation log lives beside the history and the settings, in the
+# same app-data directory Electron passes in through the environment.
+DEFAULT_EDITOR_SESSIONS = Path(os.environ.get(
+    "ONETOOL_EDITOR_SESSIONS_PATH", str(Path.home() / ".one-tool-editor-sessions.json")))
+
+# Every editor error the UI can act on, and the status it travels as. Note that
+# session-unknown and session-closed are both 409 yet stay distinct codes: one
+# means reopen the document, the other means the session is simply finished.
+EDITOR_ERROR_STATUS = {
+    "engine-missing": 503, "engine-unsupported": 503, "render-unavailable": 503,
+    "source-unreadable": 400, "operation-invalid": 400, "save-refused": 400,
+    "session-unknown": 409, "session-closed": 409, "source-changed": 409,
+    "save-conflict": 409,
+    "operation-unsupported": 422, "ocr-unavailable": 422,
+}
+
+
+class _AdapterProxy:
+    """Resolves the current adapter on every call.
+
+    The session store is built once, but /api/recheck can swap the adapter
+    underneath it — and the tests swap in the unavailable one. Holding a
+    reference would pin whichever adapter existed at start-up.
+    """
+
+    def __getattr__(self, name):
+        return getattr(pdf_engine.get_adapter(), name)
+
+
+ADAPTER = _AdapterProxy()
 
 
 def clean_output_stem(name: str, suffix: str) -> str:
@@ -417,7 +448,12 @@ class Job:
 class Converter:
     """The job queue. One worker, one job at a time, in the order they were added."""
 
-    def __init__(self, history_path: Path | None = None, settings_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        history_path: Path | None = None,
+        settings_path: Path | None = None,
+        editor_sessions_path: Path | None = None,
+    ) -> None:
         self.lock = threading.Lock()
         self.jobs: dict[str, Job] = {}
         self.order: list[str] = []
@@ -425,6 +461,8 @@ class Converter:
         self.history_path = history_path
         self.history_store = HistoryStore(history_path or DEFAULT_HISTORY)
         self.settings_store = SettingsStore(settings_path or DEFAULT_SETTINGS)
+        self.editor_store = editor_sessions.EditorSessionStore(
+            editor_sessions_path or DEFAULT_EDITOR_SESSIONS, ADAPTER)
         self.output_folder = self.settings_store.current_folder()
         self.seq = 0
         self.selected: str | None = "cbz-epub"
@@ -748,6 +786,34 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _editor_error(self, error: pdf_engine.PdfEngineError) -> None:
+        """The one error shape every editor route answers with."""
+        self.send_json({"error": error.as_dict()},
+                       status=EDITOR_ERROR_STATUS.get(error.code, 500))
+
+    def handle_editor(self, route: str, body: dict) -> None:
+        store = QUEUE.editor_store
+        try:
+            if route == "/api/editor/open":
+                raw = body.get("paths") if isinstance(body.get("paths"), list) else []
+                session = store.open([str(entry) for entry in raw])
+                self.send_json(store.snapshot(session.id))
+            elif route == "/api/editor/inspect":
+                self.send_json(store.snapshot(str(body.get("sessionId") or "")))
+            elif route == "/api/editor/close":
+                store.close(str(body.get("sessionId") or ""))
+                self.send_json({"closed": True})
+            else:
+                self.send_error(404)
+        except pdf_engine.PdfEngineError as error:
+            self._editor_error(error)
+        except ValueError as exc:
+            self._editor_error(pdf_engine.PdfEngineError("operation-invalid", str(exc)))
+        except Exception as exc:
+            traceback.print_exc()
+            self._editor_error(
+                pdf_engine.PdfEngineError("engine-error", f"{type(exc).__name__}: {exc}"))
+
     def state(self) -> dict:
         counts = REGISTRY.counts()
         return {
@@ -792,6 +858,12 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_upload()
                 return
             body = self.read_json()
+
+            if route.startswith("/api/editor/"):
+                # The editor answers with its own typed envelope, not the
+                # generic {"error": "..."} the queue routes use.
+                self.handle_editor(route, body)
+                return
 
             if route == "/api/add-path":
                 self.enqueue_source(

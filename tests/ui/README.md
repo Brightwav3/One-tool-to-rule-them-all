@@ -1,3 +1,71 @@
+# UI verification
+
+Two harnesses. `trace.js` is the one that matters from here on.
+
+---
+
+# Golden trace — the oracle for phase B
+
+Phase A had a free oracle: every commit reassembled into the previous file byte
+for byte. Controllers, typed errors and an event bus all change bytes by
+definition, so that oracle is gone.
+
+This replaces it with **behavioural identity**. A controller refactor does not
+change what the app does, only how it is wired — so record what it does and
+compare:
+
+| Recorded | Catches |
+|---|---|
+| every request, ordered, with body | a stray call, a lost call, a reordered pair |
+| every toast, with ok/error | a swallowed error, a duplicated message |
+| render passes per step | the classic event-bus bug, firing twice |
+| current page per step | navigation that silently stopped working |
+| final structure hash | markup that changed shape |
+| final computed-style hash | 35 resolved CSS properties on every element |
+
+## Run it
+
+Serve the baseline and the working tree (see the smoke section below for the
+worktree and server commands), clear both queues, then in each console:
+
+```js
+const s = document.createElement('script'); s.src = '/trace.js';
+s.onload = async () => { console.log(JSON.stringify(await trace())); };
+document.head.appendChild(s);
+```
+
+Save each output, then:
+
+```bash
+node tests/ui/trace-diff.cjs tests/ui/traces/baseline.json tests/ui/traces/head.json
+```
+
+Exit 0 means behaviour-preserving. Exit 1 names the first differing step, which
+is the one that caused the rest.
+
+`tests/ui/traces/baseline.json` is the recorded baseline at `de8bd97`: 2
+requests, 0 toasts, 43 render passes, 586 elements, structure
+`8ad83bcf23f40000`, computed `1177f46f815b1100`.
+
+## The rig is tested
+
+A checker that always reports "same" is worse than none, so the diff was run
+against a copy with three faults injected — a duplicated render pass, a stray
+`POST /api/convert`, and a changed computed-style hash. It caught all three and
+exited 1. Re-do that if you ever change `trace-diff.cjs`.
+
+## Two things it deliberately ignores
+
+The 700ms state poll from `bootstrap.js` is recorded as a flag, never as an
+ordered request: how many times it has fired by the end of a run depends on
+machine speed, not on behaviour. And destructive actions are absent from the
+script for the same reason they are skipped in the smoke sweep.
+
+Every wrapper is restored when the run ends, so a trace leaves the page as it
+found it and two runs in one session cannot stack.
+
+---
+
 # Differential UI smoke test
 
 Compares the refactored build against `ui-monolith-baseline` by running the

@@ -119,11 +119,22 @@ baseline screenshots as the check rather than a click-through.
 | 5 | Action groups split out of the global handler (92 `data-act` values) | started |
 | 6 | 90 globals → `app/app-state.js` behind bridge getters | |
 | 7 | Controllers: separate state mutation, side effects, rendering | |
-| 8 | `legacy/monolith.js` reaches zero and is deleted | |
-| B | Design system: split `app.css`, apply tokens, unify components | not started |
+| 8 | `legacy/monolith.js` reaches zero and is deleted | done |
+| B | Design system: apply tokens, unify components, split the action router | not started |
 
-Phase 1 split `app.css` as one file on purpose. Splitting it into the eleven
-stylesheets above is where cascade order and specificity bite, so it belongs in
-phase B with the screenshots as the check — not in the structural phase.
+The eleven stylesheets are done, and as a pure move rather than a rewrite.
+`app.css` was already sectioned by top-level comments, and every section is a
+contiguous range, so each file is one verbatim slice and the `<link>` tags keep
+the original order. Concatenated stylesheets in order are identical to one
+file, so the cascade cannot change — the same equivalence the scripts rely on.
+
+That means `motion.css` is linked third rather than last: it sat at line 128 in
+`app.css`, and link order follows position, not the order the tree lists. Two
+names are a stretch for what they hold — `components.css` is the shared context
+menus, and `base.css` is the window geometry block. Both were named for the
+tree rather than renamed to fit.
+
+Verified by computed style, not just structure: 35 properties on every element
+across all three pages are byte-identical to `ui-monolith-baseline`.
 
 Editor is last in phase 4 because it is the most coupled.

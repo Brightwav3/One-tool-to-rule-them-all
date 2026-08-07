@@ -1,0 +1,125 @@
+/* ---------- One Tool prototype geometry ---------- */
+html{background:var(--page)}
+body{background:var(--page);font-size:13px;letter-spacing:0}
+.app{min-width:900px;min-height:600px;background:var(--bg)}
+.topbar{padding:0 14px 0 16px;gap:16px}
+.app[data-inspector="false"] .topbar{padding-right:112px;transition-duration:var(--d-medium)}
+.body{background:var(--bg)}
+.work{margin:0;border:1px solid var(--sep);border-left:0;border-bottom:0;border-radius:0 14px 0 0;background:var(--surface);box-shadow:var(--sh2)}
+/* With no sidebar, preserve a slim gutter at the window edge. It keeps the
+   workspace visibly bounded and leaves room to find the resize handle. */
+#app[data-panel="closed"] .work{margin-right:8px;border-right:1px solid var(--sep);border-radius:0 14px 14px 0}
+.page{transform:translateX(var(--px,8px));filter:blur(3px);transition:opacity 250ms var(--ease),transform 250ms var(--ease),filter 250ms var(--ease)}
+.page[data-active="true"]{transform:none;filter:blur(0)}
+h1{font-size:18px;font-weight:600;letter-spacing:-.018em}
+.page-sub{font-size:12.5px;line-height:1.45;color:var(--t2)}
+.btn{border-radius:8px;font-size:12px;font-weight:600}
+.btn-primary{background:var(--acc);color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.14)}
+.btn-primary:hover:not([disabled]){background:var(--acc-h)}
+.btn-primary[disabled]{background:var(--quiet3);color:var(--t4)}
+.go.success[disabled]{background:var(--ok-t);color:#fff}
+.btn-secondary{border-radius:8px;color:var(--t1);box-shadow:inset 0 0 0 1px var(--sep2)}
+.btn-accent{background:var(--acc-tint);color:var(--acc-text)}
+.btn-danger{background:var(--dang-tint);color:var(--dang-t);box-shadow:inset 0 0 0 1px rgba(224,72,62,.28)}
+.q-wrap{padding:16px 20px 0}
+.q-head{gap:12px}
+.dest{min-height:30px;padding:0 8px 0 10px;border-radius:7px;background:var(--quiet);box-shadow:inset 0 0 0 1px var(--sep)}
+.dest .k{font-size:12px;color:var(--t2)}
+.dest .v{font-size:11px;color:var(--t2)}
+.q-list{margin-top:16px;border-radius:12px;border:0;box-shadow:0 0 0 1px var(--sep),var(--sh1);background:var(--raised);overflow:visible}
+.q-row{padding:7px 14px;gap:12px;border-bottom:1px solid var(--sep);animation-fill-mode:backwards}
+.q-row:first-child{border-radius:11px 11px 0 0}
+.q-row.selected,.q-row.selected:hover{background:var(--acc-tint)}
+.q-row.dim{opacity:.8}
+.f-name{font-size:13px;font-weight:600}
+.f-meta{font-size:12px;color:var(--t2);margin-top:3px}
+.pill{font-size:11.5px;height:26px;padding:0 10px;background:var(--quiet2);color:var(--t2)}
+.q-row.selected .pill{background:var(--surface);color:var(--acc-text)}
+.pill.blocked{background:var(--warn-tint);color:var(--warn-t)}
+.pill.open{background:var(--acc);color:#fff;box-shadow:0 0 0 3px var(--acc-tint2)}
+.prog{width:132px}
+.prog-track{background:var(--quiet3)}
+.status{font-size:12px}
+.status.done{color:var(--ok-t)}
+.status.blocked{color:var(--warn-t)}
+.dropmore{padding:12px 14px;color:var(--t2);font-size:12.5px}
+.dropmore .plus{color:var(--acc-text)}
+.dropmore .k{font-size:11px;color:var(--t3)}
+.empty{padding:36px}
+.empty-inner{max-width:560px}
+.empty-glyph{color:var(--acc-text)}
+.empty h1{font-size:25px;font-weight:600;letter-spacing:-.022em;margin-top:24px}
+.empty p{font-size:13.5px;line-height:1.6;margin:11px 0 0;color:var(--t2)}
+.empty .actions{gap:10px;margin-top:22px}
+.empty .actions .btn{min-height:36px;border-radius:9px;font-size:13px}
+.empty .actions .btn-primary{padding:0 18px}
+.empty .actions .btn-secondary{padding:0 16px}
+.foot{padding:12px 20px 14px;border-top:1px solid var(--sep);background:var(--surface)}
+.foot .summary{font-size:12px;color:var(--t2)}
+.pop{top:calc(100% + 6px);right:0;width:262px}
+.pop-card{border-radius:10px;background:var(--surface);box-shadow:var(--sh2)}
+.pop-title{font-size:12px;color:var(--t2)}
+.opt{border-radius:7px}
+.opt .nm{font-size:11.5px}
+.opt .st{font-size:11px}
+.scope-card{border-radius:9px;padding:9px 12px;background:var(--surface);box-shadow:var(--sh2)}
+.scope{font-size:12.5px;background:var(--quiet);box-shadow:inset 0 0 0 1px var(--sep2)}
+.h-wrap,.x-wrap{padding:18px 24px 0}
+.h-list,.x-list{margin-top:16px;border:0;border-radius:12px;box-shadow:0 0 0 1px var(--sep),var(--sh1);background:var(--raised)}
+.h-row{padding:13px 14px;gap:12px;border-bottom:1px solid var(--sep)}
+.h-copy b{font-size:13px}
+.h-copy .sub,.h-state{font-size:12px}
+.x-wrap{padding-top:18px}
+.chips{margin-top:14px;gap:8px}
+.chip{font-size:12px}
+.x-list{margin-top:12px}
+.x-head{padding:9px 14px;border-bottom:1px solid var(--sep);background:var(--raised)}
+.x-row{padding:6px 14px;gap:12px;border-bottom:1px solid var(--sep)}
+.x-name .t{font-size:12.5px}
+.x-route,.x-size,.x-when{font-size:11.5px}
+.panel{background:var(--bg);transition:width 350ms var(--ease)}
+.panel[data-open="true"]{width:var(--panel-width,308px);transition-duration:400ms}
+.panel-in{transform:translateX(32px);filter:blur(2px);transition:opacity 350ms var(--ease),transform 350ms var(--ease),filter 350ms var(--ease)}
+.panel[data-open="true"] .panel-in{transform:none;filter:blur(0);transition-duration:400ms}
+.panel-top{height:44px}
+.i-sec{padding:16px 18px;border-bottom:1px solid var(--sep)}
+.i-sec b{font-size:13px}
+.i-sec .sub,.i-body,.i-note{font-size:12px}
+.i-file{padding:16px 18px;border-bottom:1px solid var(--sep)}
+.i-body{padding:16px 18px;gap:15px}
+.i-foot{padding:12px 18px 16px;border-top:1px solid var(--sep)}
+.field input,.fake-select{border-radius:7px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--sep2)}
+.adv-toggle{font-size:12px}
+.divider{border-top:1px solid var(--sep)}
+.scrim{background:rgba(20,20,22,.32)}
+.scrim[data-open="true"]{transition-duration:250ms}
+.modal{border-radius:12px;background:var(--surface);box-shadow:var(--sh3)}
+.sheet-head{padding:12px 16px;border-bottom:1px solid var(--sep)}
+.sheet-body{height:288px}
+.sheet-cats{width:136px;border-right:1px solid var(--sep)}
+.sheet-foot{padding:12px 16px;border-top:1px solid var(--sep);background:var(--bg)}
+.pal{width:520px}
+.toast{left:20px;bottom:74px;border-radius:11px;background:var(--surface);box-shadow:var(--sh2)}
+
+@keyframes p-cascade{from{opacity:0;transform:translateY(10px);filter:blur(2px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes p-pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes p-panel{from{opacity:0;transform:translateX(32px)}to{opacity:1;transform:none}}
+@keyframes p-page{from{opacity:0;transform:translateX(8px);filter:blur(3px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes p-pop{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes p-modal{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+@keyframes p-shimmer{from{background-position:150% 0}to{background-position:-50% 0}}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important;scroll-behavior:auto!important}
+  /* Drop the travel, keep the signal. Anything that carried meaning through motion alone
+     falls back to a static colour rather than freezing mid-animation. */
+  .status.indeterminate{background:none;color:var(--text-secondary);-webkit-text-fill-color:var(--text-secondary)}
+  .pulse{opacity:.65}
+  .tick.is-fresh svg path{stroke-dasharray:none;stroke-dashoffset:0}
+  .spin{border-top-color:var(--text-inverse)}
+}
+
+/* A narrow window belongs to the list. The inspector is the thing that gives
+   way — it used to take the whole window and hide the list entirely. */
+@media (max-width:640px){.app{min-width:0}.panel[data-open="true"]{width:0}.panel-resize{display:none}}
+

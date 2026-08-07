@@ -1,0 +1,67 @@
+/* ---------- app shell ---------- */
+.app{height:100%;min-width:760px;display:flex;flex-direction:column;position:relative}
+
+.topbar{height:44px;flex:none;display:flex;align-items:center;gap:var(--space-4);padding:0 var(--space-4);-webkit-app-region:drag;user-select:none;position:relative;z-index:12;
+  container:topbar / inline-size;
+  transition:padding-right var(--d-slow) var(--ease)}
+/* when the inspector is closed the window controls sit over the bar's right end,
+   so the bar yields the space; when it is open they sit over the panel instead */
+.app[data-inspector="false"] .topbar{padding-right:116px;transition-duration:var(--d-medium)}
+body.is-mac .topbar{padding-left:82px}
+.topbar button,.wincontrols{-webkit-app-region:no-drag}
+.nav{display:flex;align-items:center;gap:var(--space-4);flex:none}
+.navbtn{position:relative;min-height:26px;padding:0 9px;border-radius:var(--radius-nav);font-size:var(--text-sm);font-weight:var(--weight-regular);color:var(--text-secondary);transition:background-color var(--d-quick) var(--ease),color var(--d-quick) var(--ease)}
+.navbtn:hover{background:var(--surface-hover)}
+.navbtn.active{background:var(--accent);color:var(--text-inverse);font-weight:var(--weight-medium)}
+.navdot{position:absolute;top:2px;right:1px;width:7px;height:7px;border-radius:var(--radius-pill);background:var(--warning);box-shadow:0 0 0 2px var(--surface-sunken)}
+.searchwrap{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:10px}
+.theme-host{flex:none;position:relative;display:flex;align-items:center}
+.theme-toggle{width:28px;height:28px;display:grid;place-items:center;border-radius:var(--radius-nav);-webkit-app-region:no-drag}
+.theme-toggle:hover{background:var(--surface-hover)}
+.theme-logo{display:block;width:19px;height:19px;background:var(--text-secondary);-webkit-mask:url('/fidelioB.svg') center/contain no-repeat;mask:url('/fidelioB.svg') center/contain no-repeat;transition:background-color var(--d-quick) var(--ease),-webkit-mask-image var(--d-quick) var(--ease)}
+[data-theme="dark"] .theme-logo{background:var(--text-primary);-webkit-mask-image:url('/fidelioW.svg');mask-image:url('/fidelioW.svg')}
+.theme-toggle.is-spinning .theme-logo{animation:theme-spin 520ms var(--ease) both}
+@keyframes theme-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.theme-host .tip{left:0;right:auto}
+.search{display:flex;align-items:center;gap:var(--gap-inline);width:330px;max-width:100%;min-width:0;height:28px;padding:0 10px;border-radius:var(--radius-nav);background:var(--surface-hover);font-size:var(--text-sm);color:var(--text-tertiary);
+  transition:background-color var(--d-quick) var(--ease),width var(--d-fast) var(--ease),padding var(--d-fast) var(--ease)}
+.search:hover{background:var(--surface-active)}
+/* The label never wraps: a second line would grow the control past the bar's
+   fixed height. It truncates while there is still something worth reading, and
+   below that the control collapses to its glyph rather than showing a sliver.
+   The query is on the bar, not the viewport, because the inspector's width is
+   what squeezes this — the window can be wide while the bar is narrow. */
+.search .label{flex:1;min-width:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search .kbd,.search > [aria-hidden="true"]{flex:none}
+@container topbar (max-width:560px){.search .kbd{display:none}}
+@container topbar (max-width:400px){
+  .search{width:28px;padding:0;justify-content:center}
+  .search .label{display:none}
+}
+.kbd{font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-medium);padding:2px 5px;border-radius:var(--radius-xs);background:var(--surface-active);color:var(--text-tertiary)}
+.tiphost{position:relative}
+.insp-toggle{width:30px;height:26px;display:grid;place-items:center;border-radius:var(--radius-nav);color:var(--text-secondary)}
+.insp-toggle:hover{background:var(--surface-hover)}
+.insp-toggle.on{background:var(--accent);color:var(--text-inverse)}
+#app[data-inspector="true"] .insp-toggle{background:var(--accent);color:var(--text-inverse)}
+.tip{position:absolute;top:32px;right:0;display:flex;align-items:center;gap:var(--space-2);padding:5px 9px;border-radius:var(--radius-nav);background:var(--surface-inverse);color:var(--text-inverse);font-size:var(--text-xs);font-weight:var(--weight-medium);white-space:nowrap;box-shadow:var(--shadow-popover);opacity:0;transform:translateY(-3px);pointer-events:none;transition:opacity var(--d-quick) ease-out,transform var(--d-quick) ease-out;z-index:5}
+[data-theme="dark"] .tip{background:#1f2024;color:#ededed}
+.tiphost:hover .tip{opacity:1;transform:none;transition-delay:80ms}
+.tip .kbd{background:rgba(255,255,255,.16);color:rgba(255,255,255,.72)}
+.topbar>.tiphost{flex:none}
+.wincontrols{position:fixed;top:0;right:var(--space-3);height:44px;display:none;align-items:center;gap:2px;z-index:2147483647;pointer-events:auto!important;-webkit-app-region:no-drag!important}
+.is-electron:not(.is-mac) .wincontrols{display:flex}
+.wincontrols button{width:30px;height:26px;display:grid;place-items:center;border-radius:var(--radius-xs);color:var(--text-tertiary);-webkit-app-region:no-drag!important;pointer-events:auto!important;cursor:pointer}
+.wincontrols button:hover{background:var(--surface-active);color:var(--text-primary)}
+.wincontrols .close:hover{background:var(--danger);color:var(--text-inverse)}
+.wincontrols svg{width:10px;height:10px}
+
+.body{flex:1;min-height:0;display:flex}
+.left{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+.work{flex:1;min-height:0;margin:var(--space-2);border-radius:var(--radius-card);background:var(--surface-card);border:1px solid var(--border-subtle);box-shadow:0 2px 5px rgba(41,41,41,.07),0 1px 2px rgba(41,41,41,.05);display:flex;flex-direction:column;overflow:hidden;position:relative}
+
+/* page side-by-side */
+.page{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transform:translateX(var(--px,8px));filter:blur(3px);
+  transition:opacity var(--d-fast) var(--ease),transform var(--d-fast) var(--ease),filter var(--d-fast) var(--ease)}
+.page[data-active="true"]{opacity:1;transform:none;filter:blur(0);pointer-events:auto}
+

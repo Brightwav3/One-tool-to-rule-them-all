@@ -1,0 +1,102 @@
+/* ---------- editor and creator ----------
+   Both screens come from their prototypes; the values below are the prototype's,
+   with the fixed canvas size traded for the app's flexible window. */
+:root{--paper:#fdfdfd;--ink:rgba(60,60,67,.16)}
+[data-theme="dark"]{--paper:#151517;--ink:rgba(237,237,237,.18)}
+
+/* Both screens are a window field with cards floating in it, so the page is the
+   sunken colour and the white card reads as a card rather than as the page. */
+#pageEditor,#pageCreator{display:flex;flex-direction:column;padding:0;overflow:hidden;background:var(--bg)}
+.wk-row{flex:1;min-height:0;display:flex}
+.wk-card{border-radius:14px;background:var(--surface);box-shadow:0 0 0 1px var(--sep),var(--sh2);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+/* The workspace itself is already a card. A screen that fills it uses this
+   instead, so its header sits on the workspace — the way Convert's does —
+   and only its inner list reads as a card. */
+.wk-plain{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.wk-h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.018em}
+.wk-sub{margin:4px 0 0;font-size:12.5px;color:var(--t2)}
+/* The workspace panes are the same inspector as the Convert panel, so they take
+   the same width and the same collapse. Their handle is a static sibling rather
+   than an absolute overlay, because there is no card edge here to sit on. */
+.wk-side{width:var(--panel-width,308px);flex:none;display:flex;flex-direction:column;overflow:auto;
+  transition:opacity var(--d-fast) var(--ease)}
+/* Inside the app's side panel the pane is the panel: it takes its width from it
+   rather than setting its own, so one resize handle drives both. */
+.wk-side[data-inline="true"]{width:auto;flex:1;min-height:0}
+.wk-resize{position:relative;flex:none;width:10px;margin:0 -5px;align-self:stretch;cursor:ew-resize;z-index:10;
+  -webkit-app-region:no-drag;touch-action:none}
+/* Past the collapse point the pane stops rendering as a pane: it blanks, rather
+   than clipping its rows into an unreadable column. */
+.wk-side[data-collapsed="true"]{opacity:0;pointer-events:none}
+.panel[data-collapsed="true"] .panel-in{opacity:0;pointer-events:none}
+.pbtn{min-height:28px;padding:0 12px;display:flex;align-items:center;gap:7px;border-radius:8px;font:600 12px var(--ui);color:var(--t2);box-shadow:inset 0 0 0 1px var(--sep2);transition:background var(--d-quick) ease}
+.pbtn:hover{background:var(--quiet)}
+.pbtn.pri{background:var(--acc);color:#fff;box-shadow:none;min-height:30px;font-size:12.5px}
+.pbtn.pri:hover{background:var(--acc-h)}
+.pbtn.gh{box-shadow:none;font-weight:500}
+.pbtn.gh:hover{background:var(--acc-tint)}
+.pbtn.off{opacity:.4;pointer-events:none}
+.pchip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;font:500 11px var(--ui)}
+.eyebrow-p{font:600 11px var(--ui);letter-spacing:.04em;text-transform:uppercase;color:var(--t3)}
+.pseg{display:flex;gap:2px;padding:2px;border-radius:8px;background:var(--quiet)}
+.pseg button{flex:1;min-height:24px;display:grid;place-items:center;border-radius:6px;font:500 11.5px var(--ui);color:var(--t2);transition:background var(--d-quick) ease}
+.pseg button[data-on="true"]{font-weight:600;color:var(--t1);background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.ptile{flex:none;border-radius:4px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;font:600 6.5px var(--mono);color:var(--t3);background:var(--quiet2);box-shadow:inset 0 0 0 1px var(--sep);overflow:hidden}
+.ptile.acc{background:var(--acc);color:#fff;box-shadow:none}
+.pkv{display:flex;justify-content:space-between;font-size:12px}
+.pkv .k{color:var(--t2)}
+.pkv .v{font:500 12px var(--mono);color:var(--t1)}
+
+/* pages */
+.pg{background:var(--paper);border-radius:3px;box-shadow:0 0 0 1px var(--sep),0 1px 2px rgba(0,0,0,.06);display:flex;flex-direction:column;gap:4px;padding:9px 8px;overflow:hidden;transition:box-shadow var(--d-quick) ease,transform 200ms var(--ease)}
+.ln{height:3px;border-radius:2px;background:var(--ink);flex:none}
+.pthumb{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;transition:opacity var(--d-quick) ease}
+.pthumb:hover .pg{box-shadow:0 0 0 1px var(--sep2),0 3px 10px rgba(0,0,0,.10)}
+.pthumb[data-on="true"] .pg{box-shadow:0 0 0 2px var(--acc),0 1px 2px rgba(0,0,0,.06)}
+.pthumb[data-dim="true"]{opacity:.8}
+.pthumb-box{width:100%;aspect-ratio:.72;display:flex;align-items:center;justify-content:center}
+.tcap{font:500 11px var(--mono);color:var(--t3)}
+.pthumb[data-on="true"] .tcap{color:var(--acc-text);font-weight:600}
+.pthumb-add{width:100%;aspect-ratio:.72;border-radius:3px;display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px var(--sep2);color:var(--t3);font-size:18px}
+.ed-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:16px 18px}
+.ed-pairgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 14px}
+.ed-drop{width:100%;aspect-ratio:.72;border-radius:3px;display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px var(--acc-tint2);background:var(--acc-tint);font:600 11px var(--ui);color:var(--acc-text);text-align:center;padding:6px}
+
+/* editor chrome */
+.ed-selbar{flex:none;display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--sep);background:var(--acc-tint)}
+.ed-selbar .n{font-size:12.5px;font-weight:600;color:var(--acc-text)}
+.ed-selbar .rule{width:1px;height:16px;background:var(--acc-tint2)}
+.ed-head{flex:none;display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--sep)}
+.ed-foot{flex:none;display:flex;align-items:center;gap:12px;padding:11px 18px;border-top:1px solid var(--sep)}
+.ed-rail{width:52px;flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0}
+.tool{width:34px;height:34px;display:grid;place-items:center;border-radius:8px;color:var(--t2);font-size:13px;transition:background var(--d-quick) ease,color var(--d-quick) ease}
+.tool:hover{background:var(--quiet)}
+.tool[data-on="true"]{background:var(--acc-tint);color:var(--acc-text)}
+.ed-railrule{width:22px;height:1px;background:var(--sep);margin:6px 0}
+.ed-toolbar{flex:none;display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid var(--sep);background:var(--surface)}
+.ed-toolbar .rule{width:1px;height:16px;background:var(--sep)}
+.ed-num{font:400 12px var(--mono);text-align:center}
+.ed-canvaswrap{flex:1;min-height:0;overflow:auto;display:flex;justify-content:center;align-items:flex-start;padding:20px;background:var(--bg)}
+.ed-canvas{aspect-ratio:.72;flex:none;justify-content:flex-start;padding:34px 30px;gap:9px;position:relative}
+.ed-canvas[data-redact="true"]{cursor:crosshair}
+.ed-canvas .ln{height:4px}
+.ed-mark{position:absolute;border-radius:2px;background:#1d1d1f;box-shadow:0 0 0 2px var(--acc-tint2);animation:fadeIn var(--d-fast) ease backwards}
+.ed-pageno{position:absolute;left:30px;bottom:20px;font:500 10px var(--mono);color:var(--t4)}
+.ed-strip{flex:none;background:var(--surface);border-top:1px solid var(--sep);padding:9px 12px;display:flex;align-items:center;gap:9px;overflow:auto}
+.strip{width:46px;height:62px;flex:none;background:var(--paper);border-radius:2px;box-shadow:0 0 0 1px var(--sep);display:flex;flex-direction:column;gap:2px;padding:5px 4px;overflow:hidden;transition:box-shadow var(--d-quick) ease}
+.strip[data-on="true"]{box-shadow:0 0 0 2px var(--acc)}
+.strip .ln{height:2px}
+.ed-mark-row{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;box-shadow:inset 0 0 0 1px var(--sep2)}
+.ed-mark-sw{width:22px;height:12px;flex:none;border-radius:2px;background:#1d1d1f}
+.ed-empty-marks{padding:12px;border-radius:8px;box-shadow:inset 0 0 0 1.5px var(--sep2);font-size:12px;color:var(--t3);line-height:1.5}
+.ed-edits{margin-top:auto;padding-top:12px;border-top:1px solid var(--sep);display:flex;flex-direction:column;gap:5px}
+.ed-edit{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2)}
+.ed-edit .d{width:5px;height:5px;flex:none;border-radius:50%;background:var(--acc)}
+.ed-edit .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ed-mid{width:96px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.ed-mid .pbtn{width:76px;justify-content:center}
+.ed-mid .rule{width:44px;height:1px;background:var(--sep2);margin:6px 0}
+.ed-mid .hint{font-size:11px;line-height:1.5;color:var(--t3);text-align:center;padding:0 6px}
+.ed-dropover{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--page) 72%,transparent);pointer-events:none}
+.ed-dropcard{display:flex;flex-direction:column;align-items:center;gap:10px;padding:26px 34px;border-radius:16px;background:var(--surface);box-shadow:var(--sh3),inset 0 0 0 1.5px var(--acc-tint2)}
+

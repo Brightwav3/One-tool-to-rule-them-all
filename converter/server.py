@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import editor_sessions  # noqa: E402
 import formats  # noqa: E402
 import pdf_engine  # noqa: E402
+import registry  # noqa: E402
 from formats import REGISTRY  # noqa: E402
 
 UI_DIR = Path(__file__).resolve().parent / "ui"
@@ -69,6 +70,30 @@ class _AdapterProxy:
 
 
 ADAPTER = _AdapterProxy()
+
+# One editor save per session at a time, tracked by the job it is running as.
+# The queue itself is single-worker, so this is only about telling the second
+# request apart from the first rather than about locking.
+EDITOR_SAVE_JOBS: dict[str, "Job"] = {}
+
+
+def editor_save_converter(session_id: str, artifact: dict):
+    """A one-off converter that saves an editor session on the normal queue.
+
+    Saving is a Job like any other, so progress, the 700 ms poll, history and
+    per-job error isolation are the ones that already exist. `artifact` is the
+    sink the adapter's descriptor lands in, for the history record's sha256.
+    """
+    def convert(source, out, opts, tick):
+        tick(0, 1, "working")
+        result = QUEUE.editor_store.save(session_id, str(out))
+        artifact.update(result.get("artifact") or {})
+        tick(1, 1, "done")
+
+    return registry.Converter(
+        id="editor-save", src="PDF", dst="PDF", category="pdf", kind="doc",
+        glyph="⬇", ext=".pdf", blurb="Save the edited document",
+        title="Save", convert=convert, extensions=(".pdf",))
 
 
 def clean_output_stem(name: str, suffix: str) -> str:
@@ -701,7 +726,12 @@ class Converter:
         for job in jobs:
             if job["status"] not in ("done", "error"):
                 continue
+            # D1's approved exception: an editor save comes back with FreeDF's
+            # artifact descriptor, and its digest belongs on the record.
+            artifact = getattr(self.jobs.get(job["id"]), "editor_artifact", None) or {}
             self.history_store.append({
+                "sha256": artifact.get("sha256", ""),
+                "byteSize": artifact.get("byteSize", 0),
                 "id": f"file-{int(time.time() * 1000)}-{job['id']}",
                 "name": Path(job["out"]).name,
                 "sourceName": job["name"],
@@ -810,6 +840,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(store.undo(str(body.get("sessionId") or "")))
             elif route == "/api/editor/redo":
                 self.send_json(store.redo(str(body.get("sessionId") or "")))
+            elif route == "/api/editor/save":
+                self.send_json(self.editor_save(body))
             elif route == "/api/editor/close":
                 store.close(str(body.get("sessionId") or ""))
                 self.send_json({"closed": True})
@@ -823,6 +855,52 @@ class Handler(BaseHTTPRequestHandler):
             traceback.print_exc()
             self._editor_error(
                 pdf_engine.PdfEngineError("engine-error", f"{type(exc).__name__}: {exc}"))
+
+    @staticmethod
+    def editor_save(body: dict) -> dict:
+        """POST /api/editor/save {sessionId, outputPath?} -> {jobId, outputPath}.
+
+        The work is queued rather than done here: a save of a large document is
+        exactly the kind of thing the existing progress machinery is for, and
+        the renderer already polls it.
+        """
+        store = QUEUE.editor_store
+        session = store.get(str(body.get("sessionId") or ""))
+        raw = str(body.get("outputPath") or "").strip() or (session.default_target or "")
+        if not raw:
+            raise pdf_engine.PdfEngineError(
+                "operation-invalid", "this session has no output path to save to")
+        target = Path(raw).expanduser()
+        # The same name rules a conversion output obeys, so the editor cannot
+        # write something the rest of the app would refuse to.
+        target = target.with_name(f"{clean_output_stem(target.name, '.pdf')}.pdf")
+
+        resolved = os.path.normcase(str(target.resolve()))
+        sources = {os.path.normcase(str(Path(p).expanduser().resolve()))
+                   for p in session.source_paths}
+        if resolved in sources:
+            raise pdf_engine.PdfEngineError(
+                "save-refused", "saving over the source document is not permitted",
+                hint="Choose a different output name.",
+                details={"session_id": session.id, "path": str(target)})
+
+        running = EDITOR_SAVE_JOBS.get(session.id)
+        if running is not None and running.status in ("queued", "running"):
+            raise pdf_engine.PdfEngineError(
+                "save-conflict", "this document is already being saved",
+                hint="Wait for the save in progress to finish.",
+                details={"session_id": session.id, "jobId": running.id})
+
+        artifact: dict = {}
+        job = QUEUE.add(Path(session.source_paths[0]),
+                        editor_save_converter(session.id, artifact),
+                        name=target.name)
+        job.out = str(target)
+        job.editor_artifact = artifact
+        EDITOR_SAVE_JOBS[session.id] = job
+        store.set_output_path(session.id, str(target))
+        QUEUE.start([job.id])
+        return {"jobId": job.id, "outputPath": str(target)}
 
     def handle_page_image(self, query: str) -> None:
         """GET /api/editor/page.png?session=&page=&w=&rev= -> image/png.

@@ -404,6 +404,32 @@ class EditorSessionStore:
         self._persist()
         return self.snapshot(session_id)
 
+    def save(self, session_id, output_path=None):
+        """Write the edited document. Never touches ``revision``.
+
+        A save is not a mutation: it does not advance the operation log, so a
+        failed one leaves the session exactly as it was, still editable. Frozen
+        sessions may still save — the guard is deliberately not applied here,
+        because getting the work out of a stale session is the one thing that
+        should still be possible.
+        """
+        session = self.get(session_id)
+        target = str(output_path or session.output_path or session.default_target or "")
+        if not target:
+            raise PdfEngineError("operation-invalid",
+                                 "this session has no output path to save to")
+        try:
+            result = self._adapter.save(self._primary(session), target)
+        except PdfEngineError as error:
+            if error.code != "session-unknown":
+                raise
+            self.reattach(session)
+            result = self._adapter.save(session.engine_session_ids[0], target)
+        session.output_path = str(result.get("path") or target)
+        session.touched = time.time()
+        self._persist()
+        return result
+
     def set_output_path(self, session_id, output_path):
         session = self.get(session_id)
         session.output_path = output_path

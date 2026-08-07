@@ -289,5 +289,81 @@ class PageImageRouteTests(ServerTestCase):
         self.assertEqual(status, 503)
 
 
+class SaveRouteTests(ServerTestCase):
+    """Task 10: saving runs as a job on the existing conversion queue."""
+
+    def test_save_queues_a_job_and_lands_in_history(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        self.post("/api/editor/operation", {"sessionId": session,
+            "operations": [{"kind": "rotate_pages", "pageIds": [page], "degrees": 90}]})
+        out = str(self.tmp / "out.pdf")
+        self.assertIn("jobId", self.post("/api/editor/save",
+                                         {"sessionId": session, "outputPath": out}))
+        self.wait_for_idle()
+        self.assertTrue(Path(out).is_file())
+        record = next((r for r in self.get("/api/history")["history"]
+                       if r["outputPath"] == out), None)
+        self.assertIsNotNone(record)
+        self.assertEqual(record["state"], "completed")
+        self.assertEqual(len(record["sha256"]), 64)
+        self.assertEqual(record["byteSize"], Path(out).stat().st_size)
+
+    def test_save_without_a_path_uses_the_engine_default_target(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        self.assertTrue(opened["session"]["defaultTarget"].endswith("-edited.pdf"))
+        body = self.post("/api/editor/save", {"sessionId": opened["session"]["id"]})
+        self.assertEqual(body["outputPath"], opened["session"]["defaultTarget"])
+        self.wait_for_idle()
+        self.assertTrue(Path(body["outputPath"]).is_file())
+
+    def test_a_second_save_while_one_runs_is_409(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session = opened["session"]["id"]
+        self.post("/api/editor/save",
+                  {"sessionId": session, "outputPath": str(self.tmp / "a.pdf")})
+        second_status, second_body = self.post_raw(
+            "/api/editor/save", {"sessionId": session, "outputPath": str(self.tmp / "b.pdf")})
+        self.assertEqual(second_status, 409)
+        self.assertEqual(second_body["error"]["code"], "save-conflict")
+        self.wait_for_idle()
+
+    def test_saving_over_the_source_is_refused(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        status, body = self.post_raw("/api/editor/save",
+            {"sessionId": opened["session"]["id"], "outputPath": str(self.src)})
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "save-refused")
+        self.assertTrue(self.src.is_file())
+
+    def test_a_failed_save_keeps_the_session_alive(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        self.post("/api/editor/operation", {"sessionId": session,
+            "operations": [{"kind": "rotate_pages", "pageIds": [page], "degrees": 90}]})
+        self.post("/api/editor/save", {"sessionId": session,
+            "outputPath": str(self.tmp / "no-such-folder" / "out.pdf")})
+        self.wait_for_idle()
+        self.assertEqual(self.post("/api/editor/inspect", {"sessionId": session})["revision"], 1)
+        # And the session can still save somewhere real afterwards.
+        good = str(self.tmp / "recovered.pdf")
+        self.post("/api/editor/save", {"sessionId": session, "outputPath": good})
+        self.wait_for_idle()
+        self.assertTrue(Path(good).is_file())
+
+    def test_an_unknown_session_cannot_be_saved(self):
+        status, body = self.post_raw("/api/editor/save", {"sessionId": "nope"})
+        self.assertEqual(status, 409)
+        self.assertEqual(body["error"]["code"], "session-unknown")
+
+    def test_a_name_with_a_folder_separator_is_refused(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        status, body = self.post_raw("/api/editor/save", {
+            "sessionId": opened["session"]["id"],
+            "outputPath": str(self.tmp / 'we"ird.pdf')})
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "operation-invalid")
+
+
 if __name__ == "__main__":
     unittest.main()

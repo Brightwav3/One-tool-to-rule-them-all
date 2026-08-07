@@ -49,6 +49,9 @@
 
 /* pages */
 .pg{background:var(--paper);border-radius:3px;box-shadow:0 0 0 1px var(--sep),0 1px 2px rgba(0,0,0,.06);display:flex;flex-direction:column;gap:4px;padding:9px 8px;overflow:hidden;transition:box-shadow var(--d-quick) ease,transform 200ms var(--ease)}
+/* A real rendering is the page: no ruled placeholder, so no padding around one. */
+.pg-real{padding:0;gap:0}
+.pg-img{border-radius:3px}
 .ln{height:3px;border-radius:2px;background:var(--ink);flex:none}
 .pthumb{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;transition:opacity var(--d-quick) ease}
 .pthumb:hover .pg{box-shadow:0 0 0 1px var(--sep2),0 3px 10px rgba(0,0,0,.10)}

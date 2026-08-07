@@ -22,12 +22,33 @@ function pageCaption(page, index) {
    so the long edge still fits. */
 function thumbHtml(page, index, on, dim, act) {
   const rotated = isRotated(page);
+  const real = hasRendering(page);
+  /* A real page keeps its own proportions inside the cell; the placeholder page
+     fills the cell, because it has none of its own. */
+  const box = real
+    ? `height:${rotated ? '72%' : '100%'};width:auto;max-width:${rotated ? '138%' : '100%'};aspect-ratio:${page.w} / ${page.h}`
+    : `width:${rotated ? '138%' : '100%'};height:${rotated ? '72%' : '100%'}`;
   return `<button class="pthumb press" data-act="${act}" data-id="${page.id}" data-on="${on}" data-dim="${dim}">
-    <span class="pthumb-box"><span class="pg" style="width:${rotated ? '138%' : '100%'};height:${rotated ? '72%' : '100%'};transform:rotate(${page.rot}deg)">
-      ${page.lines.map(l => `<span class="ln" style="${lineStyle(l, false)}"></span>`).join('')}
+    <span class="pthumb-box"><span class="pg${real ? ' pg-real' : ''}" style="${box};transform:rotate(${page.rot}deg)">
+      ${pageBodyHtml(page, false)}
     </span></span>
     <span class="tcap">${esc(pageCaption(page, index))}</span>
   </button>`;
+}
+/* A real page is the engine's own rendering; the ruled placeholder is what the
+   empty state shows. `loading="lazy"` is the whole of the grid's laziness: the
+   browser fetches a thumbnail when it scrolls into view and not before.
+   The aspect ratio comes from the width and height the engine reported, never
+   from the width that was requested — FreeDF's render width is a bounding box,
+   so a landscape page asked for at 180 comes back 255 wide and 180 tall. */
+const hasRendering = page => Boolean(editor.state.sessionId && page.w && page.h);
+function pageBodyHtml(page, big) {
+  if (hasRendering(page)) {
+    return `<img class="pg-img" src="${esc(OneToolEditorActions.pageImageUrl(page))}" loading="lazy" decoding="async"
+      alt="" width="${page.w}" height="${page.h}"
+      style="width:100%;height:100%;aspect-ratio:${page.w} / ${page.h};display:block;object-fit:contain">`;
+  }
+  return (page.lines || []).map(l => `<span class="ln" style="${lineStyle(l, big)}"></span>`).join('');
 }
 /* Marks and edits animate in once, on the render that first shows them. Recording
    them after the paint is what keeps a later click from replaying the arrival. */
@@ -78,6 +99,9 @@ function editorGridHtml(selIds) {
   /* The bar fades in when a selection starts, not on every change to it. */
   const selbarEnter = selIds.length && !selbarShown ? ' m-fade' : '';
   selbarShown = selIds.length > 0;
+  /* Before a document is opened the grid shows what it is for: ruled ghosts of
+     pages, and the one button that matters. */
+  if (!s.sessionId) return editorEmptyHtml();
   const header = selIds.length ? `
     <div class="ed-selbar${selbarEnter}">
       <span class="n">${selIds.length} page${selIds.length === 1 ? '' : 's'} selected</span>
@@ -113,6 +137,24 @@ function editorGridHtml(selIds) {
       <button class="pbtn pri press" data-act="ed-save">Save<span class="kbd" data-shortcut="save" style="background:none;opacity:.7">${shortcutLabel('save')}</span></button>
     </div>`;
 }
+/* The ghosts are the placeholder page model, drawn once and never selectable:
+   nothing here is a page, so nothing here can be acted on. */
+const EMPTY_GHOSTS = OneToolEditorState.makePages(8);
+function editorEmptyHtml() {
+  return `
+    <div class="ed-head">
+      <div style="flex:1;min-width:0"><h1 class="wk-h1">No document open</h1></div>
+      <button class="pbtn pri press" data-act="ed-open-doc">Open a PDF</button>
+    </div>
+    <div class="${enterEditor("m-grid")}" style="flex:1;min-height:0;overflow:auto;padding:16px 18px">
+      <div class="ed-grid" aria-hidden="true" style="opacity:.35;pointer-events:none">
+        ${EMPTY_GHOSTS.map((p, i) => thumbHtml(p, i, false, false, 'ed-noop')).join('')}
+      </div>
+    </div>
+    <div class="ed-foot">
+      <span style="flex:1;font-size:12.5px;color:var(--t2)">Open a PDF to edit its pages</span>
+    </div>`;
+}
 function editorReaderHtml() {
   const s = editor.state;
   const page = editor.current();
@@ -133,8 +175,8 @@ function editorReaderHtml() {
       <button class="pbtn gh press" data-act="ed-grid" style="color:var(--acc-text);font-weight:600">All pages<span class="kbd" data-shortcut="reader">${shortcutLabel('reader')}</span></button>
     </div>
     <div class="ed-canvaswrap">
-      <button class="pg ed-canvas ${enterEditor("m-zoom")}" data-act="ed-canvas" data-redact="${s.tool === 'redact'}" style="width:${Math.round(392 * s.zoom / 96)}px;transform:rotate(${page.rot}deg)">
-        ${page.lines.map(l => `<span class="ln" style="${lineStyle(l, true)}"></span>`).join('')}
+      <button class="pg ${hasRendering(page) ? 'pg-real ' : ''}ed-canvas ${enterEditor("m-zoom")}" data-act="ed-canvas" data-redact="${s.tool === 'redact'}" style="width:${Math.round(392 * s.zoom / 96)}px;${hasRendering(page) ? `aspect-ratio:${page.w} / ${page.h};` : ''}transform:rotate(${page.rot}deg)">
+        ${pageBodyHtml(page, true)}
         ${page.marks.map(m => `<span class="ed-mark${seenMarks.has(m.id) ? "" : " m-fade"}" style="left:${m.x}%;top:${m.y}%;width:${m.w}%;height:${m.h}%"></span>`).join('')}
         <span class="ed-pageno">${index + 1}</span>
       </button>

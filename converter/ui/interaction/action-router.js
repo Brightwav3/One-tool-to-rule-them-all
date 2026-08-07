@@ -78,11 +78,14 @@ document.addEventListener('click', async event => {
     case 'close-settings': return closeSettings();
 
     /* editor */
-    case 'ed-page': editor.select(Number(el.dataset.id), {additive: event.metaKey || event.ctrlKey || event.shiftKey});
-      if (event.detail === 2) editor.openReader(Number(el.dataset.id));
+    /* Page ids are the engine's strings and are passed through untouched. */
+    case 'ed-noop': return;
+    case 'ed-open-doc': return OneToolEditorActions.pickDocument();
+    case 'ed-page': editor.select(el.dataset.id, {additive: event.metaKey || event.ctrlKey || event.shiftKey});
+      if (event.detail === 2) editor.openReader(el.dataset.id);
       return render(true);
-    case 'ed-bpage': editor.selectB(Number(el.dataset.id), {additive: event.metaKey || event.ctrlKey || event.shiftKey}); return render(true);
-    case 'ed-open': editor.openReader(Number(el.dataset.id)); return render(true);
+    case 'ed-bpage': editor.selectB(el.dataset.id, {additive: event.metaKey || event.ctrlKey || event.shiftKey}); return render(true);
+    case 'ed-open': editor.openReader(el.dataset.id); return render(true);
     case 'ed-grid': editor.toGrid(); return render(true);
     case 'ed-tool': editor.state.tool = el.dataset.tool; return render(true);
     case 'ed-step': editor.step(Number(el.dataset.delta)); return render(true);
@@ -93,8 +96,11 @@ document.addEventListener('click', async event => {
     case 'ed-rotate': editor.rotate(Number(el.dataset.deg)); return render(true);
     case 'ed-insert': editor.insert(); return render(true);
     case 'ed-delete': editor.remove(); return render(true);
-    case 'ed-revert': editor.state.pages = OneToolEditorState.makePages();
-      editor.state.sel = {}; editor.state.edits = []; editor.state.ocr = false; return render(true);
+    /* Reverting a real session re-reads the engine rather than inventing a
+       document; with nothing open there is nothing to revert to. */
+    case 'ed-revert': editor.state.sel = {}; editor.state.edits = []; editor.state.ocr = false;
+      if (editor.state.sessionId) { try { await OneToolEditorActions.inspect(); } catch (e) { showToast(e.message, false); } }
+      return render(true);
     case 'ed-extract': {
       const n = editor.targets().length || 1;
       editor.log(`Extracted ${n} page${n > 1 ? 's' : ''}`);

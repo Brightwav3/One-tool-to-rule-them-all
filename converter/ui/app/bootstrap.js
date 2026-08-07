@@ -1,6 +1,7 @@
 document.querySelectorAll('.navbtn').forEach(b => b.onclick = () => setPage(b.dataset.page));
 $('settingsBtn').onclick = () => settingsOpen ? closeSettings() : openSettings();
 $('crFiles').onchange = event => creatorTakeFiles(event.target.files);
+$('edFiles').onchange = event => OneToolEditorActions.takeFiles(event.target.files);
 
 /* Dropping a PDF on the editor opens it beside the one already there. The overlay
    only appears while a file is genuinely over the window. */

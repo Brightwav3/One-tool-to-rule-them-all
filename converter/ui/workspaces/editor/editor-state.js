@@ -30,7 +30,7 @@
       }));
       const kind = i === 0 && !offset ? 'Cover' : KINDS[i % KINDS.length];
       return {
-        id: seed + offset * 1000, kind,
+        id: String(seed + offset * 1000), kind,
         rot: i === 6 ? -90 : 0,
         text: i < 2 ? 'Selectable' : 'Image only',
         size: `${(2 + noise(seed + 2) * 7).toFixed(1)} MB`,
@@ -40,20 +40,55 @@
     });
   }
 
+  /* FreeDF accepts 90, 180 and 270 only (RotatePages.__post_init__). The
+     prototype produced -90 and, via (rot + deg) % 360, other negatives; every
+     one of those is rejected upstream. */
+  function normalizeRotation(deg) {
+    return ((Math.round(deg / 90) * 90) % 360 + 360) % 360;
+  }
+
   function createEditorState(options = {}) {
     const state = {
       mode: 'grid',
       name: options.name || 'Untitled.pdf',
-      pages: options.pages || makePages(),
+      /* No document is open until one is opened. The generated pages above are
+         the empty state's furniture, not a stand-in for a real file. */
+      pages: options.pages || [],
+      sessionId: null, revision: -1, capabilities: {}, engineState: null,
+      canUndo: false, canRedo: false,
       sel: {}, focus: null,
       tool: 'select', zoom: 96, scope: 'This page',
       ocr: false, edits: [], nextId: 1000,
       bName: null, bPages: [], bSel: {}, dragging: false,
     };
 
-    const selectedIds = () => Object.keys(state.sel).filter(k => state.sel[k]).map(Number)
+    /* Page ids are the engine's own strings, so nothing is coerced to a number
+       on the way through the selection. */
+    const selectedIds = () => Object.keys(state.sel).filter(k => state.sel[k])
       .filter(id => state.pages.some(p => p.id === id));
-    const bSelectedIds = () => Object.keys(state.bSel).filter(k => state.bSel[k]).map(Number);
+    const bSelectedIds = () => Object.keys(state.bSel).filter(k => state.bSel[k]);
+
+    /* The server's manifest wins wholesale: pages are replaced, never merged,
+       because a merge would keep a page the engine has deleted. Selection is
+       filtered to what survived. */
+    function absorb(snapshot) {
+      state.sessionId = snapshot.session ? snapshot.session.id : null;
+      state.revision = snapshot.revision;
+      state.capabilities = snapshot.capabilities || {};
+      state.engineState = snapshot.engineState || null;
+      state.canUndo = !!snapshot.canUndo;
+      state.canRedo = !!snapshot.canRedo;
+      const doc = snapshot.document || {};
+      if (doc.title) state.name = doc.title;
+      state.pages = (doc.pages || []).map(p => ({
+        id: p.pageId, index: p.index, w: p.width, h: p.height,
+        rot: p.rotation, sourceIndex: p.sourceIndex, marks: [], lines: [],
+        kind: 'Page', text: 'Unknown', size: '',
+      }));
+      const live = new Set(state.pages.map(p => p.id));
+      state.sel = Object.fromEntries(Object.entries(state.sel).filter(([id]) => live.has(id)));
+      if (!live.has(state.focus)) state.focus = state.pages.length ? state.pages[0].id : null;
+    }
     /* In the reader the page you are looking at is the target; in the grid it is
        whatever is selected. One rule, so every action reads the same way. */
     const targets = () => state.mode === 'reader' ? (state.focus ? [state.focus] : []) : selectedIds();
@@ -92,7 +127,7 @@
     function rotate(deg) {
       const ids = targets();
       if (!ids.length) return false;
-      state.pages = state.pages.map(p => ids.includes(p.id) ? {...p, rot: (p.rot + deg) % 360} : p);
+      state.pages = state.pages.map(p => ids.includes(p.id) ? {...p, rot: normalizeRotation(p.rot + deg)} : p);
       log(`Rotated ${ids.length > 1 ? `${ids.length} pages` : `page ${state.pages.findIndex(p => p.id === ids[0]) + 1}`}`);
       return true;
     }
@@ -113,7 +148,7 @@
     function insert() {
       const ids = targets();
       const at = ids.length ? state.pages.findIndex(p => p.id === ids[ids.length - 1]) + 1 : state.pages.length;
-      const page = {id: state.nextId, kind: 'Blank', rot: 0, text: 'None', size: '0.2 MB', lines: [], marks: []};
+      const page = {id: String(state.nextId), kind: 'Blank', rot: 0, text: 'None', size: '0.2 MB', lines: [], marks: []};
       state.pages = [...state.pages.slice(0, at), page, ...state.pages.slice(at)];
       state.nextId += 1;
       state.sel = {[page.id]: true}; state.focus = page.id;
@@ -161,7 +196,7 @@
       if (!ids.length) return false;
       const moving = state.pages.filter(p => ids.includes(p.id));
       state.bPages = [...state.bPages, ...(copy
-        ? moving.map((p, k) => ({...p, id: state.nextId + k}))
+        ? moving.map((p, k) => ({...p, id: String(state.nextId + k)}))
         : moving)];
       if (copy) state.nextId += moving.length;
       else state.pages = state.pages.filter(p => !ids.includes(p.id));
@@ -172,7 +207,7 @@
     function moveLeft() {
       const ids = bSelectedIds();
       if (!ids.length) return false;
-      const moving = state.bPages.filter(p => ids.includes(p.id)).map((p, k) => ({...p, id: state.nextId + k}));
+      const moving = state.bPages.filter(p => ids.includes(p.id)).map((p, k) => ({...p, id: String(state.nextId + k)}));
       state.nextId += moving.length;
       state.pages = [...state.pages, ...moving];
       state.bPages = state.bPages.filter(p => !ids.includes(p.id));
@@ -193,7 +228,7 @@
     function saved() { state.edits = []; }
 
     return {
-      state, TOOLS,
+      state, TOOLS, absorb, normalizeRotation,
       selectedIds, bSelectedIds, targets, current, currentIndex, totalMarks,
       log, select, selectAll, deselect, selectB,
       openReader, toGrid, toggleMode, step,
@@ -204,5 +239,5 @@
     };
   }
 
-  return {createEditorState, makePages, TOOLS, LINE_WIDTHS};
+  return {createEditorState, makePages, normalizeRotation, TOOLS, LINE_WIDTHS, KINDS, noise};
 }));

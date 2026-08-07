@@ -579,4 +579,71 @@ assert.match(indexHtml, /\.sw i\{[^}]*transition:transform 160ms var\(--ease\)\}
 assert.match(indexHtml, /@media \(prefers-reduced-motion:reduce\)\{\.m-zoom,\.m-grid,\.m-fade,\.m-up,\.m-left,\.m-right,\.ed-mark\{animation-duration:1ms\}\}/);
 assert.match(indexHtml, /@media \(prefers-reduced-motion:reduce\)\{\.s-fade\{animation-duration:1ms\}\}/);
 
+// ---- Editor: a real document, absorbed from the server ----
+/* These are node:test cases rather than bare assertions because they describe a
+   contract with the backend and are worth naming individually. */
+const {test} = require('node:test');
+
+const snapshotWithPages = (ids, revision = 0) => ({
+  session: {id: 's1'},
+  revision,
+  canUndo: false,
+  canRedo: false,
+  engineState: 'open',
+  capabilities: {preview: {state: 'ready', detail: ''}},
+  document: {
+    pageCount: ids.length,
+    title: null,
+    pages: ids.map((id, i) => ({pageId: id, index: i, width: 612, height: 792, rotation: 0, sourceIndex: i})),
+  },
+});
+
+test('a fresh state is an empty document, not twenty-four invented pages', () => {
+  const e = createEditorState();
+  assert.equal(e.state.pages.length, 0);
+  assert.equal(e.state.sessionId, null);
+  assert.equal(e.state.revision, -1);
+});
+
+test('placeholder pages remain available for the empty state', () => {
+  assert.equal(makePages(4).length, 4);
+});
+
+test('absorbing a snapshot replaces the page model wholesale', () => {
+  const e = createEditorState();
+  e.absorb({session: {id: 's1'}, revision: 0, canUndo: false, canRedo: false,
+            engineState: 'open',
+            capabilities: {preview: {state: 'ready', detail: ''}},
+            document: {pageCount: 1, title: null, pages: [
+              {pageId: 'p1', index: 0, width: 612, height: 792, rotation: 0, sourceIndex: 0}]}});
+  assert.equal(e.state.pages.length, 1);
+  assert.equal(e.state.pages[0].id, 'p1');
+  assert.equal(e.state.sessionId, 's1');
+});
+
+test('selection is filtered to surviving pages, never merged', () => {
+  const e = createEditorState();
+  e.absorb(snapshotWithPages(['p1', 'p2']));
+  e.select('p2');
+  e.absorb(snapshotWithPages(['p1']));
+  assert.deepEqual(Object.keys(e.state.sel), []);
+  assert.equal(e.state.focus, 'p1');
+});
+
+test('rotation is normalized to the quarter turns FreeDF accepts', () => {
+  const e = createEditorState();
+  assert.equal(e.normalizeRotation(-90), 270);
+  assert.equal(e.normalizeRotation(360), 0);
+  assert.equal(e.normalizeRotation(-180), 180);
+});
+
+// The grid renders the engine's own renderings, and asks the browser for them
+// only when they scroll into view.
+assert.match(indexHtml, /\/api\/editor\/page\.png\?session=/);
+assert.match(indexHtml, /loading="lazy"/);
+// Tiles are sized from the width and height the engine returned, never from the
+// width that was requested: FreeDF's "width" is a bounding box.
+assert.match(indexHtml, /aspect-ratio:\$\{page\.w\} \/ \$\{page\.h\}/);
+assert.match(rawIndexHtml, /<script src="\/workspaces\/editor\/editor-actions\.js"><\/script>/);
+
 console.log('UI action-state regression tests passed');

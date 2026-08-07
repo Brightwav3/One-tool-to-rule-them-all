@@ -1,0 +1,168 @@
+{
+ "steps": [
+  {
+   "step": "page:convert",
+   "requests": [
+    "GET /api/history"
+   ],
+   "toasts": [],
+   "renders": 2,
+   "page": "convert"
+  },
+  {
+   "step": "act:toggle-folder-menu",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "convert"
+  },
+  {
+   "step": "act:toggle-folder-menu",
+   "requests": [],
+   "toasts": [],
+   "renders": 3,
+   "page": "convert"
+  },
+  {
+   "step": "act:check-all",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "convert"
+  },
+  {
+   "step": "act:check-all",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "convert"
+  },
+  {
+   "step": "act:history-filter",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "convert"
+  },
+  {
+   "step": "act:history-sort",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "convert"
+  },
+  {
+   "step": "act:cycle-scope",
+   "requests": [],
+   "toasts": [],
+   "renders": 1,
+   "page": "convert"
+  },
+  {
+   "step": "key:k",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "convert"
+  },
+  {
+   "step": "key:Escape",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "convert"
+  },
+  {
+   "step": "click:#settingsBtn",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "convert"
+  },
+  {
+   "step": "act:close-settings",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "convert"
+  },
+  {
+   "step": "page:creator",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "creator"
+  },
+  {
+   "step": "act:cr-format",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "creator"
+  },
+  {
+   "step": "act:cr-continue",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "creator"
+  },
+  {
+   "step": "act:cr-back",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "creator"
+  },
+  {
+   "step": "page:editor",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "editor"
+  },
+  {
+   "step": "act:ed-select-all",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "editor"
+  },
+  {
+   "step": "act:ed-page",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "editor"
+  },
+  {
+   "step": "act:ed-revert",
+   "requests": [],
+   "toasts": [],
+   "renders": 2,
+   "page": "editor"
+  },
+  {
+   "step": "page:convert",
+   "requests": [
+    "GET /api/history"
+   ],
+   "toasts": [],
+   "renders": 3,
+   "page": "convert"
+  }
+ ],
+ "final": {
+  "elements": 586,
+  "structure": "8ad83bcf23f40000",
+  "computed": "1177f46f815b1100"
+ },
+ "totals": {
+  "requests": 2,
+  "toasts": 0,
+  "renders": 43,
+  "errors": 0
+ },
+ "errors": [],
+ "polled": true
+}

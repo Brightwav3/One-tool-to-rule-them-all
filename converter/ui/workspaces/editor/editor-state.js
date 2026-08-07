@@ -62,7 +62,7 @@
     const totalMarks = () => state.pages.reduce((n, p) => n + p.marks.length, 0);
 
     /* Newest first, capped at six — the pane shows what just happened, not a ledger. */
-    function log(text) { state.edits = [{id: state.edits.length + Date.now(), text}, ...state.edits].slice(0, 6); }
+    function log(text) { state.edits = [{id: nextLocalId('edit'), text}, ...state.edits].slice(0, 6); }
 
     function select(id, {additive = false} = {}) {
       const only = selectedIds();

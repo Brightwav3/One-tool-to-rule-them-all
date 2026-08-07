@@ -120,7 +120,26 @@ baseline screenshots as the check rather than a click-through.
 | 6 | 90 globals → `app/app-state.js` behind bridge getters | |
 | 7 | Controllers: separate state mutation, side effects, rendering | |
 | 8 | `legacy/monolith.js` reaches zero and is deleted | done |
-| B | Design system: apply tokens, unify components, split the action router | not started |
+| B | Design system: apply tokens, unify components, split the action router | started |
+
+## Phase B log
+
+`core/ids.js` — first phase-B commit, deliberately the smallest one available.
+One caller, `editor-state.js`'s `log()`, which built ids as
+`state.edits.length + Date.now()`: a clock that can repeat inside a millisecond
+added to a length that shrinks when the list is capped at six. It did not
+collide in practice, but nothing made that true. A counter is unique by
+construction.
+
+The other two id schemes — `state.nextId` in the editor and in the creator —
+were left alone. They number pages, marks and queue items, reset when their
+state is rebuilt, and sit alongside ids that arrive with real data. Different
+problem, and this commit was meant to be the warm-up, not the sweep.
+
+The golden trace is identical, but the trace does not reach `log()`, so the
+change was checked directly instead: three edits, ids `edit-1`..`edit-3`, all
+distinct. Worth remembering that an identical trace only proves the code the
+script touches.
 
 The eleven stylesheets are done, and as a pure move rather than a rewrite.
 `app.css` was already sectioned by top-level comments, and every section is a

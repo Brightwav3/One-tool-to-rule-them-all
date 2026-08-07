@@ -3,6 +3,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const mainJs = fs.readFileSync(path.join(__dirname, '..', 'app', 'main.js'), 'utf8');
 const preloadJs = fs.readFileSync(path.join(__dirname, '..', 'app', 'preload.js'), 'utf8');
+/* First, as in index.html: it installs the nextLocalId global that editor state
+   calls. Required for the side effect, not for the return value. */
+require('../converter/ui/core/ids.js');
 const actionState = require('../converter/ui/interaction/action-state.js');
 const panelResize = require('../converter/ui/interaction/panel-resize.js');
 const shortcutLabels = require('../converter/ui/interaction/shortcut-labels.js');

@@ -75,6 +75,10 @@
 .tool{width:34px;height:34px;display:grid;place-items:center;border-radius:8px;color:var(--t2);font-size:13px;transition:background var(--d-quick) ease,color var(--d-quick) ease}
 .tool:hover{background:var(--quiet)}
 .tool[data-on="true"]{background:var(--acc-tint);color:var(--acc-text)}
+/* A tool the engine cannot offer stays visible — its tooltip carries the
+   engine's own reason — but reads as unavailable and does not respond. */
+.tool[aria-disabled="true"]{opacity:.38;cursor:default}
+.tool[aria-disabled="true"]:hover{background:transparent}
 .ed-railrule{width:22px;height:1px;background:var(--sep);margin:6px 0}
 .ed-toolbar{flex:none;display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid var(--sep);background:var(--surface)}
 .ed-toolbar .rule{width:1px;height:16px;background:var(--sep)}

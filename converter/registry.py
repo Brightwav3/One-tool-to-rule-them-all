@@ -160,6 +160,40 @@ class Helper:
 PACKAGED = "bundled with One Tool"
 
 
+# The PDF engine reports four states per operation, and the registry speaks a
+# different vocabulary. The collapse is deliberately lossy in exactly one place:
+# `unavailable` — something the machine is missing — becomes `helper`, the state
+# the existing install flow already knows how to offer. `blocked` and `error`
+# get states of their own, because they are not the same problem: a blocked
+# document needs a different document, a broken backend needs a fix or a
+# recheck. Folding one into the other would send the user to the wrong remedy.
+_ENGINE_STATE_COLLAPSE = {
+    "ready": ("ready", None),
+    "unavailable": ("helper", "install"),
+    "blocked": ("blocked-document", None),
+    "error": ("engine-error", "recheck"),
+}
+
+
+def collapse_engine_state(capability: dict) -> dict:
+    """Map one engine capability report onto a registry state.
+
+    The engine's `detail` is carried through untouched: it is the only part of
+    the report that says what actually went wrong. A state this build does not
+    recognise is treated as `error`, never as `ready` — an unknown report is a
+    reason to distrust the backend, not to assume it works.
+    """
+    raw = (capability or {}).get("state")
+    state, action = _ENGINE_STATE_COLLAPSE.get(raw, _ENGINE_STATE_COLLAPSE["error"])
+    return {"state": state, "detail": (capability or {}).get("detail") or "", "action": action}
+
+
+def collapse_operation_states(capabilities: dict) -> dict:
+    """Collapse a whole `capabilities` report, keyed by operation kind."""
+    operations = (capabilities or {}).get("operations") or []
+    return {op["kind"]: collapse_engine_state(op) for op in operations if op.get("kind")}
+
+
 @dataclass(frozen=True)
 class EngineHelper(Helper):
     """A helper that is a bundled Python package, not a program on PATH.

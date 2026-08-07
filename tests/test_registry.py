@@ -43,5 +43,62 @@ class RegistryTests(unittest.TestCase):
                 self.assertEqual(helper.locate_binary("pdftoppm"), str(executable))
 
 
+class EngineCapabilityStateTests(unittest.TestCase):
+    """The engine's four operation states collapse onto registry states.
+
+    `unavailable` is installable and so becomes `helper`. `blocked` and `error`
+    are different problems with different remedies and must stay distinct: a
+    blocked document is not a broken backend. The engine's detail is carried
+    verbatim in every case.
+    """
+
+    def test_ready_stays_ready(self):
+        self.assertEqual(
+            registry.collapse_engine_state({"state": "ready", "detail": ""}),
+            {"state": "ready", "detail": "", "action": None},
+        )
+
+    def test_unavailable_becomes_an_installable_helper(self):
+        collapsed = registry.collapse_engine_state(
+            {"state": "unavailable", "detail": "Tesseract executable not found"})
+        self.assertEqual(collapsed["state"], "helper")
+        self.assertEqual(collapsed["action"], "install")
+        self.assertEqual(collapsed["detail"], "Tesseract executable not found")
+
+    def test_blocked_and_error_are_distinct(self):
+        blocked = registry.collapse_engine_state(
+            {"state": "blocked", "detail": "3 streams use filters this version cannot decode"})
+        broken = registry.collapse_engine_state(
+            {"state": "error", "detail": "tesseract exited 139"})
+        self.assertNotEqual(blocked["state"], broken["state"])
+        self.assertEqual(blocked["state"], "blocked-document")
+        self.assertEqual(broken["state"], "engine-error")
+        self.assertIsNone(blocked["action"])
+        self.assertEqual(broken["action"], "recheck")
+
+    def test_detail_is_never_replaced(self):
+        for state in ("unavailable", "blocked", "error"):
+            with self.subTest(state=state):
+                self.assertEqual(
+                    registry.collapse_engine_state({"state": state, "detail": "the real reason"})["detail"],
+                    "the real reason",
+                )
+
+    def test_an_unknown_state_is_not_silently_read_as_ready(self):
+        self.assertEqual(
+            registry.collapse_engine_state({"state": "banana", "detail": ""})["state"],
+            "engine-error",
+        )
+
+    def test_operation_states_collapses_a_capabilities_report(self):
+        collapsed = registry.collapse_operation_states({"operations": [
+            {"kind": "crop_pages", "state": "ready", "detail": ""},
+            {"kind": "add_text_layer", "state": "unavailable", "detail": "no tesseract"},
+        ]})
+        self.assertEqual(collapsed["crop_pages"]["state"], "ready")
+        self.assertEqual(collapsed["add_text_layer"]["state"], "helper")
+        self.assertEqual(collapsed["add_text_layer"]["detail"], "no tesseract")
+
+
 if __name__ == "__main__":
     unittest.main()

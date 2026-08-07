@@ -88,7 +88,14 @@ function renderEditorPanel() {
 }
 function editorRailHtml() {
   return `<div class="ed-rail ${enterEditor("m-fade")}">
-    ${editor.TOOLS.map(t => `<button class="tool press" data-act="ed-tool" data-tool="${t.id}" data-on="${t.id === editor.state.tool}" title="${esc(t.label)}" aria-label="${esc(t.label)}">${t.glyph}</button>`).join('')}
+    ${editor.TOOLS.map(t => {
+      /* The engine decides whether a tool is offered, and says why when it is
+         not. Its own words go into the tooltip: replacing them with something
+         generic would delete the only part that tells the user what to do. */
+      const cap = editor.toolState(t.id);
+      const title = cap.enabled ? t.label : (cap.detail ? `${t.label} — ${cap.detail}` : t.label);
+      return `<button class="tool press" data-act="${cap.enabled ? 'ed-tool' : 'ed-noop'}" data-tool="${t.id}" data-on="${t.id === editor.state.tool}" data-tool-state="${cap.state}" data-action-offer="${cap.action || ''}" aria-disabled="${!cap.enabled}" ${cap.enabled ? '' : 'disabled '}title="${esc(title)}" aria-label="${esc(title)}">${t.glyph}</button>`;
+    }).join('')}
     <span class="ed-railrule"></span>
     <button class="tool press" data-act="ed-rotate" data-deg="-90" title="Rotate left" aria-label="Rotate left">↺</button>
     <button class="tool press" data-act="ed-rotate" data-deg="90" title="Rotate right" aria-label="Rotate right">↻</button>

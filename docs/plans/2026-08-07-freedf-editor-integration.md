@@ -137,11 +137,34 @@ whatever is already importable (last resort). A shipped app should not change
 behaviour because of an unrelated global install; a FreeDF developer sets the
 environment variable. `engine_info().location` always reports which one loaded.
 
-### D4 — Deferred, answer by end of Task 12
+### D4 — Answered 2026-08-07, end of Task 12
 
-Redact, text, draw and stamp have no FreeDF operation: disable with a reason
-(recommended) or remove from the toolbar. `set_metadata` and `extract_pages` are
-implemented with no UI: leave unexposed this pass (recommended).
+**Answer: redact, text, draw and stamp stay in the rail, disabled, each
+carrying its reason. `set_metadata` and `extract_pages` stay unexposed.**
+
+Disabling beats removing for three reasons. First, the four tools are not
+uniformly absent: they are absent *from this build*, which is a different
+statement from "One Tool does not edit text", and a rail that silently drops
+them cannot make that distinction. Second, the rail is now the single surface
+where engine state is legible — `toolState` returns the same shape for every
+tool, and a tool that vanishes when unavailable would be the one case the
+user cannot inspect. A missing Tesseract and a missing Draw tool would then
+look identical: nothing. Third, removal is not free either — a rail whose
+length changes with the machine's installed helpers makes the six glyph
+positions unlearnable.
+
+So the rail renders all six. `unimplemented` tools are disabled with a roadmap
+note; `unavailable` ones are disabled with the engine's own detail and an
+install offer; `blocked` ones explain the document and offer nothing;
+`error` ones show the engine's message and offer a recheck. No tool's reason
+is ever a generic string of ours when the engine supplied one.
+
+`set_metadata` and `extract_pages` are real v0.2 operations with no UI. They
+stay unexposed this pass: neither has a home in the current rail (one is a
+document-properties dialog, the other a save-a-subset flow), and inventing
+either surface here would be scope this plan did not budget. They cost nothing
+to leave dormant — `toolState` maps by tool id, so adding them later is a map
+entry plus their UI, with no change to the mechanism.
 
 ### D5 — Answered 2026-08-07, end of Task 9
 

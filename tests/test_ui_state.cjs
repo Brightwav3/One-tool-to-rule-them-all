@@ -637,6 +637,74 @@ test('rotation is normalized to the quarter turns FreeDF accepts', () => {
   assert.equal(e.normalizeRotation(-180), 180);
 });
 
+// ---- Editor: capability-driven tool state ----
+/* The engine reports a state and a detail per operation. The UI reads those
+   directly: it never infers OCR's state from capabilities.ocr, and never
+   substitutes a message of its own for the engine's detail. */
+const stateWithCaps = caps => {
+  const e = createEditorState();
+  e.absorb({...snapshotWithPages(['p1']), capabilities: caps});
+  return e;
+};
+
+test('crop follows the engine operation state', () => {
+  const e = stateWithCaps({operations: [{kind: 'crop_pages', state: 'ready', detail: ''}]});
+  assert.equal(e.toolState('crop').enabled, true);
+});
+
+test('an unavailable OCR offers an install, a blocked one does not', () => {
+  const missing = stateWithCaps({operations: [
+    {kind: 'add_text_layer', state: 'unavailable', detail: 'Tesseract executable not found'}]});
+  assert.equal(missing.toolState('ocr').state, 'unavailable');
+  assert.equal(missing.toolState('ocr').action, 'install');
+
+  const blocked = stateWithCaps({operations: [
+    {kind: 'add_text_layer', state: 'blocked', detail: '3 streams use filters this version cannot decode'}]});
+  assert.equal(blocked.toolState('ocr').state, 'blocked');
+  assert.equal(blocked.toolState('ocr').action, null);
+});
+
+test('a broken backend is distinguished from an absent one', () => {
+  const e = stateWithCaps({operations: [
+    {kind: 'add_text_layer', state: 'error', detail: 'tesseract exited 139'}]});
+  assert.equal(e.toolState('ocr').state, 'error');
+  assert.equal(e.toolState('ocr').detail, 'tesseract exited 139');
+});
+
+test('tools with no engine operation report unimplemented', () => {
+  const e = stateWithCaps({operations: [{kind: 'crop_pages', state: 'ready', detail: ''}]});
+  assert.equal(e.toolState('redact').state, 'unimplemented');
+});
+
+test('the engine detail is never replaced by a generic message', () => {
+  const e = stateWithCaps({operations: [
+    {kind: 'add_text_layer', state: 'unavailable', detail: 'Tesseract executable not found: tesseract'}]});
+  assert.match(e.toolState('ocr').detail, /Tesseract executable not found/);
+});
+
+test('an error offers a recheck, not an install', () => {
+  const e = stateWithCaps({operations: [
+    {kind: 'crop_pages', state: 'error', detail: 'boom'}]});
+  assert.equal(e.toolState('crop').action, 'recheck');
+  assert.equal(e.toolState('crop').enabled, false);
+});
+
+test('select needs no engine operation and is always available', () => {
+  const e = createEditorState();
+  assert.equal(e.toolState('select').state, 'ready');
+  assert.equal(e.toolState('select').enabled, true);
+});
+
+test('before any document is open a real tool is unknown, not unimplemented', () => {
+  const e = createEditorState();
+  assert.equal(e.toolState('crop').state, 'unknown');
+  assert.equal(e.toolState('crop').enabled, false);
+});
+
+// The rail carries the engine's own detail into the disabled button.
+assert.match(indexHtml, /aria-disabled="\$\{/);
+assert.match(indexHtml, /data-tool-state="\$\{/);
+
 // The grid renders the engine's own renderings, and asks the browser for them
 // only when they scroll into view.
 assert.match(indexHtml, /\/api\/editor\/page\.png\?session=/);

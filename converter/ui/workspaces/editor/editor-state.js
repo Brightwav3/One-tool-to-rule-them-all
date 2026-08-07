@@ -20,6 +20,33 @@
     {id: 'crop', glyph: '✂', label: 'Crop', help: 'Drag the edges. Crop can apply to this page or every page.'},
   ];
 
+  /* Which FreeDF operation each tool needs. A tool absent from this map has no
+     engine operation at all — that is what "unimplemented" means, and it is a
+     property of this build, not of the document. `select` is a pointer mode: it
+     asks nothing of the engine, so it is mapped to null rather than left out. */
+  const TOOL_OPERATIONS = {
+    select: null,
+    crop: 'crop_pages',
+    ocr: 'add_text_layer',
+    rotate: 'rotate_pages',
+    delete: 'delete_pages',
+    reorder: 'reorder_pages',
+    insert: 'insert_blank_page',
+    import: 'import_pages',
+  };
+
+  /* The engine's four states imply four different offers, so none of them may
+     be folded into another. `unavailable` means this installation cannot supply
+     the tool — something can be installed. `blocked` means this document
+     refuses it — installing nothing would help, so no install button. `error`
+     means the backend is there and broken — a recheck is the move. */
+  const ENGINE_STATE_ACTIONS = {
+    ready: null, unavailable: 'install', blocked: null, error: 'recheck',
+  };
+
+  const UNIMPLEMENTED_DETAIL =
+    'This tool has no FreeDF operation yet. It is on the roadmap, not in this build.';
+
   function makePages(count = 24, offset = 0) {
     return Array.from({length: count}, (_, i) => {
       const seed = i + offset + 1;
@@ -89,6 +116,35 @@
       state.sel = Object.fromEntries(Object.entries(state.sel).filter(([id]) => live.has(id)));
       if (!live.has(state.focus)) state.focus = state.pages.length ? state.pages[0].id : null;
     }
+    /* The engine's per-operation report, read straight through. Nothing here
+       consults capabilities.ocr: v0.2 already states add_text_layer's own state
+       and detail, and the summary block can disagree with it. The detail string
+       is the engine's, always — a generic message would throw away the only
+       part of this that tells the user what to do. */
+    function toolState(toolId) {
+      if (!(toolId in TOOL_OPERATIONS)) {
+        return {enabled: false, state: 'unimplemented', detail: UNIMPLEMENTED_DETAIL, action: null};
+      }
+      const kind = TOOL_OPERATIONS[toolId];
+      if (!kind) return {enabled: true, state: 'ready', detail: '', action: null};
+      const operations = (state.capabilities || {}).operations;
+      if (!Array.isArray(operations)) {
+        return {enabled: false, state: 'unknown', detail: 'No document is open.', action: null};
+      }
+      const op = operations.find(o => o && o.kind === kind);
+      if (!op) {
+        return {enabled: false, state: 'unavailable',
+                detail: `This engine build does not provide ${kind}.`, action: 'install'};
+      }
+      const engineState = op.state in ENGINE_STATE_ACTIONS ? op.state : 'error';
+      return {
+        enabled: engineState === 'ready',
+        state: engineState,
+        detail: op.detail || '',
+        action: ENGINE_STATE_ACTIONS[engineState],
+      };
+    }
+
     /* In the reader the page you are looking at is the target; in the grid it is
        whatever is selected. One rule, so every action reads the same way. */
     const targets = () => state.mode === 'reader' ? (state.focus ? [state.focus] : []) : selectedIds();
@@ -228,7 +284,7 @@
     function saved() { state.edits = []; }
 
     return {
-      state, TOOLS, absorb, normalizeRotation,
+      state, TOOLS, absorb, normalizeRotation, toolState,
       selectedIds, bSelectedIds, targets, current, currentIndex, totalMarks,
       log, select, selectAll, deselect, selectB,
       openReader, toGrid, toggleMode, step,
@@ -239,5 +295,5 @@
     };
   }
 
-  return {createEditorState, makePages, normalizeRotation, TOOLS, LINE_WIDTHS, KINDS, noise};
+  return {createEditorState, makePages, normalizeRotation, TOOLS, TOOL_OPERATIONS, LINE_WIDTHS, KINDS, noise};
 }));

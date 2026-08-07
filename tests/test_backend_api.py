@@ -40,11 +40,25 @@ class BackendApiTests(unittest.TestCase):
         self.assertIn("files", state)
 
     def test_root_serves_the_electron_renderer(self):
+        """The shell loads, and the draggable title bar is actually served.
+
+        The drag region used to be inline in index.html and was asserted there.
+        The UI decomposition moved it to styles/shell.css, which broke this test
+        without breaking the app. Assert the behaviour over HTTP wherever it
+        lives rather than pinning the test to one file's contents: the shell
+        must link the stylesheet, and the server must serve it with the region
+        intact.
+        """
         with urlopen(self.base_url + "/") as response:
             body = response.read().decode("utf-8")
         self.assertEqual(response.status, 200)
         self.assertIn("One Tool", body)
-        self.assertIn("-webkit-app-region:drag", body)
+        self.assertIn("/styles/shell.css", body)
+
+        with urlopen(self.base_url + "/styles/shell.css") as response:
+            shell_css = response.read().decode("utf-8")
+        self.assertEqual(response.status, 200)
+        self.assertIn("-webkit-app-region:drag", shell_css)
 
     def test_api_routes_are_literal_root_paths(self):
         for route in ("/api/tools/", "/v1/api/tools", "/converter/api/tools"):

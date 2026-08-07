@@ -21,7 +21,20 @@ class ServerUxTests(unittest.TestCase):
         return source
 
     def test_inspector_renders_format_aware_facts_and_controls(self):
-        source = (ROOT / "converter" / "ui" / "index.html").read_text(encoding="utf-8")
+        """The inspector still renders facts and wires its controls.
+
+        These four markers lived in index.html's inline script until the UI
+        decomposition moved them to features/inspector/. Reading one file made
+        the test a layout assertion rather than a behaviour one; search the
+        whole renderer instead, so moving a file again does not fail it while
+        deleting the feature still does.
+        """
+        ui = ROOT / "converter" / "ui"
+        source = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in sorted(ui.rglob("*"))
+            if path.suffix in {".html", ".js", ".css"} and path.is_file()
+        )
 
         self.assertIn("inspector-facts", source)
         self.assertIn("optionControl", source)

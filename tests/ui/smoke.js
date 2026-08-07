@@ -18,6 +18,19 @@
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+  /* Some actions reach a hidden <input type="file"> and click it. That opens a
+     native file dialog, which nothing in an automated run will ever dismiss, so
+     the sweep stops there. Suppress just those clicks for the duration; the
+     handler still runs, only the dialog does not open. */
+  function muteFilePickers() {
+    const real = HTMLInputElement.prototype.click;
+    HTMLInputElement.prototype.click = function () {
+      if (this.type === 'file') return;
+      return real.apply(this, arguments);
+    };
+    return () => { HTMLInputElement.prototype.click = real; };
+  }
+
   function instrument() {
     const errors = [];
     const origError = console.error;
@@ -107,6 +120,7 @@
 
   window.smoke = async function smoke() {
     const mon = instrument();
+    const unmute = muteFilePickers();
     const report = {
       url: location.origin,
       scripts: [...document.scripts].map(s => s.src.replace(location.origin, '')),
@@ -120,6 +134,7 @@
     await probeGlobals(report);
     await visitPages(report, mon);
     await sweepActions(report, mon);
+    unmute();
     mon.stop();
     report.errors = mon.errors;
     report.summary = {

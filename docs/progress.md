@@ -1,166 +1,194 @@
 # Progress
 
-Where the UI decomposition stands, and what a reviewer needs to know before
-merging it back into the main repo.
+Where the FreeDF Editor integration stands, and what the next session needs to
+pick it up.
+
+For the earlier UI decomposition write-up, see
+[`progress-ui-decomposition.md`](progress-ui-decomposition.md).
 
 ## The short version
 
-`converter/ui/index.html` was 3544 lines: markup, 1145 lines of CSS and a
-2300-line inline `<script>` in one file. It is now 122 lines of markup that
-links 11 stylesheets and loads 38 scripts. 23 commits, 77 files.
+The Editor was a prototype: `editor-state.js` invented 24 pages from `Math.sin`
+noise and every operation mutated a JavaScript object. It now opens real PDFs,
+shows real Poppler-rendered pages, and writes real files, on a backend built on
+**FreeDF** — an independently developed, MIT-licensed PDF engine treated here as
+a third-party dependency.
 
-**No line of application code was rewritten to get there.** Every extraction was
-a verbatim move, and every extraction commit proved it by reassembling the
-source file from its pieces and diffing byte for byte against the previous
-commit.
+**12 of 19 planned tasks are done.** The whole backend and the first two UI
+tasks. Both suites are green: **178 Python tests, 13 renderer tests, 0
+failures.**
 
-## Why a pure move was possible
+## Where to pick up
 
-Classic `<script src>` tags, concatenated in order, are equivalent to one
-script: same global lexical environment, same top-level execution order. So any
-contiguous range can leave the file losslessly, as long as the tags reproduce
-the original order — ranges from the head load *before* the remaining monolith,
-ranges from the tail load *after* it. The same equivalence holds for `<link>`
-stylesheets, which is why the CSS split could not change the cascade.
+The plan is [`plans/2026-08-07-freedf-editor-integration.md`](plans/2026-08-07-freedf-editor-integration.md).
+It is written for an implementer with no context: exact files, exact code, exact
+tests, in numbered steps.
 
-That is the whole trick, and it is also the constraint:
+**Resume at Task 13.** Tasks 1–12 are committed and are marked done below.
 
-- **No `type="module"`.** Modules would isolate every file and break every
-  cross-file reference. That switch is one flag-day at the very end, not done.
-- **Link order follows position in the original file, not the tree diagram.**
-  `motion.css` is linked third because it sat at line 128.
-- The one failure mode a relocation can introduce is a temporal dead zone, which
-  throws loudly at load rather than misbehaving quietly.
+| Task | State |
+| --- | --- |
+| 1 Vendor FreeDF, discover it, report it | done |
+| 2 Adapter: open, inspect, capabilities, close | done |
+| 3 Adapter: render | done |
+| 4 Adapter: apply, undo, redo | done |
+| 5 Adapter: save | done |
+| 6 `EditorSession` and its store | done |
+| 7 HTTP: open, inspect, close | done |
+| 8 HTTP: operation, undo, redo | done |
+| 9 HTTP: page image route | done |
+| 10 HTTP: save through the queue | done |
+| **13 UI: structural ops + optimistic policy** | **next** |
+| 14 UI: undo and redo | after 13 — both rewrite `editor-state.js`, so sequence them |
+| 15 UI: crop | parallel with 14 |
+| 16 UI: OCR text layer | parallel with 14 |
+| 17 Recovery behaviour end to end | after 13–16 |
+| 18 Extend the golden trace and re-baseline | after 17 |
+| 19 Two-tier testing and documentation | last |
 
-## Layout
+Tasks 11 and 12 are done and are listed in the plan between 10 and 13.
+
+The design document behind the plan is
+[`specs/2026-08-07-freedf-editor-integration-design.md`](specs/2026-08-07-freedf-editor-integration-design.md).
+Read the plan's **"Stale assumptions"** table before the spec — the spec was
+written against FreeDF v0.1 and the plan corrects it in nine places.
+
+## What exists now
 
 ```
-converter/ui/
-  index.html         shell only
-  styles/            11 files, split from app.css at its own section comments
-  app/               bootstrap, app-context, app-state, render
-  core/              api-client, actions, capabilities, formatters, ids
-  workspaces/        convert/, creator/, editor/  (state, view, actions)
-  features/          settings, inspector, command-palette, notifications
-  components/        icon, modal, dropdown, file-row, empty-state, context-menu
-  interaction/       action-router, keyboard, drag-drop, selection-state,
-                     panel-resize, shortcut-labels, action-state
+converter/
+  pdf_engine.py          the ONLY file that may import pdfengine
+  editor_sessions.py     EditorSession, EditorSessionStore, revisions, replay
+  vendor/pdfengine/      unpacked FreeDF 0.2.0, shipped as-is
+  vendor/README.md       provenance: repo, branch, commit, rebuild commands
+  server.py              /api/editor/* routes, save as a queue Job
+  registry.py            FreeDF as a Helper, capability states collapsed here
+  ui/workspaces/editor/
+    editor-state.js      real page model; the generators now draw the empty state
+    editor-actions.js    backend calls
+    editor-view.js       real tiles, capability-driven tool state
 ```
 
-`legacy/monolith.js` — the shrinking holding pen — reached zero and is deleted.
-Nothing references it.
+### The API
 
-## How it is verified
+| Route | |
+| --- | --- |
+| `POST /api/editor/open` | `{paths}` → snapshot |
+| `POST /api/editor/inspect` | `{sessionId}` → snapshot |
+| `POST /api/editor/close` | `{sessionId}` → `{closed:true}`, idempotent |
+| `POST /api/editor/operation` | `{sessionId, operations, dryRun?}` → snapshot |
+| `POST /api/editor/undo` / `redo` | `{sessionId}` → snapshot |
+| `POST /api/editor/save` | `{sessionId, outputPath?}` → `{jobId, outputPath}` |
+| `GET /api/editor/page.png` | `?session=&page=&w=&rev=` → `image/png` |
 
-Three oracles, in the order they were needed.
+A snapshot is `{session, document, capabilities, canUndo, canRedo, revision,
+engineState, status}`.
 
-**Byte identity** (phase A). Reassemble, diff, refuse the commit if it differs.
-Free, total, and now spent: controllers and typed errors change bytes by
-definition.
+### Proven end to end
 
-**The golden trace** (phase B, `tests/ui/trace.js`). Behavioural identity
-replaces byte identity. A fixed 21-step script runs against the baseline build
-and the working tree, and both traces are diffed:
+Against a real two-page PDF, through the running HTTP server:
 
-| Recorded | Catches |
-|---|---|
-| every request, ordered, with body | a stray call, a lost call, a reordered pair |
-| every toast, with ok/error | a swallowed error, a duplicated message |
-| render passes per step | the classic event-bus bug, firing twice |
-| current page per step | navigation that silently stopped working |
-| final structure hash | markup that changed shape |
-| final computed-style hash | 35 resolved CSS properties on every element |
-
-```bash
-node tests/ui/trace-diff.cjs tests/ui/traces/baseline.json tests/ui/traces/head.json
+```
+engine: freedf 0.2.0 api v1 ready source vendored
+opened: 2 pages, rev 0, engineState open
+after rotate: rev 1, canUndo True
+page.png: 200 image/png 677 bytes; Cache-Control: …immutable
+stale rev -> 409 revision-stale
+SAVED: True 896 bytes
+SOURCE UNTOUCHED: True
 ```
 
-Current value, identical on both builds: 2 requests, 0 toasts, 43 render passes,
-0 errors, 586 elements, structure `8ad83bcf23f40000`, computed
-`1177f46f815b1100`.
+## The constraints that hold this together
 
-The rig itself was tested — three faults injected into a copy of the baseline
-(a duplicated render pass, a stray `POST /api/convert`, a changed computed
-hash). It caught all three and exited 1.
+- **Only `converter/pdf_engine.py` may import `pdfengine`.** Enforced by
+  `tests/test_pdf_engine_boundary.py`, which parses imports with `ast` rather
+  than scanning for the word — so a string that merely names the package is not
+  a violation, and a real import added anywhere else is. The checker is itself
+  tested against six positives and three negatives.
+- **No FreeDF type crosses that boundary.** Everything out is plain JSON types
+  or `bytes`, asserted by `test_no_freedf_type_escapes`.
+- **The source PDF is never mutated.** `allow_replace_source` is never set.
+- **Save runs on the existing conversion queue**, so progress, history and
+  per-job error isolation are the ones already built. No second mechanism.
+- **The distribution is `freedf`; the import package is `pdfengine`.** That
+  split is deliberate upstream. Do not "fix" it.
+- Compatibility gates on **both** `API_VERSION` (`"v1"`) and a minimum engine
+  version (0.2.0). The first catches a contract break, the second catches a
+  build that speaks `v1` but predates the features this depends on.
+- Engine precedence: `ONETOOL_PDFENGINE` → vendored → installed.
+  `engine_info().location` always reports which one loaded.
 
-**The differential smoke sweep** (`tests/ui/smoke.js`). Clicks every `data-act`
-on every page against both builds and diffs the reports, so a failure only
-counts if it appears on the refactored side alone. Structural fingerprints came
-out identical on all three pages.
+## What the implementation found that the plan did not predict
 
-## What the oracles deliberately do not cover
+Four of these changed the design. They are worth reading before touching the
+remaining tasks.
 
-Worth stating, because an identical trace is easy to over-read.
+**Page ids are stable within a session, not across opens.**
+`pdfengine/document/pages.py:203` mints `page_{uuid4().hex}` per page per open.
+Verified:
 
-- **The trace only proves the code its script touches.** `log()` in the editor
-  is not on that path, so the `ids.js` change was checked directly in the
-  running app instead.
-- The 700 ms `/api/state` poll is recorded as a flag, never as an ordered
-  request — how often it has fired depends on machine speed, not behaviour.
-- Destructive actions are skipped: converting, creating, installing, removing,
-  resetting. They spend real time and touch real files.
-- A plain browser has no `window.appWindow`, so file pickers, reveal-in-folder
-  and the window controls cannot be exercised by any of this. Those need the
-  Electron window.
-- One viewport, so `@media` branches and font-load failures are unseen.
-- **The 17 baseline screenshots in `docs/baseline/` have never been compared
-  against.** This is the one check automation cannot make, and it is still open.
-
-Two servers must be at equal state before any comparison, or the DOM differs for
-reasons unrelated to the refactor:
-
-```bash
-curl -X POST http://127.0.0.1:8898/api/clear && curl -X POST http://127.0.0.1:8899/api/clear
+```
+open1: page_22c1e0be…   open2: page_b20f2bfb…   IDENTICAL ACROSS OPENS: False
+                                                 STABLE ACROSS REORDER:  True
 ```
 
-## Phase B, started
+Stability across reorder is what the UI's selection model needs, so keying
+`state.sel` by id is correct. But replaying a persisted operation log after a
+backend restart dies with `unknown page ID`. `EditorSession` therefore also
+persists `basePageIds` in source-index order and translates old→new on
+`reattach`. The plan's own restart test cannot catch this, because
+`get_adapter()` is process-cached and the "revived" store meets the same live
+engine — it was verified separately against a genuinely fresh one.
 
-| | |
-|---|---|
-| `core/ids.js` | done — one caller, replaced `state.edits.length + Date.now()` |
-| `core/errors.js` | next |
-| controllers | after that, extract-and-delegate, one action per commit |
-| `core/events.js` | last, and argued against |
+**FreeDF's render `width` is a bounding dimension, not an exact width.** A
+landscape page requested at 180 comes back 255×180. Tiles must size from the
+returned `width`/`height`. Task 13 onward inherits this.
 
-The rule for every one of them: **a commit ends with the app working.** If it
-cannot end green, it is too big and gets split.
+**`rev` must be rebuilt into every image URL after every mutation**, or
+`page.png` correctly returns 409 `revision-stale`. `revision` is monotonic — it
+increments on undo and redo too, because a repeated value would serve a stale
+image.
 
-`core/errors.js` is the interesting one. `app-state.js` currently decides
-control flow by regex-matching English prose:
+**A dry-run delete on a one-page document is refused by the engine**, so the
+plan's `test_dry_run_does_not_commit` passed for the wrong reason. It now uses
+the two-page fixture. `tests/fixtures/inherited-pages.pdf` is the only
+multi-page fixture that opens; `xref-stream.pdf` is deliberately unsupported.
 
-```js
-const isBlocked = f => f?.status === 'error' &&
-  /isn.t installed|needs|helper/i.test(f.errorTitle || f.error || '');
-```
+**Smaller corrections:** the history record's field is `outputPath`, not
+`output`. `.gitattributes` marks `*.pdf binary`, without which Git would
+CRLF-corrupt the fixtures on a fresh clone. `engine.save()` already refuses to
+overwrite the source and already checks `source_changed()`, so the adapter
+defers to it rather than adding its own guard.
 
-The plan is backend-first and additive: `server.py` emits a `code` field
-alongside the existing message; the UI reads `code` and keeps the regex as a
-fallback; the fallback logs when it fires; the regex is deleted only once it has
-stopped firing. No flag-day, and no window where a message reworded upstream
-silently changes what the UI does.
+## Two tests were repaired, not written
+
+`test_root_serves_the_electron_renderer` and
+`test_inspector_renders_format_aware_facts_and_controls` had been failing since
+the UI decomposition. Neither feature had regressed: both read `index.html` and
+asserted on strings the decomposition had moved to `styles/shell.css` and
+`features/inspector/`. They had quietly become assertions about file layout.
+They now assert the behaviour where it lives — fetching `shell.css` over HTTP,
+and searching the whole renderer — so moving a file again will not fail them,
+while deleting the feature still will.
 
 ## Still open
 
-1. The visual pass against `docs/baseline/`.
-2. `components/button.js` — 101 call sites collapse to roughly six variants.
-3. Splitting the 97-branch action router.
-4. Applying `styles/tokens.css` rather than merely having extracted it.
-5. The eventual `type="module"` flag-day.
+1. **Tasks 13–19**, per the table above.
+2. **The golden trace has never covered the Editor** (Task 18). Its recorded
+   values will change, and the change must be read by hand rather than
+   absorbed. Both servers must be cleared to equal state before any comparison.
+3. **The visual pass against `docs/baseline/`** — still never done, inherited
+   from the decomposition work.
+4. **The release test tier** (Task 19). Until it exists, a build can ship with a
+   dead Editor and a green suite, because every engine test skips itself
+   politely when FreeDF is absent.
+5. **Decisions D4 and D5** are answered inside Tasks 12 and 9. D1, D2 and D3
+   were approved before implementation and are recorded in the plan.
 
-## Merging
+## Engine provenance
 
-This work lives in a sandbox clone with its own remote, disconnected from the
-main repo, and none of it has been merged. Review the diff before taking it:
-
-```bash
-git remote add sandbox "C:/Users/Sajmon/pdf-tool-refactor"
-```
-```bash
-git fetch sandbox refactor/ui-decomposition
-```
-```bash
-git diff HEAD..sandbox/refactor/ui-decomposition --stat
-```
-
-`ui-monolith-baseline` tags the pre-refactor commit, so the whole thing can be
-compared against — or reverted to — in one step.
+FreeDF lives at `github.com/Brightwav3/custom-pdf-engine`, branch
+`feat/v0.2-integration`, commit `2a48e49` — pushed, so the vendored tree is not
+the only copy. `converter/vendor/README.md` records how to rebuild and refresh
+it. The engine is pre-alpha; the adapter boundary is the entire mitigation, which
+is why the import rule is enforced by a test rather than by convention.

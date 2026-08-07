@@ -98,6 +98,58 @@ def _load():
                   f"the {DISTRIBUTION} PDF engine ({PACKAGE}) could not be imported")
 
 
+_ERROR_CODES = {
+    "parse_error": "source-unreadable",
+    "unsupported_pdf": "source-unreadable",
+    "session_not_found": "session-unknown",
+    "session_invalid_state": "session-closed",     # v0.2: distinct — see S7
+    "source_changed": "source-changed",
+    "invalid_operation": "operation-invalid",
+    "invalid_request": "operation-invalid",
+    "unsupported_operation": "operation-unsupported",
+    "renderer_unavailable": "render-unavailable",
+    "render_error": "render-failed",
+    "ocr_unavailable": "ocr-unavailable",
+    "ocr_error": "ocr-failed",
+    "engine_error": "engine-error",
+}
+
+
+def _translate(exc):
+    """Any engine exception -> a typed One Tool error, preserving its detail."""
+    if isinstance(exc, ValueError) and not hasattr(exc, "code"):
+        # Model __post_init__ validation, e.g. a rotation that is not 90/180/270.
+        return PdfEngineError("operation-invalid", str(exc))
+    engine_code = getattr(exc, "code", None)
+    details = {}
+    for name in ("field", "feature", "offset", "session_id", "state", "allowed"):
+        value = getattr(exc, name, None)
+        if value is not None:
+            details[name] = value
+    return PdfEngineError(_ERROR_CODES.get(engine_code, "engine-error"),
+                          str(exc), details=details, engine_code=engine_code)
+
+
+def _guarded(fn):
+    """Every boundary crossing goes through here.
+
+    This converts adapter *exceptions* into typed errors. It cannot and does not
+    protect against a process-level crash: FreeDF's own docs/deployment.md says
+    of the Python surface that "a parser crash takes the host down with it".
+    """
+    from functools import wraps
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except PdfEngineError:
+            raise
+        except Exception as exc:
+            raise _translate(exc) from exc
+    return wrapper
+
+
 def _version_tuple(text):
     parts = []
     for chunk in str(text or "0").split("."):
@@ -129,6 +181,50 @@ class FreeDFAdapter:
             "renderer": caps.get("preview"), "ocr": caps.get("ocr"),
             "capabilities": caps,      # verbatim — see correction S5/S6
             "state": "ready", "reason": None,
+        }
+
+    @_guarded
+    def open(self, path, password=None):
+        if not os.path.isfile(path):
+            raise PdfEngineError("source-unreadable", f"no such PDF file: {path}")
+        session = self._engine.open_document(path, password)
+        return {
+            "sessionId": session.session_id,
+            "path": str(session.path),
+            "document": self._document(session),
+            "capabilities": self._engine.capabilities(session),
+            "defaultTarget": str(self._engine.default_target(session)),
+        }
+
+    @_guarded
+    def inspect(self, session_id):
+        session = self._engine.session(session_id)
+        return {
+            "sessionId": session_id,
+            "document": self._document(session),
+            "canUndo": session.state.can_undo,
+            "canRedo": session.state.can_redo,
+            "state": session.state_name.value,
+        }
+
+    @_guarded
+    def capabilities(self, session_id=None):
+        session = self._engine.session(session_id) if session_id else None
+        return self._engine.capabilities(session)
+
+    @_guarded
+    def close(self, session_id):
+        self._engine.close(self._engine.session(session_id))
+        return {"closed": True}
+
+    def _document(self, session):
+        info = self._engine.inspect_document(session)
+        return {
+            "pageCount": info.page_count, "title": info.title,
+            "pages": [{"pageId": p.page_id, "index": p.index,
+                       "sourceIndex": p.source_index, "width": p.width,
+                       "height": p.height, "rotation": p.rotation}
+                      for p in info.pages],
         }
 
 

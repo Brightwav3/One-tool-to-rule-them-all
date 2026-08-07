@@ -232,5 +232,50 @@ class ApplyTests(unittest.TestCase):
         self.assertTrue(caught.exception.message)
 
 
+class SaveTests(unittest.TestCase):
+    def setUp(self):
+        import shutil, tempfile
+        self.adapter = engine_or_skip(self)
+        self.tmp = Path(tempfile.mkdtemp())
+        self.src = self.tmp / "in.pdf"
+        shutil.copy(FIXTURES / "one-page.pdf", self.src)
+        self.session = self.adapter.open(str(self.src))["sessionId"]
+
+    def tearDown(self):
+        import shutil
+        try: self.adapter.close(self.session)
+        except pdf_engine.PdfEngineError: pass
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_save_writes_a_new_file_and_leaves_the_source_alone(self):
+        before = self.src.read_bytes()
+        out = self.adapter.save(self.session, str(self.tmp / "out.pdf"))
+        self.assertTrue(out["written"])
+        self.assertTrue((self.tmp / "out.pdf").is_file())
+        self.assertEqual(self.src.read_bytes(), before)
+
+    def test_saving_over_the_source_is_refused_by_the_engine(self):
+        with self.assertRaises(pdf_engine.PdfEngineError) as caught:
+            self.adapter.save(self.session, str(self.src))
+        self.assertEqual(caught.exception.code, "save-refused")
+
+    def test_dry_run_writes_nothing(self):
+        out = self.adapter.save(self.session, str(self.tmp / "dry.pdf"), {"dryRun": True})
+        self.assertFalse((self.tmp / "dry.pdf").exists())
+        self.assertIsNone(out["artifact"])
+
+    def test_a_real_save_describes_the_output(self):
+        out = self.adapter.save(self.session, str(self.tmp / "out.pdf"))
+        self.assertEqual(out["artifact"]["kind"], "saved_document")
+        self.assertEqual(out["artifact"]["contentType"], "application/pdf")
+        self.assertEqual(len(out["artifact"]["sha256"]), 64)
+
+    def test_a_changed_source_blocks_the_save(self):
+        self.src.write_bytes(self.src.read_bytes() + b"\n% touched\n")
+        with self.assertRaises(pdf_engine.PdfEngineError) as caught:
+            self.adapter.save(self.session, str(self.tmp / "out.pdf"))
+        self.assertEqual(caught.exception.code, "source-changed")
+
+
 if __name__ == "__main__":
     unittest.main()

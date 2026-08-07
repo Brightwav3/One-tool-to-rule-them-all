@@ -242,6 +242,33 @@ class FreeDFAdapter:
         return {**self.inspect(session_id), "dryRun": False}
 
     @_guarded
+    def save(self, session_id, path, options=None):
+        from pdfengine.api.artifacts import FileArtifact
+        from pdfengine.api.models import SaveOptions
+        options = options or {}
+        dry_run = bool(options.get("dryRun"))
+        session = self._engine.session(session_id)
+        try:
+            written = self._engine.save(
+                session, path,
+                SaveOptions(allow_replace_source=False, dry_run=dry_run))
+        except Exception as exc:
+            if "allow_replace_source" in str(exc):
+                raise PdfEngineError(
+                    "save-refused", "saving over the source document is not permitted",
+                    hint="Choose a different output name.") from exc
+            raise
+        artifact = None
+        if not dry_run:
+            # D1's narrow exception: one descriptor, for the history record's
+            # sha256 and byte size. FreeDF forgets it when the session closes.
+            artifact = self._engine.artifacts.register(
+                kind="saved_document", content_type="application/pdf",
+                session_id=session_id, storage=FileArtifact(written)).as_dict()
+        return {"path": str(written), "written": not dry_run,
+                "dryRun": dry_run, "artifact": artifact}
+
+    @_guarded
     def undo(self, session_id):
         self._engine.undo(self._engine.session(session_id))
         return self.inspect(session_id)

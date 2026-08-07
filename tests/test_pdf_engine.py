@@ -171,5 +171,66 @@ class RenderTests(unittest.TestCase):
         with self.assertRaises(pdf_engine.PdfEngineError):
             self.adapter.render(self.session, self.page, {"width": 99999})
 
+class ApplyTests(unittest.TestCase):
+    def setUp(self):
+        self.adapter = engine_or_skip(self)
+        self.session = self.adapter.open(str(FIXTURES / "one-page.pdf"))["sessionId"]
+        self.page = self.adapter.inspect(self.session)["document"]["pages"][0]["pageId"]
+
+    def tearDown(self):
+        self.adapter.close(self.session)
+
+    def test_rotate_changes_rotation_and_enables_undo(self):
+        out = self.adapter.apply(self.session, [
+            {"kind": "rotate_pages", "pageIds": [self.page], "degrees": 90}])
+        self.assertEqual(out["document"]["pages"][0]["rotation"] % 360, 90)
+        self.assertTrue(out["canUndo"])
+
+    def test_undo_restores_and_redo_reapplies(self):
+        self.adapter.apply(self.session, [
+            {"kind": "rotate_pages", "pageIds": [self.page], "degrees": 90}])
+        out = self.adapter.undo(self.session)
+        self.assertEqual(out["document"]["pages"][0]["rotation"] % 360, 0)
+        self.assertTrue(out["canRedo"])
+        self.assertEqual(self.adapter.redo(self.session)
+                         ["document"]["pages"][0]["rotation"] % 360, 90)
+
+    def test_page_ids_survive_an_insert(self):
+        out = self.adapter.apply(self.session, [
+            {"kind": "insert_blank_page", "afterPageId": self.page}])
+        ids = [p["pageId"] for p in out["document"]["pages"]]
+        self.assertIn(self.page, ids)
+        self.assertEqual(len(ids), 2)
+
+    def test_dry_run_does_not_commit(self):
+        # The plan wrote this with delete_pages, but the only fixture is a
+        # one-page document and v0.2 rejects emptying a document even in a
+        # dry run, so the mutation used here is an insert instead.
+        self.adapter.apply(self.session, [
+            {"kind": "insert_blank_page", "afterPageId": self.page}], dry_run=True)
+        self.assertEqual(self.adapter.inspect(self.session)["document"]["pageCount"], 1)
+
+    def test_negative_rotation_is_rejected(self):
+        with self.assertRaises(pdf_engine.PdfEngineError) as caught:
+            self.adapter.apply(self.session, [
+                {"kind": "rotate_pages", "pageIds": [self.page], "degrees": -90}])
+        self.assertEqual(caught.exception.code, "operation-invalid")
+
+    def test_unknown_operation_kind_is_rejected(self):
+        with self.assertRaises(pdf_engine.PdfEngineError) as caught:
+            self.adapter.apply(self.session, [
+                {"kind": "redact_pages", "pageIds": [self.page]}])
+        self.assertEqual(caught.exception.code, "operation-invalid")
+
+    def test_ocr_without_tesseract_reports_the_engine_reason(self):
+        if self.adapter.capabilities()["ocr"]["state"] == "ready":
+            self.skipTest("Tesseract is installed on this machine")
+        with self.assertRaises(pdf_engine.PdfEngineError) as caught:
+            self.adapter.apply(self.session, [
+                {"kind": "add_text_layer", "pageIds": [self.page]}])
+        self.assertIn(caught.exception.code, {"ocr-unavailable", "operation-unsupported"})
+        self.assertTrue(caught.exception.message)
+
+
 if __name__ == "__main__":
     unittest.main()

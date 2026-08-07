@@ -227,6 +227,31 @@ class FreeDFAdapter:
                 "cacheHit": result.cache_hit}
 
     @_guarded
+    def apply(self, session_id, operations, dry_run=False):
+        from pdfengine.api.contracts import parse_operation
+        if not isinstance(operations, list) or not operations:
+            raise PdfEngineError("operation-invalid", "operations must be a non-empty array")
+        session = self._engine.session(session_id)
+        built = [parse_operation(item) for item in operations]
+        state = self._engine.apply_operations(session, built, dry_run=dry_run)
+        if dry_run:
+            return {"sessionId": session_id, "dryRun": True,
+                    "document": self._document(session),
+                    "canUndo": state.can_undo, "canRedo": state.can_redo,
+                    "state": session.state_name.value}
+        return {**self.inspect(session_id), "dryRun": False}
+
+    @_guarded
+    def undo(self, session_id):
+        self._engine.undo(self._engine.session(session_id))
+        return self.inspect(session_id)
+
+    @_guarded
+    def redo(self, session_id):
+        self._engine.redo(self._engine.session(session_id))
+        return self.inspect(session_id)
+
+    @_guarded
     def close(self, session_id):
         self._engine.close(self._engine.session(session_id))
         return {"closed": True}

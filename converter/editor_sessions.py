@@ -293,6 +293,38 @@ class EditorSessionStore:
             "status": session.status,
         }
 
+    def render(self, session_id, page_id, width=None, revision=None):
+        """PNG bytes for one page, keyed by revision.
+
+        The revision is required and must be the current one. Serving a page at
+        a revision the session has moved past would make the route's
+        ``immutable`` cache header a lie, so a stale request is refused rather
+        than answered with an out-of-date image.
+        """
+        session = self.get(session_id)
+        if revision is None:
+            raise PdfEngineError("operation-invalid", "rev is required")
+        if int(revision) != session.revision:
+            raise PdfEngineError(
+                "revision-stale",
+                f"revision {revision} is not the session's current revision "
+                f"{session.revision}",
+                hint="Re-request the page image at the current revision.",
+                details={"session_id": session.id, "revision": session.revision})
+        if not page_id:
+            raise PdfEngineError("operation-invalid", "page is required")
+        options = {"width": width} if width else {}
+        try:
+            rendered = self._adapter.render(self._primary(session), page_id, options)
+        except PdfEngineError as error:
+            if error.code != "session-unknown":
+                raise
+            self.reattach(session)
+            rendered = self._adapter.render(
+                session.engine_session_ids[0], page_id, options)
+        session.touched = time.time()
+        return rendered
+
     # ---- mutations -------------------------------------------------------
 
     def _guard(self, session):

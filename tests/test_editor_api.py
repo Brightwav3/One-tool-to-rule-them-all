@@ -205,5 +205,89 @@ class EditorRouteTests(ServerTestCase):
         self.assertIn("files", self.get("/api/state"))
 
 
+class PageImageRouteTests(ServerTestCase):
+    """Task 9: the revision-keyed page image route."""
+
+    def test_page_png_returns_an_image_with_immutable_caching(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        if opened["capabilities"]["preview"]["state"] != "ready":
+            self.skipTest("Poppler unavailable")
+        status, headers, body = self.get_raw(
+            f"/api/editor/page.png?session={session}&page={page}&w=180&rev=0")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "image/png")
+        self.assertIn("immutable", headers["Cache-Control"])
+        self.assertTrue(body.startswith(b"\x89PNG\r\n\x1a\n"))
+
+    def test_a_stale_revision_is_rejected_rather_than_served(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        self.post("/api/editor/operation", {"sessionId": session,
+            "operations": [{"kind": "rotate_pages", "pageIds": [page], "degrees": 90}]})
+        status, _, _ = self.get_raw(
+            f"/api/editor/page.png?session={session}&page={page}&w=180&rev=0")
+        self.assertEqual(status, 409)
+
+    def test_a_missing_revision_is_refused(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        status, _, _ = self.get_raw(
+            f"/api/editor/page.png?session={session}&page={page}&w=180")
+        self.assertEqual(status, 400)
+
+    def test_an_absurd_width_is_rejected(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        status, _, _ = self.get_raw(
+            f"/api/editor/page.png?session={session}&page={page}&w=99999&rev=0")
+        self.assertEqual(status, 400)
+
+    def test_a_tiny_width_is_rejected_too(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        status, _, _ = self.get_raw(
+            f"/api/editor/page.png?session={session}&page={page}&w=4&rev=0")
+        self.assertEqual(status, 400)
+
+    def test_the_width_defaults_to_the_thumbnail_width(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        if opened["capabilities"]["preview"]["state"] != "ready":
+            self.skipTest("Poppler unavailable")
+        status, headers, body = self.get_raw(
+            f"/api/editor/page.png?session={session}&page={page}&rev=0")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "image/png")
+        self.assertTrue(body.startswith(b"\x89PNG\r\n\x1a\n"))
+
+    def test_an_unknown_session_is_409(self):
+        status, _, _ = self.get_raw(
+            "/api/editor/page.png?session=ed_nope&page=p1&w=180&rev=0")
+        self.assertEqual(status, 409)
+
+    def test_an_unknown_page_is_400(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session = opened["session"]["id"]
+        status, _, _ = self.get_raw(
+            f"/api/editor/page.png?session={session}&page=page_nope&w=180&rev=0")
+        self.assertEqual(status, 400)
+
+    def test_a_missing_renderer_is_503_not_a_broken_image(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        if opened["capabilities"]["preview"]["state"] == "ready":
+            # Poppler is installed here, so the honest way to reach the branch
+            # is the adapter that stands in when no engine is present at all.
+            with unavailable_engine():
+                status, _, _ = self.get_raw(
+                    f"/api/editor/page.png?session={session}&page={page}&w=180&rev=0")
+            self.assertEqual(status, 503)
+            return
+        status, _, _ = self.get_raw(
+            f"/api/editor/page.png?session={session}&page={page}&w=180&rev=0")
+        self.assertEqual(status, 503)
+
+
 if __name__ == "__main__":
     unittest.main()

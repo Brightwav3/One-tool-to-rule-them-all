@@ -143,10 +143,30 @@ Redact, text, draw and stamp have no FreeDF operation: disable with a reason
 (recommended) or remove from the toolbar. `set_metadata` and `extract_pages` are
 implemented with no UI: leave unexposed this pass (recommended).
 
-### D5 — Deferred, answer by end of Task 9
+### D5 — Answered 2026-08-07, end of Task 9
 
-Thumbnail width. FreeDF's `DEFAULT_THUMBNAIL_WIDTH` is 180, `DEFAULT_PREVIEW_WIDTH`
-1000. Start at 180; add a 360 variant behind `devicePixelRatio` only if it blurs.
+**Answer: the grid asks for 180 at `devicePixelRatio <= 1` and 360 above it.
+The route's default when `w` is omitted stays FreeDF's
+`DEFAULT_THUMBNAIL_WIDTH` of 180. Range is 16–4000; outside it is 400.**
+
+Measured on `tests/fixtures/inherited-pages.pdf` through the real adapter:
+
+| `w` | rendered | PNG bytes | render |
+| --- | --- | --- | --- |
+| 180 | 255×180 | 607 B | 69 ms |
+| 360 | 510×360 | 1569 B | 69 ms |
+| 1000 | 1416×1000 | 8456 B | 100 ms |
+
+Two things this settled. First, the 2× variant is nearly free — 1 KB and no
+measurable extra render time, since Poppler's cost here is fixed overhead, not
+pixels — so there is no reason to wait for it to visibly blur before shipping
+it. Second, FreeDF's `width` is a **bounding** dimension, not a literal pixel
+width: a landscape page asked for 180 came back 255×180. Any CSS that assumes
+`w` is the rendered width will mis-size landscape pages, so the grid must size
+from the returned `width`/`height`, not from what it requested.
+
+`DEFAULT_PREVIEW_WIDTH` of 1000 is left for a future single-page preview; the
+grid never asks for it.
 
 ---
 

@@ -23,7 +23,7 @@ import zipfile
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import editor_sessions  # noqa: E402
@@ -51,7 +51,7 @@ EDITOR_ERROR_STATUS = {
     "engine-missing": 503, "engine-unsupported": 503, "render-unavailable": 503,
     "source-unreadable": 400, "operation-invalid": 400, "save-refused": 400,
     "session-unknown": 409, "session-closed": 409, "source-changed": 409,
-    "save-conflict": 409,
+    "save-conflict": 409, "revision-stale": 409,
     "operation-unsupported": 422, "ocr-unavailable": 422,
 }
 
@@ -824,6 +824,51 @@ class Handler(BaseHTTPRequestHandler):
             self._editor_error(
                 pdf_engine.PdfEngineError("engine-error", f"{type(exc).__name__}: {exc}"))
 
+    def handle_page_image(self, query: str) -> None:
+        """GET /api/editor/page.png?session=&page=&w=&rev= -> image/png.
+
+        `rev` is required and must be the session's current revision. Because a
+        stale revision is refused rather than served, the URL identifies exactly
+        one image for all time, which is what lets the response be marked
+        immutable.
+        """
+        params = parse_qs(query)
+        session_id = (params.get("session") or [""])[0]
+        page_id = (params.get("page") or [""])[0]
+        raw_width = (params.get("w") or [""])[0]
+        raw_rev = (params.get("rev") or [""])[0]
+        try:
+            width = int(raw_width) if raw_width else None
+            revision = int(raw_rev) if raw_rev != "" else None
+        except ValueError:
+            self._editor_error(pdf_engine.PdfEngineError(
+                "operation-invalid", "w and rev must be integers"))
+            return
+        if width is not None and not 16 <= width <= 4000:
+            self._editor_error(pdf_engine.PdfEngineError(
+                "operation-invalid", f"render width out of range: {width}"))
+            return
+        try:
+            rendered = QUEUE.editor_store.render(session_id, page_id, width, revision)
+        except pdf_engine.PdfEngineError as error:
+            self._editor_error(error)
+            return
+        except ValueError as exc:
+            self._editor_error(pdf_engine.PdfEngineError("operation-invalid", str(exc)))
+            return
+        except Exception as exc:
+            traceback.print_exc()
+            self._editor_error(
+                pdf_engine.PdfEngineError("engine-error", f"{type(exc).__name__}: {exc}"))
+            return
+        png = rendered["png"]
+        self.send_response(200)
+        self.send_header("Content-Type", "image/png")
+        self.send_header("Content-Length", str(len(png)))
+        self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+        self.end_headers()
+        self.wfile.write(png)
+
     def state(self) -> dict:
         counts = REGISTRY.counts()
         return {
@@ -839,8 +884,11 @@ class Handler(BaseHTTPRequestHandler):
         }
 
     def do_GET(self) -> None:
-        route = urlparse(self.path).path
-        if route in ("/", "/index.html"):
+        parsed = urlparse(self.path)
+        route = parsed.path
+        if route == "/api/editor/page.png":
+            self.handle_page_image(parsed.query)
+        elif route in ("/", "/index.html"):
             self.serve_file(UI_DIR / "index.html")
         elif route == "/api/tools":
             self.send_json({

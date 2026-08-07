@@ -3,22 +3,24 @@ const fs = require('node:fs');
 const path = require('node:path');
 const mainJs = fs.readFileSync(path.join(__dirname, '..', 'app', 'main.js'), 'utf8');
 const preloadJs = fs.readFileSync(path.join(__dirname, '..', 'app', 'preload.js'), 'utf8');
-const actionState = require('../converter/ui/action-state.js');
-const panelResize = require('../converter/ui/panel-resize.js');
-const shortcutLabels = require('../converter/ui/shortcut-labels.js');
-const selectionState = require('../converter/ui/selection-state.js');
+const actionState = require('../converter/ui/interaction/action-state.js');
+const panelResize = require('../converter/ui/interaction/panel-resize.js');
+const shortcutLabels = require('../converter/ui/interaction/shortcut-labels.js');
+const selectionState = require('../converter/ui/interaction/selection-state.js');
 
-const indexHtml = fs.readFileSync(
-  path.join(__dirname, '..', 'converter', 'ui', 'index.html'),
-  'utf8',
-);
+const {inlinedIndexHtml, rawIndexHtml: readRawIndexHtml} = require('./ui-source.cjs');
+/* index.html with its stylesheet and scripts inlined, so these assertions
+   keep testing the UI rather than which file each rule ended up in. */
+const indexHtml = inlinedIndexHtml();
+/* The shell itself, for the assertions about which scripts it loads. */
+const rawIndexHtml = readRawIndexHtml();
 const fidelioB = fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', 'fidelioB.svg'), 'utf8');
 const fidelioW = fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', 'fidelioW.svg'), 'utf8');
-assert.match(indexHtml, /<script src="\/action-state\.js"><\/script>/);
-assert.match(indexHtml, /<script src="\/panel-resize\.js"><\/script>/);
-assert.match(indexHtml, /<script src="\/selection-state\.js"><\/script>/);
-assert.match(indexHtml, /<script src="\/shortcut-labels\.js"><\/script>/);
-assert.doesNotMatch(indexHtml, /<script src="\/ui\/action-state\.js"><\/script>/);
+assert.match(rawIndexHtml, /<script src="\/interaction\/action-state\.js"><\/script>/);
+assert.match(rawIndexHtml, /<script src="\/interaction\/panel-resize\.js"><\/script>/);
+assert.match(rawIndexHtml, /<script src="\/interaction\/selection-state\.js"><\/script>/);
+assert.match(rawIndexHtml, /<script src="\/interaction\/shortcut-labels\.js"><\/script>/);
+assert.doesNotMatch(rawIndexHtml, /<script src="\/ui\/interaction\/action-state\.js"><\/script>/);
 
 assert.equal(
   actionState.nextActionStatus('pending', [{status: 'running'}]),
@@ -356,7 +358,7 @@ assert.match(indexHtml, /if \(key === 'enter'\) \{ event\.preventDefault\(\); co
 assert.match(indexHtml, /if \(event\.target\?\.dataset\?\.act === 'rename-history-file'\) commitHistoryRename\(event\.target\);/);
 
 // ---- Editor: one page model behind grid, reader and pair ----
-const {createEditorState, makePages} = require('../converter/ui/editor-state.js');
+const {createEditorState, makePages} = require('../converter/ui/workspaces/editor/editor-state.js');
 
 {
   const ed = createEditorState({pages: makePages(6)});
@@ -449,7 +451,7 @@ const {createEditorState, makePages} = require('../converter/ui/editor-state.js'
 }
 
 // ---- Creator: format first, then contents ----
-const {createCreatorState, fmtSize} = require('../converter/ui/creator-state.js');
+const {createCreatorState, fmtSize} = require('../converter/ui/workspaces/creator/creator-state.js');
 
 {
   const cr = createCreatorState({name: 'Ultimates v01', dest: '~/Converted/Comics'});

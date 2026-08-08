@@ -25,6 +25,7 @@ sys.path.insert(0, str(ROOT / "converter"))
 import editor_sessions  # noqa: E402
 import pdf_engine  # noqa: E402
 import server  # noqa: E402
+from tests.support import require_or_skip  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
@@ -44,8 +45,7 @@ class ServerTestCase(unittest.TestCase):
     """A live server plus JSON helpers. Tasks 8-10 build on this."""
 
     def setUp(self):
-        if not pdf_engine.get_adapter().engine_info()["available"]:
-            self.skipTest("FreeDF not available (development tier)")
+        require_or_skip(self, pdf_engine.get_adapter().engine_info()["available"], "FreeDF not available (development tier)")
 
         self.tmp = Path(tempfile.mkdtemp())
         self.src = self.tmp / "in.pdf"
@@ -201,6 +201,30 @@ class EditorRouteTests(ServerTestCase):
             "operations": [{"kind": "delete_pages", "pageIds": [page]}]})
         self.assertEqual(self.post("/api/editor/inspect", {"sessionId": session})["revision"], 0)
 
+    def test_ocr_without_tesseract_returns_the_engine_reason(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        if opened["capabilities"]["ocr"]["state"] == "ready":
+            self.skipTest("Tesseract is installed on this machine")
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        status, body = self.post_raw("/api/editor/operation", {"sessionId": session,
+            "operations": [{"kind": "add_text_layer", "pageIds": [page],
+                            "language": "eng", "mode": "lstm", "dpi": 300,
+                            "minConfidence": 0.0}]})
+        self.assertEqual(status, 422)
+        self.assertEqual(body["error"]["code"], "ocr-unavailable")
+        self.assertTrue(body["error"]["message"])
+
+    def test_ocr_options_reach_the_engine(self):
+        opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
+        if opened["capabilities"]["ocr"]["state"] != "ready":
+            self.skipTest("Tesseract unavailable")
+        session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
+        body = self.post("/api/editor/operation", {"sessionId": session,
+            "operations": [{"kind": "add_text_layer", "pageIds": [page],
+                            "language": "eng", "mode": "lstm", "dpi": 300,
+                            "minConfidence": 0.0}]})
+        self.assertEqual(body["revision"], 1)
+
     def test_existing_routes_still_work(self):
         self.assertIn("files", self.get("/api/state"))
 
@@ -211,8 +235,7 @@ class PageImageRouteTests(ServerTestCase):
     def test_page_png_returns_an_image_with_immutable_caching(self):
         opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
         session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
-        if opened["capabilities"]["preview"]["state"] != "ready":
-            self.skipTest("Poppler unavailable")
+        require_or_skip(self, opened["capabilities"]["preview"]["state"] == "ready", "Poppler unavailable")
         status, headers, body = self.get_raw(
             f"/api/editor/page.png?session={session}&page={page}&w=180&rev=0")
         self.assertEqual(status, 200)
@@ -253,8 +276,7 @@ class PageImageRouteTests(ServerTestCase):
     def test_the_width_defaults_to_the_thumbnail_width(self):
         opened = self.post("/api/editor/open", {"paths": [str(self.src)]})
         session, page = opened["session"]["id"], opened["document"]["pages"][0]["pageId"]
-        if opened["capabilities"]["preview"]["state"] != "ready":
-            self.skipTest("Poppler unavailable")
+        require_or_skip(self, opened["capabilities"]["preview"]["state"] == "ready", "Poppler unavailable")
         status, headers, body = self.get_raw(
             f"/api/editor/page.png?session={session}&page={page}&rev=0")
         self.assertEqual(status, 200)

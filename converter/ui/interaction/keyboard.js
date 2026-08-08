@@ -36,17 +36,32 @@ document.addEventListener('keydown', event => {
   if ((event.metaKey || event.ctrlKey) && key === ',') { event.preventDefault(); return settingsOpen ? closeSettings() : openSettings(); }
   /* The editor owns the keyboard only while it is the visible page and nothing is
      layered over it, so the queue's own shortcuts are never shadowed. */
-  if (page === 'editor' && !settingsOpen && !paletteOpen && document.activeElement?.tagName !== 'INPUT') {
+  const active = document.activeElement;
+  const typing = active && (
+    active.tagName === 'TEXTAREA' ||
+    (active.tagName === 'INPUT' && active.type !== 'file') ||
+    active.isContentEditable
+  );
+  if (page === 'editor' && !settingsOpen && !paletteOpen && !typing) {
     const mode = editor.state.mode;
-    if (event.ctrlKey && (event.code === 'Space' || key === ' ')) { event.preventDefault(); editor.toggleMode(); return render(true); }
+    if ((event.metaKey || event.ctrlKey) && key === 'z') {
+      event.preventDefault();
+      if (!editor.canMutate()) return;
+      return event.shiftKey ? OneToolEditorActions.redo() : OneToolEditorActions.undo();
+    }
+    if (event.ctrlKey && (event.code === 'Space' || key === ' ' || key === 'spacebar')) { event.preventDefault(); editor.toggleMode(); return render(true); }
     if ((event.metaKey || event.ctrlKey) && key === 's') { event.preventDefault(); editor.saved(); showToast(`${editor.state.pages.length} pages written`); return render(true); }
     if (key === 'escape' && mode === 'reader') { event.preventDefault(); editor.toGrid(); return render(true); }
     if (mode === 'reader') {
       if (key === 'arrowright' || key === 'arrowdown') { event.preventDefault(); editor.step(1); return render(true); }
       if (key === 'arrowleft' || key === 'arrowup') { event.preventDefault(); editor.step(-1); return render(true); }
-      if (key === 'r') { event.preventDefault(); editor.rotate(90); return render(true); }
+      if (key === 'r' && editor.canMutate()) { event.preventDefault(); return OneToolEditorActions.rotate(90); }
     }
-    if ((key === 'backspace' || key === 'delete') && editor.targets().length) { event.preventDefault(); editor.remove(); return render(true); }
+    if ((key === 'backspace' || key === 'delete') && editor.targets().length) {
+      event.preventDefault();
+      if (editor.canMutate()) return OneToolEditorActions.deletePages();
+      return;
+    }
   }
   if (key === 'escape') { closeContextMenu(); closeFolderMenu(); paletteOpen = false; pickerFor = null; sheetFor = null; return render(true); }
   if (paletteOpen && (key === 'arrowdown' || key === 'arrowup' || key === 'enter')) {

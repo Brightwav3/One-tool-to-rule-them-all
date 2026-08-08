@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const mainJs = fs.readFileSync(path.join(__dirname, '..', 'app', 'main.js'), 'utf8');
 const preloadJs = fs.readFileSync(path.join(__dirname, '..', 'app', 'preload.js'), 'utf8');
 /* First, as in index.html: it installs the nextLocalId global that editor state
@@ -361,7 +362,20 @@ assert.match(indexHtml, /if \(key === 'enter'\) \{ event\.preventDefault\(\); co
 assert.match(indexHtml, /if \(event\.target\?\.dataset\?\.act === 'rename-history-file'\) commitHistoryRename\(event\.target\);/);
 
 // ---- Editor: one page model behind grid, reader and pair ----
-const {createEditorState, makePages} = require('../converter/ui/workspaces/editor/editor-state.js');
+const {createEditorState, makePages, OPTIMISTIC, describeOp, cropBoxToPoints, screenPointToPagePercent, TOOLS} = require('../converter/ui/workspaces/editor/editor-state.js');
+assert.deepEqual(TOOLS.map(tool => [tool.id, tool.icon]), [
+  ['select', 'i-select'], ['text', 'i-text'], ['redact', 'i-redact'],
+  ['draw', 'i-draw'], ['stamp', 'i-stamp'], ['crop', 'i-crop'],
+]);
+assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', 'workspaces', 'editor', 'editor-view.js'), 'utf8'), /t\.glyph/);
+assert.match(
+  fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', 'workspaces', 'editor', 'editor-view.js'), 'utf8'),
+  /pageImageUrl\(page, big \? previewWidth\(\) : OneToolEditorActions\.thumbWidth\(\)\)/,
+);
+assert.match(
+  fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', 'workspaces', 'editor', 'editor-view.js'), 'utf8'),
+  /globalThis\.devicePixelRatio/,
+);
 
 {
   const ed = createEditorState({pages: makePages(6)});
@@ -397,23 +411,21 @@ const {createEditorState, makePages} = require('../converter/ui/workspaces/edito
   ed.rotate(90);
   assert.equal(ed.state.pages.find(p => p.id === b.id).rot, 90);
 
-  // Deleting lands on the next surviving page, not on nothing.
+  // The server owns structural changes that remove or create page ids.
+  ed.rejectPending('test cleanup');
   ed.remove();
-  assert.equal(ed.state.pages.some(p => p.id === b.id), false);
-  assert.equal(ed.state.focus, c.id);
+  assert.equal(ed.state.pages.some(p => p.id === b.id), true);
+  assert.equal(ed.state.focus, b.id);
 
-  // Insert puts a blank page after the selection and selects it.
+  // Insert waits for the engine snapshot that contains its assigned id.
   ed.toGrid();
   ed.select(a.id);
-  const inserted = ed.insert();
-  assert.equal(ed.state.pages.indexOf(inserted), 1);
-  assert.deepEqual(ed.selectedIds(), [inserted.id]);
-  assert.equal(inserted.kind, 'Blank');
+  assert.equal(ed.insert(), true);
+  assert.equal(ed.state.pages.length, 6);
+  assert.deepEqual(ed.selectedIds(), [a.id]);
 
-  // The edit list is newest first and never grows past six.
-  for (let i = 0; i < 9; i += 1) ed.log(`edit ${i}`);
-  assert.equal(ed.state.edits.length, 6);
-  assert.equal(ed.state.edits[0].text, 'edit 8');
+  // The edit list is server-owned, so local prototype actions do not invent one.
+  assert.equal(ed.state.edits.length, 0);
 
   // Marks belong to the focused page and only the redact tool can drop them.
   ed.openReader(a.id);
@@ -548,6 +560,14 @@ assert.match(indexHtml, /editorEntering = editorView !== key;/);
 assert.match(indexHtml, /settingsEntering = settingsView !== key;/);
 // The tool is part of the editor's view key; stepping pages is not.
 assert.match(indexHtml, /const key = s\.mode \+ ':' \+ \(s\.mode === 'reader' \? s\.tool : ''\);/);
+assert.match(
+  fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', 'interaction', 'keyboard.js'), 'utf8'),
+  /event\.ctrlKey && \(event\.code === 'Space' \|\| key === ' ' \|\| key === 'spacebar'\)/,
+);
+assert.match(
+  fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', 'interaction', 'keyboard.js'), 'utf8'),
+  /type !== 'file'/,
+);
 // Marks, edits and the selection bar each animate once, when they first appear.
 assert.match(indexHtml, /function rememberEditorMotion\(\)/);
 assert.match(indexHtml, /seenMarks\.has\(m\.id\) \? "" : " m-fade"/);
@@ -701,9 +721,242 @@ test('before any document is open a real tool is unknown, not unimplemented', ()
   assert.equal(e.toolState('crop').enabled, false);
 });
 
+// ---- Editor: structural-operation consistency ----
+/* These tests fail if a destructive or server-assigned operation is made
+   optimistic, if a second request can race the first, or if a failed optimistic
+   change leaves the page model diverged from the engine. */
+const stateWithPages = ids => {
+  const e = createEditorState();
+  e.absorb(snapshotWithPages(ids));
+  return e;
+};
+
+test('rotate applies locally before the server answers', () => {
+  const e = stateWithPages(['p1']);
+  e.rotate(90);
+  assert.equal(e.state.pages[0].rot, 90);
+  assert.equal(e.state.pending.kind, 'rotate_pages');
+});
+
+test('delete waits for the server', () => {
+  const e = stateWithPages(['p1', 'p2']);
+  e.select('p1');
+  e.remove();
+  assert.equal(e.state.pages.length, 2);
+});
+
+test('insert waits because the engine assigns the page id', () => {
+  const e = stateWithPages(['p1']);
+  e.insert();
+  assert.equal(e.state.pages.length, 1);
+});
+
+test('only one mutation is in flight at a time', () => {
+  const e = stateWithPages(['p1']);
+  e.beginPending({kind: 'rotate_pages'});
+  assert.equal(e.canMutate(), false);
+  assert.equal(e.rotate(90), false);
+});
+
+test('a rejected optimistic rotate restores the page snapshot', () => {
+  const e = stateWithPages(['p1']);
+  e.rotate(90);
+  e.rejectPending('operation-invalid');
+  assert.equal(e.state.pages[0].rot, 0);
+  assert.equal(e.state.edits.length, 0);
+  assert.equal(e.state.pending, null);
+});
+
+test('the server snapshot overwrites a diverged local model', () => {
+  const e = stateWithPages(['p1']);
+  e.rotate(90);
+  e.absorb(snapshotWithPages(['p1'], 1));
+  e.absorb({ ...snapshotWithPages(['p1'], 2), document: {
+    ...snapshotWithPages(['p1'], 2).document,
+    pages: [{pageId: 'p1', rotation: 180, index: 0, width: 1, height: 1, sourceIndex: 0}],
+  }});
+  assert.equal(e.state.pages[0].rot, 180);
+  assert.equal(e.state.pending, null);
+});
+
+test('only rotate and reorder are optimistic structural operations', () => {
+  assert.deepEqual(OPTIMISTIC, {
+    rotate: true, reorder: true, delete: false, insert: false, crop: false,
+    ocr: false, undo: false, redo: false, save: false,
+  });
+});
+
+// ---- Editor: server-owned undo, redo, and edit history ----
+test('undo and redo controls follow the server flags', () => {
+  const e = createEditorState();
+  e.absorb({...snapshotWithPages(['p1']), canUndo: true, canRedo: false});
+  assert.equal(e.state.canUndo, true);
+  assert.equal(e.state.canRedo, false);
+});
+
+test('the edits pane describes the server operation log', () => {
+  assert.equal(describeOp({kind: 'rotate_pages', pageIds: ['p1'], degrees: 90}),
+    'Rotated 1 page by 90°');
+  assert.equal(describeOp({kind: 'add_text_layer', pageIds: ['p1', 'p2']}),
+    'Added a text layer to 2 pages');
+  const e = createEditorState();
+  e.absorb({...snapshotWithPages(['p1']), operations: [
+    {kind: 'rotate_pages', pageIds: ['p1'], degrees: 90},
+  ]});
+  assert.deepEqual(e.state.edits.map(edit => edit.text), ['Rotated 1 page by 90°']);
+});
+
+test('a full-page crop rectangle maps to the full media box', () => {
+  assert.deepEqual(cropBoxToPoints({x: 0, y: 0, w: 100, h: 100}, {w: 612, h: 792}),
+    [0, 0, 612, 792]);
+});
+
+test('crop conversion flips DOM y-down to PDF y-up', () => {
+  assert.deepEqual(cropBoxToPoints({x: 0, y: 0, w: 100, h: 25}, {w: 612, h: 792}),
+    [0, 594, 612, 792]);
+});
+
+test('crop conversion clamps the display rectangle and rejects zero area', () => {
+  assert.deepEqual(cropBoxToPoints({x: -10, y: 80, w: 30, h: 40}, {w: 100, h: 200}),
+    [0, 0, 20, 40]);
+  assert.equal(cropBoxToPoints({x: 10, y: 10, w: 0, h: 20}, {w: 612, h: 792}), null);
+});
+
+test('a 90 degree canvas drag is inverse-mapped before crop conversion', () => {
+  // At +90° CSS rotation, screen (x, y) is source (y, 100 - x).
+  assert.deepEqual(screenPointToPagePercent({x: 20, y: 30}, 90), {x: 30, y: 80});
+});
+
+test('OCR is never optimistic and posts engine capability defaults for all pages', async () => {
+  const e = createEditorState();
+  e.absorb({...snapshotWithPages(['p1', 'p2']), capabilities: {
+    ocr: {languages: ['eng'], modes: ['lstm']},
+    operations: [{kind: 'add_text_layer', state: 'ready', detail: ''}],
+  }});
+  const requests = [];
+  const context = {editor: e, render() {}, showToast() {}, encodeURIComponent, JSON, Promise,
+    fetch: async (_route, request) => { requests.push(JSON.parse(request.body)); return {ok: true, json: async () => snapshotWithPages(['p1', 'p2'], 1)}; }};
+  context.self = context;
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', 'workspaces', 'editor', 'editor-actions.js'), 'utf8'), context);
+  await context.OneToolEditorActions.addOcr();
+  assert.deepEqual(requests[0].operations, [{kind: 'add_text_layer', pageIds: ['p1', 'p2'], language: 'eng', mode: 'lstm', dpi: 300, minConfidence: 0}]);
+  assert.equal(OPTIMISTIC.ocr, false);
+});
+
+test('an in-flight OCR request blocks further editor mutations', () => {
+  const e = stateWithPages(['p1']);
+  e.beginPending({kind: 'add_text_layer'});
+  assert.equal(e.state.pending.kind, 'add_text_layer');
+  assert.equal(e.canMutate(), false);
+});
+
+test('typed recovery errors transition the editor without losing authoritative history', () => {
+  const e = stateWithPages(['p1']);
+  e.state.edits = [{id: '0:rotate_pages', text: 'Rotated 1 page by 90°'}];
+  e.recover({code: 'source-changed', message: 'source changed'});
+  assert.equal(e.state.recovery, 'frozen');
+  assert.equal(e.canMutate(), false);
+  e.recover({code: 'engine-error', message: 'boom'});
+  assert.equal(e.state.recovery, 'degraded');
+  assert.equal(e.state.edits.length, 1);
+  e.recover({code: 'session-unknown', message: 'gone'});
+  assert.equal(e.state.sessionId, null);
+  assert.equal(e.state.pages.length, 0);
+});
+
+test('failed preview images use the named unavailable-preview fallback', () => {
+  assert.match(indexHtml, /function editorImageFailed\(image\)/);
+  assert.match(indexHtml, /onerror="editorImageFailed\(this\)"/);
+  assert.match(indexHtml, /Previews unavailable/);
+});
+
+test('Ctrl+Space toggles reader mode when the file picker keeps focus', () => {
+  let keydown = null;
+  let renders = 0;
+  let prevented = false;
+  const context = {
+    document: {
+      activeElement: {tagName: 'INPUT', type: 'file'},
+      addEventListener(type, handler) { if (type === 'keydown') keydown = handler; },
+    },
+    page: 'editor', settingsOpen: false, paletteOpen: false,
+    editor: {
+      state: {mode: 'grid'},
+      toggleMode() { this.state.mode = 'reader'; },
+    },
+    render() { renders += 1; },
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', 'interaction', 'keyboard.js'), 'utf8'), context);
+  keydown({key: ' ', code: 'Space', ctrlKey: true, metaKey: false,
+    preventDefault() { prevented = true; }, target: {}});
+  assert.equal(context.editor.state.mode, 'reader');
+  assert.equal(renders, 1);
+  assert.equal(prevented, true);
+});
+
+test('undo waits for and absorbs the server snapshot', async () => {
+  const e = createEditorState();
+  e.absorb({...snapshotWithPages(['p1']), canUndo: true});
+  const requests = [];
+  const context = {
+    editor: e, render() {}, showToast() {}, encodeURIComponent, JSON, Promise,
+    fetch: async (route, request) => {
+      requests.push({route, body: JSON.parse(request.body)});
+      return {ok: true, json: async () => ({...snapshotWithPages(['p1'], 1), canUndo: false, canRedo: true})};
+    },
+  };
+  context.self = context;
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', 'workspaces', 'editor', 'editor-actions.js'), 'utf8'), context);
+  await context.OneToolEditorActions.undo();
+  assert.deepEqual(requests, [{route: '/api/editor/undo', body: {sessionId: 's1'}}]);
+  assert.equal(e.state.canUndo, false);
+  assert.equal(e.state.canRedo, true);
+  assert.equal(e.state.pending, null);
+});
+
+test('a second optimistic request cannot reuse an in-flight rotate', async () => {
+  const e = stateWithPages(['p1']);
+  e.rotate(90);
+  let requests = 0;
+  const context = {
+    editor: e, render() {}, showToast() {}, encodeURIComponent, JSON, Promise,
+    fetch: async () => {
+      requests += 1;
+      return {ok: true, json: async () => snapshotWithPages(['p1'], 1)};
+    },
+  };
+  context.self = context;
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', 'workspaces', 'editor', 'editor-actions.js'), 'utf8'), context);
+  await context.OneToolEditorActions.applyOperations([
+    {kind: 'rotate_pages', pageIds: ['p1'], degrees: 90},
+  ], {optimistic: true});
+  assert.equal(requests, 0);
+  assert.equal(e.state.pending.kind, 'rotate_pages');
+});
+
+test('reorder posts the locally previewed page order', async () => {
+  const e = stateWithPages(['p1', 'p2']);
+  const requests = [];
+  const context = {
+    editor: e, render() {}, showToast() {}, encodeURIComponent, JSON, Promise,
+    fetch: async (_route, request) => {
+      requests.push(JSON.parse(request.body));
+      return {ok: true, json: async () => snapshotWithPages(['p2', 'p1'], 1)};
+    },
+  };
+  context.self = context;
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', 'workspaces', 'editor', 'editor-actions.js'), 'utf8'), context);
+  await context.OneToolEditorActions.reorder(['p2', 'p1']);
+  assert.deepEqual(e.state.pages.map(p => p.id), ['p2', 'p1']);
+  assert.deepEqual(requests, [{sessionId: 's1', operations: [
+    {kind: 'reorder_pages', pageIds: ['p2', 'p1']},
+  ], dryRun: false}]);
+});
+
 // The rail carries the engine's own detail into the disabled button.
 assert.match(indexHtml, /aria-disabled="\$\{/);
 assert.match(indexHtml, /data-tool-state="\$\{/);
+assert.match(indexHtml, /Recognizing…/);
 
 // The grid renders the engine's own renderings, and asks the browser for them
 // only when they scroll into view.

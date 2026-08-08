@@ -14,6 +14,10 @@ const enterEditor = cls => editorEntering ? cls : '';
 const enterCreator = cls => creatorEntering ? cls : '';
 const lineStyle = (line, big) => `width:${line.w};height:${line.head ? (big ? '8px' : '5px') : (big ? '4px' : '3px')};background:${line.head ? 'rgba(60,60,67,.34)' : 'var(--ink)'}`;
 const isRotated = page => (((page.rot % 360) + 360) % 360) !== 0;
+/* The engine sprite is served with the UI, so its external references work in
+   Electron and inherit each button's currentColor. Buttons retain their own
+   accessible labels; the icon is decorative. */
+const editorIcon = id => `<svg class="ed-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/icons.svg#${id}"></use></svg>`;
 function pageCaption(page, index) {
   const rotated = isRotated(page);
   return `${index + 1}${rotated ? ' · rotated' : page.kind === 'Blank' ? ' · blank' : ''}`;
@@ -42,9 +46,24 @@ function thumbHtml(page, index, on, dim, act) {
    from the width that was requested — FreeDF's render width is a bounding box,
    so a landscape page asked for at 180 comes back 255 wide and 180 tall. */
 const hasRendering = page => Boolean(editor.state.sessionId && page.w && page.h);
+/* Reader pages are displayed much larger than the grid thumbnails. Request a
+   bounded, zoom-aware render so the browser does not stretch a 180/360px
+   thumbnail across the editing canvas. */
+const previewWidth = () => Math.min(3000, Math.max(1000, Math.round(
+  392 * Math.max(1, editor.state.zoom / 96) * (globalThis.devicePixelRatio || 1) * 2,
+)));
+function editorImageFailed(image) {
+  const placeholder = document.createElement('span');
+  placeholder.textContent = 'Previews unavailable';
+  placeholder.style.cssText = 'display:grid;place-items:center;width:100%;height:100%;font-size:11px;color:var(--t3)';
+  image.replaceWith(placeholder);
+}
 function pageBodyHtml(page, big) {
   if (hasRendering(page)) {
-    return `<img class="pg-img" src="${esc(OneToolEditorActions.pageImageUrl(page))}" loading="lazy" decoding="async"
+    if (editor.state.capabilities?.preview?.state !== 'ready') {
+      return `<span style="display:grid;place-items:center;width:100%;height:100%;font-size:11px;color:var(--t3)">Previews unavailable</span>`;
+    }
+    return `<img class="pg-img" src="${esc(OneToolEditorActions.pageImageUrl(page, big ? previewWidth() : OneToolEditorActions.thumbWidth()))}" loading="lazy" decoding="async" onerror="editorImageFailed(this)"
       alt="" width="${page.w}" height="${page.h}"
       style="width:100%;height:100%;aspect-ratio:${page.w} / ${page.h};display:block;object-fit:contain">`;
   }
@@ -87,6 +106,7 @@ function renderEditorPanel() {
     </div>`;
 }
 function editorRailHtml() {
+  const mutationDisabled = editor.state.sessionId && editor.canMutate() ? '' : 'disabled aria-disabled="true"';
   return `<div class="ed-rail ${enterEditor("m-fade")}">
     ${editor.TOOLS.map(t => {
       /* The engine decides whether a tool is offered, and says why when it is
@@ -94,31 +114,33 @@ function editorRailHtml() {
          generic would delete the only part that tells the user what to do. */
       const cap = editor.toolState(t.id);
       const title = cap.enabled ? t.label : (cap.detail ? `${t.label} — ${cap.detail}` : t.label);
-      return `<button class="tool press" data-act="${cap.enabled ? 'ed-tool' : 'ed-noop'}" data-tool="${t.id}" data-on="${t.id === editor.state.tool}" data-tool-state="${cap.state}" data-action-offer="${cap.action || ''}" aria-disabled="${!cap.enabled}" ${cap.enabled ? '' : 'disabled '}title="${esc(title)}" aria-label="${esc(title)}">${t.glyph}</button>`;
+      return `<button class="tool press" data-act="${cap.enabled ? 'ed-tool' : 'ed-noop'}" data-tool="${t.id}" data-on="${t.id === editor.state.tool}" data-tool-state="${cap.state}" data-action-offer="${cap.action || ''}" aria-disabled="${!cap.enabled}" ${cap.enabled ? '' : 'disabled '}title="${esc(title)}" aria-label="${esc(title)}">${editorIcon(t.icon)}</button>`;
     }).join('')}
     <span class="ed-railrule"></span>
-    <button class="tool press" data-act="ed-rotate" data-deg="-90" title="Rotate left" aria-label="Rotate left">↺</button>
-    <button class="tool press" data-act="ed-rotate" data-deg="90" title="Rotate right" aria-label="Rotate right">↻</button>
+    <button class="tool press" data-act="ed-rotate" data-deg="-90" title="Rotate left" aria-label="Rotate left" ${mutationDisabled}>${editorIcon('i-rotate-left')}</button>
+    <button class="tool press" data-act="ed-rotate" data-deg="90" title="Rotate right" aria-label="Rotate right" ${mutationDisabled}>${editorIcon('i-rotate-right')}</button>
   </div>`;
 }
 function editorGridHtml(selIds) {
   const s = editor.state;
+  const mutationDisabled = s.sessionId && editor.canMutate() ? '' : 'disabled aria-disabled="true"';
   /* The bar fades in when a selection starts, not on every change to it. */
   const selbarEnter = selIds.length && !selbarShown ? ' m-fade' : '';
   selbarShown = selIds.length > 0;
   /* Before a document is opened the grid shows what it is for: ruled ghosts of
      pages, and the one button that matters. */
-  if (!s.sessionId) return editorEmptyHtml();
+  if (!s.sessionId) return `${s.recovery ? `<div class="ed-head"><span style="color:var(--warn-t)">${esc(s.recoveryDetail || 'This document is no longer available.')}</span></div>` : ''}${editorEmptyHtml()}`;
+  const recovery = s.recovery ? `<div style="padding:9px 18px;background:var(--warn-tint);color:var(--warn-t);font-size:12px">${esc(s.recoveryDetail || s.recovery)} <button class="press" data-act="ed-reopen" style="color:inherit;text-decoration:underline">Reopen</button>${s.recovery === 'frozen' ? ' <span style="margin-left:8px">Save as… remains available</span>' : ''}</div>` : '';
   const header = selIds.length ? `
     <div class="ed-selbar${selbarEnter}">
       <span class="n">${selIds.length} page${selIds.length === 1 ? '' : 's'} selected</span>
       <span class="rule"></span>
-      <button class="pbtn gh press" data-act="ed-rotate" data-deg="-90" style="color:var(--acc-text)">Rotate left</button>
-      <button class="pbtn gh press" data-act="ed-rotate" data-deg="90" style="color:var(--acc-text)">Rotate right</button>
+      <button class="pbtn gh press" data-act="ed-rotate" data-deg="-90" style="color:var(--acc-text)" ${mutationDisabled}>Rotate left</button>
+      <button class="pbtn gh press" data-act="ed-rotate" data-deg="90" style="color:var(--acc-text)" ${mutationDisabled}>Rotate right</button>
       <button class="pbtn gh press" data-act="ed-extract" style="color:var(--acc-text)">Extract to new PDF</button>
-      <button class="pbtn gh press" data-act="ed-insert" style="color:var(--acc-text)">Insert after</button>
+      <button class="pbtn gh press" data-act="ed-insert" style="color:var(--acc-text)" ${mutationDisabled}>Insert after</button>
       <span style="flex:1"></span>
-      <button class="pbtn gh press" data-act="ed-delete" style="color:var(--dang-t)">Delete</button>
+      <button class="pbtn gh press" data-act="ed-delete" style="color:var(--dang-t)" ${mutationDisabled}>Delete</button>
       <button class="press" data-act="ed-deselect" style="font:500 12px var(--ui);color:var(--acc-text)">Deselect</button>
     </div>` : `
     <div class="ed-head">
@@ -130,11 +152,11 @@ function editorGridHtml(selIds) {
   const footerBits = [`${s.pages.length} pages`];
   if (selIds.length) footerBits.push(`${selIds.length} selected`);
   footerBits.push(s.edits.length ? `${s.edits.length} edits not saved` : 'no unsaved edits');
-  return `${header}
+  return `${recovery}${header}
     <div class="${enterEditor("m-grid")}" style="flex:1;min-height:0;overflow:auto;padding:16px 18px">
       <div class="ed-grid">
         ${s.pages.map((p, i) => thumbHtml(p, i, Boolean(s.sel[p.id]), selIds.length > 0 && !s.sel[p.id], 'ed-page')).join('')}
-        <button class="pthumb press" data-act="ed-insert"><span class="pthumb-add">+</span><span class="tcap">Insert</span></button>
+        <button class="pthumb press" data-act="ed-insert" ${mutationDisabled}><span class="pthumb-add">+</span><span class="tcap">Insert</span></button>
       </div>
     </div>
     <div class="ed-foot">
@@ -164,6 +186,8 @@ function editorEmptyHtml() {
 }
 function editorReaderHtml() {
   const s = editor.state;
+  const undoDisabled = s.canUndo && editor.canMutate() ? '' : 'disabled aria-disabled="true"';
+  const redoDisabled = s.canRedo && editor.canMutate() ? '' : 'disabled aria-disabled="true"';
   const page = editor.current();
   const index = editor.currentIndex();
   const tool = editor.TOOLS.find(t => t.id === s.tool) || editor.TOOLS[0];
@@ -179,11 +203,15 @@ function editorReaderHtml() {
       <span class="ed-num" style="min-width:38px">${s.zoom}%</span>
       <button class="pbtn gh press" data-act="ed-zoom" data-delta="16" aria-label="Zoom in">+</button>
       <span class="rule"></span>
+      <button class="pbtn gh press" data-act="ed-undo" aria-label="Undo" ${undoDisabled}>Undo</button>
+      <button class="pbtn gh press" data-act="ed-redo" aria-label="Redo" ${redoDisabled}>Redo</button>
+      <span class="rule"></span>
       <button class="pbtn gh press" data-act="ed-grid" style="color:var(--acc-text);font-weight:600">All pages<span class="kbd" data-shortcut="reader">${shortcutLabel('reader')}</span></button>
     </div>
     <div class="ed-canvaswrap">
       <button class="pg ${hasRendering(page) ? 'pg-real ' : ''}ed-canvas ${enterEditor("m-zoom")}" data-act="ed-canvas" data-redact="${s.tool === 'redact'}" style="width:${Math.round(392 * s.zoom / 96)}px;${hasRendering(page) ? `aspect-ratio:${page.w} / ${page.h};` : ''}transform:rotate(${page.rot}deg)">
         ${pageBodyHtml(page, true)}
+        ${s.tool === 'crop' && s.cropRect ? `<span class="ed-mark" style="left:${s.cropRect.x}%;top:${s.cropRect.y}%;width:${s.cropRect.w}%;height:${s.cropRect.h}%;background:rgba(41,98,255,.16);border:1px solid var(--acc-text)"></span>` : ''}
         ${page.marks.map(m => `<span class="ed-mark${seenMarks.has(m.id) ? "" : " m-fade"}" style="left:${m.x}%;top:${m.y}%;width:${m.w}%;height:${m.h}%"></span>`).join('')}
         <span class="ed-pageno">${index + 1}</span>
       </button>
@@ -196,6 +224,10 @@ function editorReaderHtml() {
 }
 function editorGridPaneHtml() {
   const s = editor.state;
+  const ocrCap = editor.toolState('ocr');
+  const ocrApplied = s.edits.some(edit => edit.text.startsWith('Added a text layer'));
+  const ocrPending = s.pending?.kind === 'add_text_layer';
+  const ocrDisabled = ocrCap.enabled && editor.canMutate() ? '' : 'disabled aria-disabled="true"';
   return `<div class="${enterEditor("m-up")}" style="display:flex;align-items:flex-start;gap:10px">
       <span class="ptile acc" style="width:30px;height:38px;font-size:7px">PDF</span>
       <div style="flex:1;min-width:0">
@@ -207,12 +239,12 @@ function editorGridPaneHtml() {
       <span class="eyebrow-p">Document</span>
       <div class="pkv"><span class="k">Page size</span><span class="v">168 × 258 mm</span></div>
       <div class="pkv"><span class="k">PDF version</span><span class="v">1.7</span></div>
-      <div class="pkv"><span class="k">Text layer</span><span class="v" style="color:${s.ocr ? 'var(--ok-t)' : 'var(--warn-t)'}">${s.ocr ? 'searchable' : 'none'}</span></div>
+      <div class="pkv"><span class="k">Text layer</span><span class="v" style="color:${ocrApplied ? 'var(--ok-t)' : 'var(--warn-t)'}">${ocrApplied ? 'searchable' : 'none'}</span></div>
       <div class="pkv"><span class="k">Security</span><span class="v">open</span></div>
     </div>
     <div style="display:flex;flex-direction:column;gap:6px">
       <span class="eyebrow-p">Whole document</span>
-      <button class="pbtn press" data-act="ed-ocr" style="justify-content:space-between">Add OCR text layer<span class="pchip" style="background:${s.ocr ? 'var(--ok-tint)' : 'var(--warn-tint)'};color:${s.ocr ? 'var(--ok-t)' : 'var(--warn-t)'}">${s.ocr ? 'Done' : 'Needs Tesseract'}</span></button>
+      <button class="pbtn press" data-act="ed-ocr" style="justify-content:space-between" title="${esc(ocrCap.detail)}" ${ocrDisabled}>Add OCR text layer<span class="pchip" style="background:${ocrApplied ? 'var(--ok-tint)' : 'var(--warn-tint)'};color:${ocrApplied ? 'var(--ok-t)' : 'var(--warn-t)'}">${ocrPending ? 'Recognizing…' : (ocrApplied ? 'Done' : (ocrCap.enabled ? 'Ready' : ocrCap.state))}</span></button>
       <button class="pbtn press" data-act="ed-compress" style="justify-content:space-between">Compress images<span style="font:400 11px var(--mono);color:var(--t3)">−38%</span></button>
       <button class="pbtn press" data-act="ed-numbers" style="justify-content:space-between">Add page numbers</button>
     </div>
@@ -225,6 +257,7 @@ function editorGridPaneHtml() {
 }
 function editorReaderPaneHtml() {
   const s = editor.state;
+  const mutationDisabled = s.sessionId && editor.canMutate() ? '' : 'disabled aria-disabled="true"';
   const page = editor.current();
   const index = editor.currentIndex();
   const tool = editor.TOOLS.find(t => t.id === s.tool) || editor.TOOLS[0];
@@ -252,6 +285,20 @@ function editorReaderPaneHtml() {
         <button class="pbtn pri press ${total ? '' : 'off'}" data-act="ed-apply-redactions" style="justify-content:center">${total ? `Apply ${total} redaction${total > 1 ? 's' : ''}` : 'Nothing to apply'}</button>
       </div>`;
   }
+  if (s.tool === 'crop') {
+    const scopes = ['This page', 'All pages'];
+    const disabled = s.cropRect && editor.canMutate() ? '' : 'disabled aria-disabled="true"';
+    return `${head}
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="eyebrow-p">Crop rectangle</span>
+        <div style="font-size:12px;color:var(--t3)">Drag on the page to set the area to keep.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="eyebrow-p">Apply to</span>
+        <div class="pseg">${scopes.map(n => `<button class="press" data-act="ed-scope" data-scope="${n}" data-on="${s.scope === n}">${n}</button>`).join('')}</div>
+      </div>
+      <div style="margin-top:auto"><button class="pbtn pri press" data-act="ed-crop-apply" ${disabled}>Crop ${s.scope === 'All pages' ? 'all pages' : 'this page'}</button></div>`;
+  }
   return `${head}
     <div style="display:flex;flex-direction:column;gap:7px">
       <span class="eyebrow-p">This page</span>
@@ -262,9 +309,9 @@ function editorReaderPaneHtml() {
     </div>
     <div style="display:flex;flex-direction:column;gap:6px">
       <span class="eyebrow-p">Page actions</span>
-      <button class="pbtn press" data-act="ed-rotate" data-deg="90" style="justify-content:space-between">Rotate right<span class="kbd">R</span></button>
+      <button class="pbtn press" data-act="ed-rotate" data-deg="90" style="justify-content:space-between" ${mutationDisabled}>Rotate right<span class="kbd">R</span></button>
       <button class="pbtn press" data-act="ed-extract" style="justify-content:space-between">Extract this page</button>
-      <button class="pbtn press" data-act="ed-delete" style="justify-content:space-between;color:var(--dang-t)">Delete page<span class="kbd">⌫</span></button>
+      <button class="pbtn press" data-act="ed-delete" style="justify-content:space-between;color:var(--dang-t)" ${mutationDisabled}>Delete page<span class="kbd">⌫</span></button>
     </div>
     <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--sep);font-size:11px;line-height:1.5;color:var(--t3)">Press <span class="kbd" data-shortcut="reader">${shortcutLabel('reader')}</span> to go back to all pages. Arrow keys move between pages.</div>`;
 }
@@ -328,4 +375,3 @@ function editorDropHtml() {
     <span style="font-size:12px;color:var(--t2)">Both files stay open. Move pages between them.</span>
   </div></div>`;
 }
-

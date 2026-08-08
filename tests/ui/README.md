@@ -25,14 +25,25 @@ compare:
 
 ## Run it
 
-Serve the baseline and the working tree (see the smoke section below for the
-worktree and server commands), clear both queues, then in each console:
+Serve the working tree (see the smoke section below for the server command),
+clear its queue, then in the Electron renderer console:
 
 ```js
 const s = document.createElement('script'); s.src = '/trace.js';
-s.onload = async () => { console.log(JSON.stringify(await trace())); };
+s.onload = async () => {
+  console.log(JSON.stringify(await trace({
+    fixturePath: 'C:/absolute/path/to/tests/fixtures/inherited-pages.pdf',
+  })));
+};
 document.head.appendChild(s);
 ```
+
+Run the golden trace in the Electron window, not a plain browser: the Editor
+opens a real local path through its session bridge. Use the two-page fixture
+above because the script deletes one page, then inserts a blank replacement.
+The trace never calls Save, so the source fixture is only read. The legacy
+monolith worktree remains covered by the differential smoke harness below; it
+does not expose the FreeDF Editor session bridge needed by this trace.
 
 Save each output, then:
 
@@ -43,9 +54,10 @@ node tests/ui/trace-diff.cjs tests/ui/traces/baseline.json tests/ui/traces/head.
 Exit 0 means behaviour-preserving. Exit 1 names the first differing step, which
 is the one that caused the rest.
 
-`tests/ui/traces/baseline.json` is the recorded baseline at `de8bd97`: 2
-requests, 0 toasts, 43 render passes, 586 elements, structure
-`8ad83bcf23f40000`, computed `1177f46f815b1100`.
+`tests/ui/traces/baseline.json` is the recorded FreeDF Editor baseline: 9
+requests, 0 toasts, 57 render passes, 523 elements, structure
+`238ec99f5a4b2a00`, computed `199440d0cc893000`. Session and page ids are
+canonicalized by the harness so a second Electron run produces the same trace.
 
 ## The rig is tested
 

@@ -20,6 +20,30 @@ document.addEventListener('click', async event => {
   catch (error) { showToast(error.message, false); }
 });
 
+let cropDrag = null;
+const cropPoint = (event, element) => {
+  const bounds = element.getBoundingClientRect();
+  const screenPoint = {
+    x: Math.max(0, Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100)),
+    y: Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100)),
+  };
+  return OneToolEditorState.screenPointToPagePercent(screenPoint, editor.current()?.rot || 0);
+};
+document.addEventListener('pointerdown', event => {
+  const canvas = event.target.closest('[data-act="ed-canvas"]');
+  if (!canvas || editor.state.tool !== 'crop' || !editor.canMutate()) return;
+  event.preventDefault();
+  cropDrag = {canvas, start: cropPoint(event, canvas)};
+});
+document.addEventListener('pointermove', event => {
+  if (!cropDrag) return;
+  const end = cropPoint(event, cropDrag.canvas);
+  editor.setCropRect({x: Math.min(cropDrag.start.x, end.x), y: Math.min(cropDrag.start.y, end.y),
+    w: Math.abs(end.x - cropDrag.start.x), h: Math.abs(end.y - cropDrag.start.y)});
+});
+document.addEventListener('pointerup', () => { if (cropDrag) render(true); cropDrag = null; });
+document.addEventListener('pointercancel', () => { cropDrag = null; });
+
 document.addEventListener('click', async event => {
   if (folderMenuState !== 'closed' && !event.target.closest('.dest')) closeFolderMenu();
   /* Only one settings menu is ever open, and anywhere outside it closes it. */
@@ -81,6 +105,7 @@ document.addEventListener('click', async event => {
     /* Page ids are the engine's strings and are passed through untouched. */
     case 'ed-noop': return;
     case 'ed-open-doc': return OneToolEditorActions.pickDocument();
+    case 'ed-reopen': return OneToolEditorActions.pickDocument();
     case 'ed-page': editor.select(el.dataset.id, {additive: event.metaKey || event.ctrlKey || event.shiftKey});
       if (event.detail === 2) editor.openReader(el.dataset.id);
       return render(true);
@@ -91,25 +116,28 @@ document.addEventListener('click', async event => {
     case 'ed-step': editor.step(Number(el.dataset.delta)); return render(true);
     case 'ed-zoom': editor.setZoom(Number(el.dataset.delta)); return render(true);
     case 'ed-scope': editor.state.scope = el.dataset.scope; return render(true);
+    case 'ed-crop-apply': return OneToolEditorActions.crop(editor.state.cropRect)
+      .then(snapshot => { if (snapshot) editor.clearCropRect(); render(true); });
     case 'ed-select-all': editor.selectAll(); return render(true);
     case 'ed-deselect': editor.deselect(); return render(true);
-    case 'ed-rotate': editor.rotate(Number(el.dataset.deg)); return render(true);
-    case 'ed-insert': editor.insert(); return render(true);
-    case 'ed-delete': editor.remove(); return render(true);
+    case 'ed-undo': return OneToolEditorActions.undo();
+    case 'ed-redo': return OneToolEditorActions.redo();
+    case 'ed-rotate': return OneToolEditorActions.rotate(Number(el.dataset.deg));
+    case 'ed-insert': return OneToolEditorActions.insertBlankPage();
+    case 'ed-delete': return OneToolEditorActions.deletePages();
     /* Reverting a real session re-reads the engine rather than inventing a
        document; with nothing open there is nothing to revert to. */
-    case 'ed-revert': editor.state.sel = {}; editor.state.edits = []; editor.state.ocr = false;
+    case 'ed-revert': editor.state.sel = {}; editor.state.edits = [];
       if (editor.state.sessionId) { try { await OneToolEditorActions.inspect(); } catch (e) { showToast(e.message, false); } }
       return render(true);
     case 'ed-extract': {
       const n = editor.targets().length || 1;
-      editor.log(`Extracted ${n} page${n > 1 ? 's' : ''}`);
       showToast(`${n} page${n > 1 ? 's' : ''} extracted to a new PDF`);
       return render(true);
     }
-    case 'ed-ocr': editor.addOcr(); showToast('Text layer added'); return render(true);
-    case 'ed-compress': editor.log('Compressed images to 150 dpi'); showToast('402 MB → 249 MB'); return render(true);
-    case 'ed-numbers': editor.log('Added page numbers, bottom centre'); return render(true);
+    case 'ed-ocr': return OneToolEditorActions.addOcr();
+    case 'ed-compress': showToast('402 MB → 249 MB'); return render(true);
+    case 'ed-numbers': return render(true);
     case 'ed-unmark': editor.removeMark(Number(el.dataset.mark)); return render(true);
     case 'ed-apply-redactions': {
       const n = editor.applyRedactions();

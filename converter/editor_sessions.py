@@ -288,6 +288,7 @@ class EditorSessionStore:
             "capabilities": self._adapter.capabilities(engine_id),
             "canUndo": bool(info["canUndo"]),
             "canRedo": bool(info["canRedo"]),
+            "operations": list(session.ops[:session.cursor]),
             "revision": session.revision,
             "engineState": info["state"],
             "status": session.status,

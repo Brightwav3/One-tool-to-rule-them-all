@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "converter"))
 import pdf_engine
+from tests.support import require_or_skip
 
 
 class EngineInfoTests(unittest.TestCase):
@@ -56,10 +57,7 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 def engine_or_skip(case):
     adapter = pdf_engine.get_adapter()
-    if not adapter.engine_info()["available"]:
-        if os.environ.get("ONETOOL_REQUIRE_ENGINE"):
-            raise AssertionError("release tier requires a working engine")
-        case.skipTest("FreeDF not available (development tier)")
+    require_or_skip(case, adapter.engine_info()["available"], "release tier requires a working engine")
     return adapter
 
 
@@ -139,8 +137,7 @@ class OpenTests(unittest.TestCase):
 class RenderTests(unittest.TestCase):
     def setUp(self):
         self.adapter = engine_or_skip(self)
-        if self.adapter.capabilities()["preview"]["state"] != "ready":
-            self.skipTest("no working renderer (Poppler unavailable)")
+        require_or_skip(self, self.adapter.capabilities()["preview"]["state"] == "ready", "no working renderer (Poppler unavailable)")
         self.session = self.adapter.open(str(FIXTURES / "one-page.pdf"))["sessionId"]
         self.page = self.adapter.inspect(self.session)["document"]["pages"][0]["pageId"]
 

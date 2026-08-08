@@ -1,168 +1,294 @@
 {
- "steps": [
-  {
-   "step": "page:convert",
-   "requests": [
-    "GET /api/history"
-   ],
-   "toasts": [],
-   "renders": 2,
-   "page": "convert"
+  "steps": [
+    {
+      "step": "page:convert",
+      "requests": [
+        "GET /api/history"
+      ],
+      "toasts": [],
+      "renders": 3,
+      "page": "convert"
+    },
+    {
+      "step": "act:toggle-folder-menu",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "convert"
+    },
+    {
+      "step": "act:toggle-folder-menu",
+      "requests": [],
+      "toasts": [],
+      "renders": 2,
+      "page": "convert"
+    },
+    {
+      "step": "act:check-all",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "convert"
+    },
+    {
+      "step": "act:check-all",
+      "requests": [],
+      "toasts": [],
+      "renders": 2,
+      "page": "convert"
+    },
+    {
+      "step": "act:history-filter",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "convert"
+    },
+    {
+      "step": "act:history-sort",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "convert"
+    },
+    {
+      "step": "act:cycle-scope",
+      "requests": [],
+      "toasts": [],
+      "renders": 0,
+      "page": "convert"
+    },
+    {
+      "step": "key:k",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "convert"
+    },
+    {
+      "step": "key:Escape",
+      "requests": [],
+      "toasts": [],
+      "renders": 2,
+      "page": "convert"
+    },
+    {
+      "step": "click:#settingsBtn",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "convert"
+    },
+    {
+      "step": "act:close-settings",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "convert"
+    },
+    {
+      "step": "page:creator",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "creator"
+    },
+    {
+      "step": "act:cr-format",
+      "requests": [],
+      "toasts": [],
+      "renders": 2,
+      "page": "creator"
+    },
+    {
+      "step": "act:cr-continue",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "creator"
+    },
+    {
+      "step": "act:cr-back",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "creator"
+    },
+    {
+      "step": "page:editor",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-select-all",
+      "requests": [],
+      "toasts": [],
+      "renders": 0,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-page",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-revert",
+      "requests": [],
+      "toasts": [],
+      "renders": 0,
+      "page": "editor"
+    },
+    {
+      "step": "page:convert",
+      "requests": [
+        "GET /api/history"
+      ],
+      "toasts": [],
+      "renders": 2,
+      "page": "convert"
+    },
+    {
+      "step": "editor-open:undefined",
+      "requests": [
+        "POST /api/editor/open {\"paths\":[\"C:/Users/Sajmon/pdf  tool/tests/fixtures/inherited-pages.pdf\"]}"
+      ],
+      "toasts": [],
+      "renders": 4,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-page",
+      "requests": [],
+      "toasts": [],
+      "renders": 2,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-rotate",
+      "requests": [
+        "POST /api/editor/operation {\"sessionId\":\"ed_<session>\",\"operations\":[{\"kind\":\"rotate_pages\",\"pageIds\":[\"page_<1>\"],\"degrees\":270}],\"dryRun\":false}"
+      ],
+      "toasts": [],
+      "renders": 2,
+      "page": "editor"
+    },
+    {
+      "step": "editor-reader:undefined",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-undo",
+      "requests": [
+        "POST /api/editor/undo {\"sessionId\":\"ed_<session>\"}"
+      ],
+      "toasts": [],
+      "renders": 3,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-redo",
+      "requests": [
+        "POST /api/editor/redo {\"sessionId\":\"ed_<session>\"}"
+      ],
+      "toasts": [],
+      "renders": 2,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-grid",
+      "requests": [],
+      "toasts": [],
+      "renders": 2,
+      "page": "editor"
+    },
+    {
+      "step": "editor-select-delete-target:undefined",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-delete",
+      "requests": [
+        "POST /api/editor/operation {\"sessionId\":\"ed_<session>\",\"operations\":[{\"kind\":\"delete_pages\",\"pageIds\":[\"page_<2>\"]}],\"dryRun\":false}"
+      ],
+      "toasts": [],
+      "renders": 2,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-insert",
+      "requests": [
+        "POST /api/editor/operation {\"sessionId\":\"ed_<session>\",\"operations\":[{\"kind\":\"insert_blank_page\",\"afterPageId\":null}],\"dryRun\":false}"
+      ],
+      "toasts": [],
+      "renders": 3,
+      "page": "editor"
+    },
+    {
+      "step": "editor-reader:undefined",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-tool",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "editor"
+    },
+    {
+      "step": "editor-crop-drag:undefined",
+      "requests": [],
+      "toasts": [],
+      "renders": 2,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-scope",
+      "requests": [],
+      "toasts": [],
+      "renders": 1,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-crop-apply",
+      "requests": [
+        "POST /api/editor/operation {\"sessionId\":\"ed_<session>\",\"operations\":[{\"kind\":\"crop_pages\",\"pageIds\":[\"page_<3>\",\"page_<1>\"],\"box\":[119,168.4,476,673.6]}],\"dryRun\":false}"
+      ],
+      "toasts": [],
+      "renders": 3,
+      "page": "editor"
+    },
+    {
+      "step": "act:ed-grid",
+      "requests": [],
+      "toasts": [],
+      "renders": 2,
+      "page": "editor"
+    }
+  ],
+  "final": {
+    "elements": 523,
+    "structure": "238ec99f5a4b2a00",
+    "computed": "199440d0cc893000"
   },
-  {
-   "step": "act:toggle-folder-menu",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "convert"
+  "totals": {
+    "requests": 9,
+    "toasts": 0,
+    "renders": 57,
+    "errors": 0
   },
-  {
-   "step": "act:toggle-folder-menu",
-   "requests": [],
-   "toasts": [],
-   "renders": 3,
-   "page": "convert"
-  },
-  {
-   "step": "act:check-all",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "convert"
-  },
-  {
-   "step": "act:check-all",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "convert"
-  },
-  {
-   "step": "act:history-filter",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "convert"
-  },
-  {
-   "step": "act:history-sort",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "convert"
-  },
-  {
-   "step": "act:cycle-scope",
-   "requests": [],
-   "toasts": [],
-   "renders": 1,
-   "page": "convert"
-  },
-  {
-   "step": "key:k",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "convert"
-  },
-  {
-   "step": "key:Escape",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "convert"
-  },
-  {
-   "step": "click:#settingsBtn",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "convert"
-  },
-  {
-   "step": "act:close-settings",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "convert"
-  },
-  {
-   "step": "page:creator",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "creator"
-  },
-  {
-   "step": "act:cr-format",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "creator"
-  },
-  {
-   "step": "act:cr-continue",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "creator"
-  },
-  {
-   "step": "act:cr-back",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "creator"
-  },
-  {
-   "step": "page:editor",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "editor"
-  },
-  {
-   "step": "act:ed-select-all",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "editor"
-  },
-  {
-   "step": "act:ed-page",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "editor"
-  },
-  {
-   "step": "act:ed-revert",
-   "requests": [],
-   "toasts": [],
-   "renders": 2,
-   "page": "editor"
-  },
-  {
-   "step": "page:convert",
-   "requests": [
-    "GET /api/history"
-   ],
-   "toasts": [],
-   "renders": 3,
-   "page": "convert"
-  }
- ],
- "final": {
-  "elements": 586,
-  "structure": "8ad83bcf23f40000",
-  "computed": "1177f46f815b1100"
- },
- "totals": {
-  "requests": 2,
-  "toasts": 0,
-  "renders": 43,
-  "errors": 0
- },
- "errors": [],
- "polled": true
+  "errors": [],
+  "polled": true
 }

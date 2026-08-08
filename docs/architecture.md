@@ -157,3 +157,6 @@ Verified by computed style, not just structure: 35 properties on every element
 across all three pages are byte-identical to `ui-monolith-baseline`.
 
 Editor is last in phase 4 because it is the most coupled.
+# Editor engine boundary and release tiers
+
+Only `converter/pdf_engine.py` imports `pdfengine`. The vendored FreeDF distribution (`freedf`) lives in `converter/vendor/pdfengine`; the distribution/import name split is intentional. The development suite allows unavailable optional engine backends. Release runs set `ONETOOL_REQUIRE_ENGINE=1`, making an unavailable engine a failure. Poppler is required for Editor previews; Tesseract remains optional and OCR degrades with an explicit capability reason. The live Electron golden trace records 9 requests, 0 toasts, 57 renders, 0 errors, and a final 523-element editor DOM (`238ec99f5a4b2a00` structure, `199440d0cc893000` computed style).

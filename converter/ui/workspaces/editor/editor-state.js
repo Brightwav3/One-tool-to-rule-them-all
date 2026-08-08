@@ -12,12 +12,12 @@
   const KINDS = ['Cover', 'Scan', 'Scan', 'Scan', 'Spread', 'Blank', 'Scan', 'Scan'];
 
   const TOOLS = [
-    {id: 'select', glyph: '▣', label: 'Select', help: 'Click a page element to select it. Drag to move.'},
-    {id: 'text', glyph: 'T', label: 'Text', help: 'Click to place a text box. The page keeps its own fonts.'},
-    {id: 'redact', glyph: '▭', label: 'Redact', help: 'Click the page to drop a block. Applying removes what is underneath, not just covers it.'},
-    {id: 'draw', glyph: '✎', label: 'Draw', help: 'Freehand ink on top of the page.'},
-    {id: 'stamp', glyph: '■', label: 'Stamp', help: 'Place a saved stamp or signature.'},
-    {id: 'crop', glyph: '✂', label: 'Crop', help: 'Drag the edges. Crop can apply to this page or every page.'},
+    {id: 'select', icon: 'i-select', label: 'Select', help: 'Click a page element to select it. Drag to move.'},
+    {id: 'text', icon: 'i-text', label: 'Text', help: 'Click to place a text box. The page keeps its own fonts.'},
+    {id: 'redact', icon: 'i-redact', label: 'Redact', help: 'Click the page to drop a block. Applying removes what is underneath, not just covers it.'},
+    {id: 'draw', icon: 'i-draw', label: 'Draw', help: 'Freehand ink on top of the page.'},
+    {id: 'stamp', icon: 'i-stamp', label: 'Stamp', help: 'Place a saved stamp or signature.'},
+    {id: 'crop', icon: 'i-crop', label: 'Crop', help: 'Drag the edges. Crop can apply to this page or every page.'},
   ];
 
   /* Which FreeDF operation each tool needs. A tool absent from this map has no
@@ -33,6 +33,15 @@
     reorder: 'reorder_pages',
     insert: 'insert_blank_page',
     import: 'import_pages',
+  };
+
+  /* A page can be shown before the server replies only when its identity and
+     membership cannot change.  In particular, blank-page ids come from FreeDF,
+     so inserting one locally would create a document the server can never
+     reconcile. */
+  const OPTIMISTIC = {
+    rotate: true, reorder: true, delete: false, insert: false, crop: false,
+    ocr: false, undo: false, redo: false, save: false,
   };
 
   /* The engine's four states imply four different offers, so none of them may
@@ -74,6 +83,46 @@
     return ((Math.round(deg / 90) * 90) % 360 + 360) % 360;
   }
 
+  function describeOp(op = {}) {
+    const count = Array.isArray(op.pageIds) ? op.pageIds.length : 0;
+    const pages = `${count} page${count === 1 ? '' : 's'}`;
+    switch (op.kind) {
+      case 'rotate_pages': return `Rotated ${pages} by ${op.degrees}°`;
+      case 'delete_pages': return `Deleted ${pages}`;
+      case 'reorder_pages': return `Reordered ${pages}`;
+      case 'insert_blank_page': return 'Inserted a blank page';
+      case 'crop_pages': return `Cropped ${pages}`;
+      case 'add_text_layer': return `Added a text layer to ${pages}`;
+      default: return 'Applied an edit';
+    }
+  }
+
+  /* DOM rectangles use a top-left origin; PDF user space uses bottom-left. */
+  function cropBoxToPoints(rect, page) {
+    if (!rect || !page || !Number.isFinite(page.w) || !Number.isFinite(page.h)) return null;
+    const left = Math.max(0, Math.min(100, rect.x));
+    const top = Math.max(0, Math.min(100, rect.y));
+    const right = Math.max(0, Math.min(100, rect.x + rect.w));
+    const bottom = Math.max(0, Math.min(100, rect.y + rect.h));
+    const x0 = (Math.min(left, right) / 100) * page.w;
+    const x1 = (Math.max(left, right) / 100) * page.w;
+    const y1 = page.h - (Math.min(top, bottom) / 100) * page.h;
+    const y0 = page.h - (Math.max(top, bottom) / 100) * page.h;
+    if (x1 <= x0 || y1 <= y0) return null;
+    return [x0, y0, x1, y1].map(value => Math.round(value * 100) / 100);
+  }
+
+  function screenPointToPagePercent(point, rotation) {
+    const x = Math.max(0, Math.min(100, point.x));
+    const y = Math.max(0, Math.min(100, point.y));
+    switch (normalizeRotation(rotation)) {
+      case 90: return {x: y, y: 100 - x};
+      case 180: return {x: 100 - x, y: 100 - y};
+      case 270: return {x: 100 - y, y: x};
+      default: return {x, y};
+    }
+  }
+
   function createEditorState(options = {}) {
     const state = {
       mode: 'grid',
@@ -85,7 +134,7 @@
       canUndo: false, canRedo: false,
       sel: {}, focus: null,
       tool: 'select', zoom: 96, scope: 'This page',
-      ocr: false, edits: [], nextId: 1000,
+      edits: [], nextId: 1000, pending: null, cropRect: null, recovery: null, recoveryDetail: '',
       bName: null, bPages: [], bSel: {}, dragging: false,
     };
 
@@ -99,12 +148,19 @@
        because a merge would keep a page the engine has deleted. Selection is
        filtered to what survived. */
     function absorb(snapshot) {
+      /* The server is authoritative even when a local optimistic view differs. */
+      state.pending = null;
+      state.recovery = null; state.recoveryDetail = '';
       state.sessionId = snapshot.session ? snapshot.session.id : null;
       state.revision = snapshot.revision;
       state.capabilities = snapshot.capabilities || {};
       state.engineState = snapshot.engineState || null;
       state.canUndo = !!snapshot.canUndo;
       state.canRedo = !!snapshot.canRedo;
+      const operations = Array.isArray(snapshot.operations) ? snapshot.operations : [];
+      state.edits = operations.map((op, index) => ({
+        id: `${index}:${op.kind || 'edit'}`, text: describeOp(op),
+      })).reverse();
       const doc = snapshot.document || {};
       if (doc.title) state.name = doc.title;
       state.pages = (doc.pages || []).map(p => ({
@@ -152,8 +208,52 @@
     const currentIndex = () => state.pages.findIndex(p => p.id === (current() || {}).id);
     const totalMarks = () => state.pages.reduce((n, p) => n + p.marks.length, 0);
 
+    const pageSnapshot = () => ({
+      pages: state.pages.map(p => ({...p, marks: [...(p.marks || [])], lines: [...(p.lines || [])]})),
+      sel: {...state.sel}, focus: state.focus, mode: state.mode, edits: [...state.edits],
+    });
+
+    /* The pure state model is also used by the design-time page fixture, which
+       has pages but no session. The action layer still refuses to post without
+       a session; this gate's sole responsibility is serializing mutations. */
+    function canMutate() { return !state.pending && !['frozen', 'closed', 'degraded', 'blocked'].includes(state.recovery); }
+
+    function beginPending({kind, snapshot = null} = {}) {
+      if (!kind || !canMutate()) return false;
+      /* The token binds the one HTTP request permitted to this local mutation.
+         Matching by kind would allow a second rotate to slip through. */
+      state.pending = {kind, snapshot, token: {}};
+      return state.pending.token;
+    }
+
+    function rejectPending(reason) {
+      const pending = state.pending;
+      if (!pending) return null;
+      if (pending.snapshot) {
+        state.pages = pending.snapshot.pages;
+        state.sel = pending.snapshot.sel;
+        state.focus = pending.snapshot.focus;
+        state.mode = pending.snapshot.mode;
+        state.edits = pending.snapshot.edits;
+      }
+      state.pending = null;
+      return reason || 'The operation was rejected.';
+    }
+
+    function recover(error = {}) {
+      state.pending = null;
+      state.recoveryDetail = error.message || error.detail || '';
+      if (error.code === 'source-changed') state.recovery = 'frozen';
+      else if (error.code === 'session-closed') state.recovery = 'closed';
+      else if (error.code === 'engine-error') state.recovery = 'degraded';
+      else if (['engine-missing', 'engine-unsupported', 'source-unreadable'].includes(error.code)) state.recovery = 'blocked';
+      else if (error.code === 'session-unknown') {
+        state.recovery = 'empty'; state.sessionId = null; state.pages = []; state.sel = {}; state.focus = null;
+      }
+      return state.recovery;
+    }
+
     /* Newest first, capped at six — the pane shows what just happened, not a ledger. */
-    function log(text) { state.edits = [{id: nextLocalId('edit'), text}, ...state.edits].slice(0, 6); }
 
     function select(id, {additive = false} = {}) {
       const only = selectedIds();
@@ -181,10 +281,18 @@
     }
 
     function rotate(deg) {
-      const ids = targets();
-      if (!ids.length) return false;
+      const ids = targets().length ? targets() : (current() ? [current().id] : []);
+      if (!ids.length || !beginPending({kind: 'rotate_pages', snapshot: pageSnapshot()})) return false;
       state.pages = state.pages.map(p => ids.includes(p.id) ? {...p, rot: normalizeRotation(p.rot + deg)} : p);
-      log(`Rotated ${ids.length > 1 ? `${ids.length} pages` : `page ${state.pages.findIndex(p => p.id === ids[0]) + 1}`}`);
+      return true;
+    }
+
+    function reorder(pageIds) {
+      const byId = new Map(state.pages.map(p => [p.id, p]));
+      if (!Array.isArray(pageIds) || pageIds.length !== state.pages.length
+          || pageIds.some(id => !byId.has(id))
+          || !beginPending({kind: 'reorder_pages', snapshot: pageSnapshot()})) return false;
+      state.pages = pageIds.map((id, index) => ({...byId.get(id), index}));
       return true;
     }
 
@@ -192,24 +300,14 @@
        end; emptying the document drops back to the grid rather than an empty reader. */
     function remove() {
       const ids = targets();
-      if (!ids.length) return false;
-      const pages = state.pages.filter(p => !ids.includes(p.id));
-      state.focus = pages.length ? (pages.find(p => p.id > ids[0]) || pages[pages.length - 1]).id : null;
-      state.pages = pages; state.sel = {};
-      if (!pages.length) state.mode = 'grid';
-      log(`Deleted ${ids.length} page${ids.length > 1 ? 's' : ''}`);
-      return true;
+      /* The server owns deletion: it decides the surviving focus and supplies
+         the only safe manifest after a structural change. */
+      return Boolean(ids.length) && canMutate();
     }
 
     function insert() {
-      const ids = targets();
-      const at = ids.length ? state.pages.findIndex(p => p.id === ids[ids.length - 1]) + 1 : state.pages.length;
-      const page = {id: String(state.nextId), kind: 'Blank', rot: 0, text: 'None', size: '0.2 MB', lines: [], marks: []};
-      state.pages = [...state.pages.slice(0, at), page, ...state.pages.slice(at)];
-      state.nextId += 1;
-      state.sel = {[page.id]: true}; state.focus = page.id;
-      log(`Inserted a blank page at ${at + 1}`);
-      return page;
+      /* FreeDF assigns the new page id, therefore this must wait for its snapshot. */
+      return canMutate();
     }
 
     function addMark(xPercent, yPercent) {
@@ -228,11 +326,12 @@
       const n = totalMarks();
       if (!n) return 0;
       state.pages = state.pages.map(p => ({...p, marks: []}));
-      log(`Applied ${n} redactions`);
       return n;
     }
 
     function setZoom(delta) { state.zoom = Math.min(200, Math.max(40, state.zoom + delta)); }
+    function setCropRect(rect) { state.cropRect = rect; }
+    function clearCropRect() { state.cropRect = null; }
 
     /* Pair mode. The second document is a peer, not a destination: pages move both
        ways and either side can be saved. */
@@ -257,7 +356,6 @@
       if (copy) state.nextId += moving.length;
       else state.pages = state.pages.filter(p => !ids.includes(p.id));
       state.sel = {};
-      log(`${copy ? 'Copied' : 'Moved'} ${ids.length} page${ids.length > 1 ? 's' : ''} to ${state.bName}`);
       return true;
     }
     function moveLeft() {
@@ -268,7 +366,6 @@
       state.pages = [...state.pages, ...moving];
       state.bPages = state.bPages.filter(p => !ids.includes(p.id));
       state.bSel = {};
-      log(`Moved ${ids.length} page${ids.length > 1 ? 's' : ''} back`);
       return true;
     }
     function swapSides() {
@@ -276,24 +373,19 @@
       state.pages = bPages; state.bPages = pages; state.sel = {}; state.bSel = {};
     }
 
-    function addOcr() {
-      state.ocr = true;
-      state.pages = state.pages.map(p => ({...p, text: 'Selectable'}));
-      log('Added an OCR text layer');
-    }
-    function saved() { state.edits = []; }
+    function saved() {}
 
     return {
-      state, TOOLS, absorb, normalizeRotation, toolState,
+      state, TOOLS, absorb, normalizeRotation, toolState, canMutate, beginPending, rejectPending, recover,
       selectedIds, bSelectedIds, targets, current, currentIndex, totalMarks,
-      log, select, selectAll, deselect, selectB,
+      select, selectAll, deselect, selectB,
       openReader, toGrid, toggleMode, step,
-      rotate, remove, insert,
-      addMark, removeMark, applyRedactions, setZoom,
+      rotate, reorder, remove, insert,
+      addMark, removeMark, applyRedactions, setZoom, setCropRect, clearCropRect,
       openPair, closePair, moveRight, moveLeft, swapSides,
-      addOcr, saved,
+      saved,
     };
   }
 
-  return {createEditorState, makePages, normalizeRotation, TOOLS, TOOL_OPERATIONS, LINE_WIDTHS, KINDS, noise};
+  return {createEditorState, makePages, normalizeRotation, describeOp, cropBoxToPoints, screenPointToPagePercent, TOOLS, TOOL_OPERATIONS, OPTIMISTIC, LINE_WIDTHS, KINDS, noise};
 }));

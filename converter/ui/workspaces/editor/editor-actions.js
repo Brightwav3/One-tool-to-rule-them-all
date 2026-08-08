@@ -19,7 +19,11 @@
       body: JSON.stringify(body || {}),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.error) throw new Error(data.error || `Request failed (${res.status})`);
+    if (!res.ok || data.error) {
+      const error = data.error || {};
+      const message = typeof error === 'string' ? error : (error.message || `Request failed (${res.status})`);
+      throw Object.assign(new Error(message), {code: error.code, hint: error.hint});
+    }
     return data;
   }
 
@@ -31,6 +35,10 @@
   }
 
   const sessionId = () => editor.state.sessionId;
+  const structuralTargets = () => {
+    const ids = editor.targets();
+    return ids.length ? ids : (editor.current() ? [editor.current().id] : []);
+  };
 
   async function openDocument(paths) {
     const list = (paths || []).filter(Boolean);
@@ -52,12 +60,77 @@
 
   /* `optimistic` is the caller's promise that it has already applied the change
      locally; it only suppresses the intermediate render, never the absorb. */
-  async function applyOperations(operations, {optimistic = false, dryRun = false} = {}) {
+  async function applyOperations(operations, {optimistic = false, pendingToken = null, dryRun = false} = {}) {
     const id = sessionId();
     if (!id) return null;
+    const kind = operations[0]?.kind;
+    const existing = editor.state.pending;
+    if (existing && (!optimistic || pendingToken !== existing.token)) return null;
+    if (!existing && !editor.beginPending({kind})) return null;
     if (!optimistic) render(true);
-    const snapshot = await post('/api/editor/operation', {sessionId: id, operations, dryRun});
-    return absorbEditor(snapshot);
+    try {
+      const snapshot = await post('/api/editor/operation', {sessionId: id, operations, dryRun});
+      return absorbEditor(snapshot);
+    } catch (error) {
+      const reason = editor.rejectPending(error.message);
+      editor.recover(error);
+      if (reason) showToast(reason, false);
+      render(true);
+      if (error.code === 'operation-invalid') return inspect().catch(() => null);
+      return null;
+    }
+  }
+
+  function rotate(degrees) {
+    if (!sessionId()) return Promise.resolve(null);
+    const pageIds = structuralTargets();
+    if (!pageIds.length || !editor.rotate(degrees)) return Promise.resolve(null);
+    const pendingToken = editor.state.pending.token;
+    render(true);
+    return applyOperations([{kind: 'rotate_pages', pageIds,
+      degrees: editor.normalizeRotation(degrees)}], {optimistic: true, pendingToken});
+  }
+
+  function reorder(pageIds) {
+    if (!sessionId() || !editor.reorder(pageIds)) return Promise.resolve(null);
+    const pendingToken = editor.state.pending.token;
+    render(true);
+    return applyOperations([{kind: 'reorder_pages', pageIds}], {optimistic: true, pendingToken});
+  }
+
+  function deletePages() {
+    if (!sessionId()) return Promise.resolve(null);
+    const pageIds = editor.targets();
+    if (!pageIds.length || !editor.remove()) return Promise.resolve(null);
+    return applyOperations([{kind: 'delete_pages', pageIds}]);
+  }
+
+  function insertBlankPage() {
+    if (!sessionId()) return Promise.resolve(null);
+    if (!editor.insert()) return Promise.resolve(null);
+    const pageIds = editor.targets();
+    return applyOperations([{kind: 'insert_blank_page',
+      afterPageId: pageIds.length ? pageIds[pageIds.length - 1] : null}]);
+  }
+
+  function crop(rect) {
+    const page = editor.current();
+    if (!sessionId() || !page || !editor.canMutate()) return Promise.resolve(null);
+    const box = root.OneToolEditorState.cropBoxToPoints(rect, page);
+    if (!box) return Promise.resolve(null);
+    const pageIds = editor.state.scope === 'All pages'
+      ? editor.state.pages.map(item => item.id) : [page.id];
+    return applyOperations([{kind: 'crop_pages', pageIds, box}]);
+  }
+
+  function addOcr() {
+    const cap = editor.toolState('ocr');
+    const ocr = editor.state.capabilities?.ocr || {};
+    const language = ocr.languages?.[0];
+    const mode = ocr.modes?.[0];
+    if (!sessionId() || !editor.canMutate() || !cap.enabled || !language || !mode) return Promise.resolve(null);
+    return applyOperations([{kind: 'add_text_layer', pageIds: editor.state.pages.map(page => page.id),
+      language, mode, dpi: 300, minConfidence: 0.0}]);
   }
 
   async function inspect() {
@@ -66,16 +139,29 @@
     return absorbEditor(await post('/api/editor/inspect', {sessionId: id}));
   }
 
-  async function undo() {
+  async function serverOperation(route, kind) {
     const id = sessionId();
-    if (!id) return null;
-    return absorbEditor(await post('/api/editor/undo', {sessionId: id}));
+    if (!id || !editor.canMutate() || !editor.beginPending({kind})) return null;
+    render(true);
+    try {
+      return absorbEditor(await post(route, {sessionId: id}));
+    } catch (error) {
+      const reason = editor.rejectPending(error.message);
+      editor.recover(error);
+      if (reason) showToast(reason, false);
+      render(true);
+      return null;
+    }
+  }
+
+  async function undo() {
+    if (!editor.state.canUndo) return null;
+    return serverOperation('/api/editor/undo', 'undo');
   }
 
   async function redo() {
-    const id = sessionId();
-    if (!id) return null;
-    return absorbEditor(await post('/api/editor/redo', {sessionId: id}));
+    if (!editor.state.canRedo) return null;
+    return serverOperation('/api/editor/redo', 'redo');
   }
 
   async function save(outputPath) {
@@ -117,11 +203,11 @@
       showToast('The Editor opens files from disk, and this file has no path', false);
       return Promise.resolve(null);
     }
-    return openDocument(paths).catch(error => { showToast(error.message, false); return null; });
+    return openDocument(paths).catch(error => { editor.recover(error); showToast(error.message, false); render(true); return null; });
   }
 
   root.OneToolEditorActions = {
-    openDocument, close, applyOperations, inspect, undo, redo, save,
+    openDocument, close, applyOperations, rotate, reorder, deletePages, insertBlankPage, crop, addOcr, inspect, undo, redo, save,
     absorbEditor, pageImageUrl, thumbWidth, pickDocument, takeFiles,
   };
 }(typeof self !== 'undefined' ? self : this));

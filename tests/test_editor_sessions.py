@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "converter"))
 import editor_sessions
 import pdf_engine
+from tests.support import require_or_skip
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
@@ -21,8 +22,7 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures"
 class SessionTests(unittest.TestCase):
     def setUp(self):
         adapter = pdf_engine.get_adapter()
-        if not adapter.engine_info()["available"]:
-            self.skipTest("FreeDF not available (development tier)")
+        require_or_skip(self, adapter.engine_info()["available"], "FreeDF not available (development tier)")
         self.tmp = Path(tempfile.mkdtemp())
         self.src = self.tmp / "in.pdf"
         shutil.copy(FIXTURES / "one-page.pdf", self.src)
@@ -53,6 +53,22 @@ class SessionTests(unittest.TestCase):
         self.store.apply(self.session.id, [
             {"kind": "rotate_pages", "pageIds": [self.page], "degrees": 180}])
         self.assertFalse(self.store.snapshot(self.session.id)["canRedo"])
+
+    def test_snapshot_operations_follow_apply_undo_redo_and_dry_run(self):
+        first = {"kind": "rotate_pages", "pageIds": [self.page], "degrees": 90}
+        second = {"kind": "rotate_pages", "pageIds": [self.page], "degrees": 180}
+        self.store.apply(self.session.id, [first])
+        self.store.apply(self.session.id, [second])
+        self.assertEqual(self.store.snapshot(self.session.id)["operations"], [first, second])
+
+        self.store.undo(self.session.id)
+        self.assertEqual(self.store.snapshot(self.session.id)["operations"], [first])
+
+        self.store.redo(self.session.id)
+        self.assertEqual(self.store.snapshot(self.session.id)["operations"], [first, second])
+
+        self.store.apply(self.session.id, [first], dry_run=True)
+        self.assertEqual(self.store.snapshot(self.session.id)["operations"], [first, second])
 
     def test_a_failed_operation_leaves_the_log_untouched(self):
         before = len(self.store.get(self.session.id).ops)

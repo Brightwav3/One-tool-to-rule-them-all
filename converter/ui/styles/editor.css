@@ -73,6 +73,7 @@
 .ed-foot{flex:none;display:flex;align-items:center;gap:12px;padding:11px 18px;border-top:1px solid var(--sep)}
 .ed-rail{width:52px;flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0}
 .tool{width:34px;height:34px;display:grid;place-items:center;border-radius:8px;color:var(--t2);font-size:13px;transition:background var(--d-quick) ease,color var(--d-quick) ease}
+.ed-icon{width:16px;height:16px;display:inline-block;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
 .tool:hover{background:var(--quiet)}
 .tool[data-on="true"]{background:var(--acc-tint);color:var(--acc-text)}
 /* A tool the engine cannot offer stays visible — its tooltip carries the
@@ -106,4 +107,3 @@
 .ed-mid .hint{font-size:11px;line-height:1.5;color:var(--t3);text-align:center;padding:0 6px}
 .ed-dropover{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--page) 72%,transparent);pointer-events:none}
 .ed-dropcard{display:flex;flex-direction:column;align-items:center;gap:10px;padding:26px 34px;border-radius:16px;background:var(--surface);box-shadow:var(--sh3),inset 0 0 0 1.5px var(--acc-tint2)}
-

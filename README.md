@@ -45,6 +45,10 @@ them want your files on their server.
 
 This is one window that does all of it, on your machine, and tells you the truth about what it can do.
 
+## PDF Editor
+
+The Editor opens local PDFs for structural edits, rotation, crop, undo/redo, and optional OCR text layers. FreeDF is vendored as the MIT-licensed `freedf` distribution (import package `pdfengine`) behind One Tool's adapter boundary. Poppler provides page previews; Tesseract provides OCR when installed. The Editor toolbar uses the supplied SVG sprite at `converter/ui/icons.svg`. The live Electron golden trace records 9 requests, 0 toasts, 57 renders, 0 errors, and a final 523-element editor DOM (`238ec99f5a4b2a00` structure, `199440d0cc893000` computed style).
+
 ## What it converts
 
 Fifty-five conversions are declared. **Fifty-three are implemented**; two are named for later so you can

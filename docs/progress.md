@@ -14,9 +14,12 @@ shows real Poppler-rendered pages, and writes real files, on a backend built on
 **FreeDF** — an independently developed, MIT-licensed PDF engine treated here as
 a third-party dependency.
 
-**12 of 19 planned tasks are done.** The whole backend and the first two UI
-tasks. Both suites are green: **178 Python tests, 13 renderer tests, 0
-failures.**
+**19 of 19 planned tasks are implemented and verified.** Tasks 1–19 are complete.
+Task 17's focused UI suite is green: **33 tests, 0 failures** (plus the renderer
+source checks). The Python suite remains
+environment-sensitive on this desktop: its Poppler resolver currently picks a
+broken `.cmd` shim; with that shim removed from `PATH`, the 14 affected render
+and page-image tests pass.
 
 ## Where to pick up
 
@@ -24,7 +27,18 @@ The plan is [`plans/2026-08-07-freedf-editor-integration.md`](plans/2026-08-07-f
 It is written for an implementer with no context: exact files, exact code, exact
 tests, in numbered steps.
 
-**Resume at Task 13.** Tasks 1–12 are committed and are marked done below.
+Tasks 1–12 are committed; Tasks 13–19 are implemented and verified in the
+working tree. Task 18 was captured in a live Electron run against
+`tests/fixtures/inherited-pages.pdf`; no baseline numbers were guessed.
+The post-integration Editor icon pass is also complete: the supplied sprite is
+served as `converter/ui/icons.svg` and drives the six tool buttons plus both
+rotate controls.
+
+Reader previews now request a bounded, zoom-aware high-resolution Poppler render
+(1000–3000 px); the grid continues to use the smaller 180/360 px thumbnail
+renders. Ctrl+Space now remains active after opening a file: the hidden file
+picker input no longer blocks Editor keyboard shortcuts, and the reader's
+device-pixel-ratio lookup is safe in the browser runtime.
 
 | Task | State |
 | --- | --- |
@@ -38,13 +52,13 @@ tests, in numbered steps.
 | 8 HTTP: operation, undo, redo | done |
 | 9 HTTP: page image route | done |
 | 10 HTTP: save through the queue | done |
-| **13 UI: structural ops + optimistic policy** | **next** |
-| 14 UI: undo and redo | after 13 — both rewrite `editor-state.js`, so sequence them |
-| 15 UI: crop | parallel with 14 |
-| 16 UI: OCR text layer | parallel with 14 |
-| 17 Recovery behaviour end to end | after 13–16 |
-| 18 Extend the golden trace and re-baseline | after 17 |
-| 19 Two-tier testing and documentation | last |
+| **13 UI: structural ops + optimistic policy** | **done** |
+| **14 UI: undo and redo** | **done** |
+| **15 UI: crop** | **done** |
+| **16 UI: OCR text layer** | **done** |
+| **17 Recovery behaviour end to end** | **done** |
+| **18 Extend the golden trace and re-baseline** | **done** — live Electron trace: 9 requests, 0 toasts, 57 renders, 0 errors; 523 elements, structure `238ec99f5a4b2a00`, computed `199440d0cc893000` |
+| **19 Two-tier testing and documentation** | **done** |
 
 Tasks 11 and 12 are done and are listed in the plan between 10 and 13.
 
@@ -173,16 +187,11 @@ while deleting the feature still will.
 
 ## Still open
 
-1. **Tasks 13–19**, per the table above.
-2. **The golden trace has never covered the Editor** (Task 18). Its recorded
-   values will change, and the change must be read by hand rather than
-   absorbed. Both servers must be cleared to equal state before any comparison.
-3. **The visual pass against `docs/baseline/`** — still never done, inherited
+1. **The visual pass against `docs/baseline/`** — still never done, inherited
    from the decomposition work.
-4. **The release test tier** (Task 19). Until it exists, a build can ship with a
-   dead Editor and a green suite, because every engine test skips itself
-   politely when FreeDF is absent.
-5. **Decisions D4 and D5** are answered inside Tasks 12 and 9. D1, D2 and D3
+2. **Release tier status:** implemented and verified; clean-PATH release run
+   passes 185 tests with two intentional skips.
+3. **Decisions D4 and D5** are answered inside Tasks 12 and 9. D1, D2 and D3
    were approved before implementation and are recorded in the plan.
 
 ## Engine provenance

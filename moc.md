@@ -30,7 +30,8 @@ are not uploaded to a service.
 ├── converter/                   Local Python conversion backend
 │   ├── server.py                Queue, persistence stores, local JSON API, static UI serving
 │   ├── registry.py              Converter data model and external-helper discovery
-│   ├── formats.py               Converter declarations and conversion implementations
+│   ├── formats.py               Converter declarations, conversion implementations, REGISTRY facade
+│   ├── direct_pdf.py            Stdlib JPEG/PNG PDF embed and JPEG-from-PDF extract
 │   ├── cbz_to_epub.py           Standalone stdlib CBZ-to-EPUB converter and CLI
 │   ├── agent_tools.py           Machine-readable command-line client for the local API
 │   ├── pdf_to_md.cjs            Persistent Node/pdf-inspector worker protocol
@@ -55,7 +56,7 @@ flowchart LR
   A[agent_tools.py] -->|HTTP JSON| S
   S --> R[Registry\nregistry.py + formats.py]
   S --> Q[single worker queue]
-  Q --> C[Converter functions\nformats.py / cbz_to_epub.py]
+  Q --> C[Converter functions\nformats.py / direct_pdf.py / cbz_to_epub.py]
   C --> H[optional local helpers\n7-Zip, Poppler, ffmpeg, etc.]
   S --> D[local history/settings files]
 ```
@@ -101,12 +102,13 @@ computed state.
 
 ### `converter/formats.py`
 
-This is the main conversion catalogue and implementation module. It contains
-the `CONVERTERS` list, then creates the shared `REGISTRY` from it. Most work on
-a file type belongs here:
+This is the main conversion catalogue and facade. It contains the `CONVERTERS`
+list, then creates the shared `REGISTRY` from it. Direct JPEG/PNG PDF embed and
+JPEG-from-PDF extract live in `direct_pdf.py` and are re-exported here so
+`import formats` and test patches on this module stay stable. Most other work
+on a file type still belongs here:
 
 - archive/comic routes and safe archive handling;
-- direct PDF paths for compatible JPEG/PNG data and bounded fallbacks;
 - PDF page rendering, image/document/ebook conversion helpers;
 - creator/container writers for ZIP, TGZ, 7Z, EPUB, PDF, TIFF, and comics;
 - the persistent PDF-to-Markdown Node worker wrapper;
@@ -115,6 +117,12 @@ a file type belongs here:
 Each converter function receives a source, output path, option dictionary, and
 progress callback. A converter must report progress through that callback and
 must not update UI state directly.
+
+### `converter/direct_pdf.py`
+
+Stdlib-first JPEG/PNG PDF writer and JPEG extraction from image-only PDFs.
+`formats.py` imports and re-exports its public names. Do not turn this into a
+`formats` package; keep it a sibling script on the same `sys.path`.
 
 ### `converter/cbz_to_epub.py`
 
@@ -333,7 +341,7 @@ visual screenshots for checks that need the actual Electron window.
 
 ### Add a new one-file conversion
 
-1. Implement the converter/probe function in `converter/formats.py`.
+1. Implement the converter/probe function in `converter/formats.py` (direct JPEG/PNG PDF work goes in `direct_pdf.py`).
 2. Add a `Converter(...)` declaration to `CONVERTERS`, including source
    extensions, output extension, required helper, options, and conversion
    callback.

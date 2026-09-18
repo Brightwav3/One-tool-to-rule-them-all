@@ -242,7 +242,8 @@ unsupported PNG pages use the ImageMagick fallback one page at a time.
 ```
 converter/
   registry.py          the converter model — state is computed, never asserted
-  formats.py           every conversion the backend knows about
+  formats.py           every conversion the backend knows about (catalogue + facade)
+  direct_pdf.py        stdlib JPEG/PNG PDF embed and JPEG-from-PDF extract
   cbz_to_epub.py       the comics converter — pure stdlib, importable, scriptable
   server.py            local JSON HTTP API, job queue
   agent_tools.py       structured JSON command-line tools for local agents

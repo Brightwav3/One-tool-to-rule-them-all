@@ -75,6 +75,19 @@ vulkaninfo --summary
 echo "$XDG_SESSION_TYPE $WAYLAND_DISPLAY $DISPLAY"
 ```
 
+`@gpuix/native` 0.9.0 on Linux is **Wayland + Vulkan** (no compiled X11 backend). A GNOME/KDE Wayland session just works. An X11-only desktop (TigerVNC, XFCE on `:1`) needs a nested compositor so the GPUI window is visible:
+
+```bash
+sudo apt-get install -y weston
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/runtime-$USER}"
+mkdir -p "$XDG_RUNTIME_DIR"
+weston --backend=x11 --renderer=pixman --width=1100 --height=780 --socket=gpuix-wayland --no-config --idle-time=0 &
+export WAYLAND_DISPLAY=gpuix-wayland
+cd gpuix && bun run dev
+```
+
+Software-only VMs (llvmpipe) also want `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`. This does not change the Windows DirectX path.
+
 Pack (on Ubuntu 24.04):
 
 ```bash

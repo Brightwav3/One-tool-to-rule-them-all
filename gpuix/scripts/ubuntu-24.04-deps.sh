@@ -35,8 +35,23 @@ apt-get install -y --no-install-recommends \
   libxkbcommon0 \
   libxkbcommon-x11-0 \
   libfontconfig1 \
+  libx11-6 \
   libx11-xcb1 \
   libxcb1 \
+  libxcb-xkb1 \
+  libxcb-icccm4 \
+  libxcb-image0 \
+  libxcb-keysyms1 \
+  libxcb-randr0 \
+  libxcb-render0 \
+  libxcb-render-util0 \
+  libxcb-shape0 \
+  libxcb-shm0 \
+  libxcb-util1 \
+  libxcb-xfixes0 \
+  libxcb-xinerama0 \
+  libxcb-xinput0 \
+  libxcb-cursor0 \
   libzstd1 \
   libssl3t64
 

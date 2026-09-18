@@ -1,4 +1,4 @@
-import { Kbd, Overlay, Press, T, useTheme } from "../primitives"
+import { Kbd, Overlay, Press, T, col, row, useTheme } from "../primitives"
 import { routeStateLabel } from "../format"
 import type { Tool } from "../types"
 
@@ -31,23 +31,22 @@ export function Palette({
     <Overlay onClose={onClose} align="start" padTop={120}>
       <div
         testId="palette"
-        style={{
+        style={col({
           width: 520,
           borderRadius: theme.radius.card,
           backgroundColor: theme.surface,
           boxShadow: theme.shadowModal,
           overflow: "hidden",
-        }}
+        })}
       >
         <div
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
+          style={row({
             gap: 12,
             padding: 16,
             borderBottomWidth: 1,
             borderColor: theme.sep,
-          }}
+            width: "100%",
+          })}
         >
           <T color={theme.t3} size="md">
             ⌕
@@ -61,7 +60,7 @@ export function Palette({
           />
           <Kbd>esc</Kbd>
         </div>
-        <div style={{ padding: 8, maxHeight: 360, overflow: "scroll" }}>
+        <div style={col({ padding: 8, maxHeight: 360, overflow: "scroll" })}>
           {conversions.length ? (
             <>
               <Group label="Conversions" />
@@ -85,7 +84,7 @@ export function Palette({
             </>
           ) : null}
           {!conversions.length && !actions.length ? (
-            <div style={{ padding: 24, alignItems: "center" }}>
+            <div style={col({ padding: 24, alignItems: "center" })}>
               <T color={theme.t3} size="sm">
                 No matching commands.
               </T>
@@ -100,7 +99,7 @@ export function Palette({
 function Group({ label }: { label: string }) {
   const theme = useTheme()
   return (
-    <div style={{ paddingTop: 8, paddingBottom: 8, paddingLeft: 10 }}>
+    <div style={col({ paddingTop: 8, paddingBottom: 8, paddingLeft: 10 })}>
       <T color={theme.t3} size="xs" weight={500}>
         {label.toUpperCase()}
       </T>
@@ -113,9 +112,7 @@ function Row({ glyph, label, status, onClick }: { glyph: string; label: string; 
   return (
     <Press
       onClick={onClick}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
+      style={row({
         gap: 12,
         minHeight: 38,
         paddingTop: 8,
@@ -123,11 +120,12 @@ function Row({ glyph, label, status, onClick }: { glyph: string; label: string; 
         paddingLeft: 10,
         paddingRight: 10,
         borderRadius: theme.radius.control,
+        width: "100%",
         hover: { backgroundColor: theme.quiet },
-      }}
+      })}
     >
       <div
-        style={{
+        style={col({
           width: 24,
           height: 24,
           borderRadius: 5,
@@ -135,13 +133,13 @@ function Row({ glyph, label, status, onClick }: { glyph: string; label: string; 
           justifyContent: "center",
           backgroundColor: theme.bg,
           flexShrink: 0,
-        }}
+        })}
       >
         <T color={theme.t2} size="xs" weight={500} mono>
           {glyph}
         </T>
       </div>
-      <div style={{ flexGrow: 1 }}>
+      <div style={col({ flexGrow: 1 })}>
         <T size="md">{label}</T>
       </div>
       <T color={theme.t3} size="sm">

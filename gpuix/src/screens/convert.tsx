@@ -1,7 +1,9 @@
-import { Button, Check, Chip, Press, T, useTheme } from "../primitives"
+import { Button, Check, Chip, Press, T, Tile, col, row, useTheme } from "../primitives"
 import { FILTERS, SORTS, commonFolder, convertRows, isBlocked, progressPct, rowMatches, statusLabel, visibleRows } from "../format"
 import { Foot } from "../shell"
 import type { ConvertFilter, ConvertRow, ConvertSort, HistoryRecord, QueueFile, Tool } from "../types"
+
+const COL = { conv: 104, status: 168, size: 64, when: 92 }
 
 export function ConvertScreen({
   files,
@@ -52,40 +54,42 @@ export function ConvertScreen({
   const summary = busy
     ? `Converting · ${blocked} waiting on a helper`
     : `${ready} ready · ${blocked} waiting on a helper · ${written} written`
+  const addKbd = typeof process !== "undefined" && process.platform === "darwin" ? "⌘O" : "Ctrl O"
 
   return (
-    <div style={{ flexGrow: 1, minHeight: 0, flexDirection: "column" }}>
-      <div style={{ flexShrink: 0, paddingTop: 14, paddingBottom: 12, paddingLeft: 18, paddingRight: 18, gap: 10 }}>
-        <div style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <div style={{ flexGrow: 1, minWidth: 0, flexDirection: "row", alignItems: "center" }}>
-          <Press
-            onClick={onPickFolder}
-            style={{
-              minHeight: 30,
-              paddingLeft: 10,
-              paddingRight: 8,
-              borderRadius: 7,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
+    <div style={col({ flexGrow: 1, minHeight: 0, width: "100%", backgroundColor: theme.surface })}>
+      <div style={col({ flexShrink: 0, paddingTop: 14, paddingBottom: 12, paddingLeft: 18, paddingRight: 18, gap: 10, width: "100%" })}>
+        <div style={row({ gap: 8, width: "100%" })}>
+          <div
+            style={row({
+              height: 30,
+              paddingLeft: 4,
+              paddingRight: 6,
+              borderRadius: theme.radius.pill,
+              gap: 6,
               backgroundColor: theme.quiet,
-              borderWidth: 1,
-              borderColor: theme.sep,
               minWidth: 0,
-            }}
+              flexShrink: 1,
+            })}
           >
-            <T color={theme.t2} size="sm">
-              Save to
-            </T>
-            <T color={theme.t2} size="xs">
-              {dest}
-            </T>
-          </Press>
+            <Press onClick={onPickFolder} style={row({ gap: 8, minWidth: 0, flexShrink: 1, height: 26, paddingLeft: 8, paddingRight: 8, borderRadius: 5 })}>
+              <T color={theme.t2} size="sm" weight={500}>
+                Save to
+              </T>
+              <T color={theme.t2} size="xs" mono>
+                {dest}
+              </T>
+              <T color={theme.t3} size={9}>
+                ▾
+              </T>
+            </Press>
+            <Button label="Change" variant="ghost" size="sm" onClick={onPickFolder} />
+          </div>
+          <div style={{ flexGrow: 1, minWidth: 0 }} />
+          <Button label={`${SORTS[sort]} ▾`} variant="secondary" onClick={onSort} />
+          <Button label="Add files" kbd={addKbd} variant="primary" onClick={onAdd} testId="add-files" />
         </div>
-          <Button label={SORTS[sort]} variant="secondary" onClick={onSort} />
-          <Button label="Add files" kbd="⌘O" variant="primary" onClick={onAdd} testId="add-files" />
-        </div>
-        <div style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+        <div style={row({ flexWrap: "wrap", gap: 6, width: "100%" })}>
           {FILTERS.map((item) => (
             <Chip
               key={item.id}
@@ -99,7 +103,7 @@ export function ConvertScreen({
       </div>
 
       <div
-        style={{
+        style={col({
           flexGrow: 1,
           minHeight: 0,
           marginLeft: 8,
@@ -109,15 +113,12 @@ export function ConvertScreen({
           borderWidth: 1,
           borderColor: theme.sep,
           backgroundColor: theme.surface,
-          flexDirection: "column",
           overflow: "hidden",
-        }}
+        })}
       >
         <div
-          style={{
+          style={row({
             flexShrink: 0,
-            flexDirection: "row",
-            alignItems: "center",
             gap: 12,
             paddingTop: 8,
             paddingBottom: 8,
@@ -125,19 +126,20 @@ export function ConvertScreen({
             paddingRight: 14,
             borderBottomWidth: 1,
             borderColor: theme.sep,
-          }}
+            width: "100%",
+          })}
         >
-          <div style={{ width: 16 }} />
-          <div style={{ width: 26 }} />
+          <Check on={false} onClick={() => {}} />
+          <div style={{ width: 26, flexShrink: 0 }} />
           <HeadCell flex label="File" />
-          <HeadCell width={104} label="Conversion" />
-          <HeadCell width={168} label="Status" />
-          <HeadCell width={64} label="Size" right />
-          <HeadCell width={92} label="Written" right />
+          <HeadCell width={COL.conv} label="Conversion" />
+          <HeadCell width={COL.status} label="Status" />
+          <HeadCell width={COL.size} label="Size" right />
+          <HeadCell width={COL.when} label="Written" right />
         </div>
-        <div style={{ flexGrow: 1, minHeight: 0, overflow: "scroll" }}>
+        <div style={col({ flexGrow: 1, minHeight: 0, overflow: "scroll", width: "100%" })}>
           {rows.length === 0 ? (
-            <div style={{ paddingTop: 56, paddingBottom: 56, alignItems: "center", gap: 6 }}>
+            <div style={col({ paddingTop: 56, paddingBottom: 56, alignItems: "center", gap: 6 })}>
               <T size="md" weight={600}>
                 Nothing matches
               </T>
@@ -146,15 +148,15 @@ export function ConvertScreen({
               </T>
             </div>
           ) : (
-            rows.map((row, index) => (
+            rows.map((rowItem, index) => (
               <ConvertRowView
-                key={row.id}
-                row={row}
-                selected={row.kind === "queue" ? row.id === selectedId : row.id === selectedHistory}
-                rule={index === lastActive}
-                onSelect={() => onSelect(row)}
-                onReveal={() => onReveal(row)}
-                onToggleRoute={() => onToggleRoute(row)}
+                key={rowItem.id}
+                item={rowItem}
+                selected={rowItem.kind === "queue" ? rowItem.id === selectedId : rowItem.id === selectedHistory}
+                rule={index === lastActive + 1 && lastActive >= 0}
+                onSelect={() => onSelect(rowItem)}
+                onReveal={() => onReveal(rowItem)}
+                onToggleRoute={() => onToggleRoute(rowItem)}
               />
             ))
           )}
@@ -182,7 +184,7 @@ export function ConvertScreen({
 function HeadCell({ label, width, flex, right }: { label: string; width?: number; flex?: boolean; right?: boolean }) {
   const theme = useTheme()
   return (
-    <div style={{ width, flexGrow: flex ? 1 : undefined, alignItems: right ? "flex-end" : "flex-start" }}>
+    <div style={col({ width, flexGrow: flex ? 1 : 0, flexShrink: flex ? 1 : 0, alignItems: right ? "flex-end" : "flex-start", minWidth: 0 })}>
       <T color={theme.t3} size="xs" weight={600}>
         {label.toUpperCase()}
       </T>
@@ -191,14 +193,14 @@ function HeadCell({ label, width, flex, right }: { label: string; width?: number
 }
 
 function ConvertRowView({
-  row,
+  item,
   selected,
   rule,
   onSelect,
   onReveal,
   onToggleRoute,
 }: {
-  row: ConvertRow
+  item: ConvertRow
   selected: boolean
   rule: boolean
   onSelect: () => void
@@ -206,7 +208,7 @@ function ConvertRowView({
   onToggleRoute: () => void
 }) {
   const theme = useTheme()
-  const meta = statusLabel(row)
+  const meta = statusLabel(item)
   const tone =
     meta.tone === "ok" ? theme.okT
     : meta.tone === "run" ? theme.accText
@@ -214,14 +216,12 @@ function ConvertRowView({
     : meta.tone === "quiet" ? theme.t3
     : meta.tone === "bad" ? theme.dangT
     : theme.t2
-  const pct = progressPct(row.file)
+  const pct = progressPct(item.file)
 
   return (
     <Press
       onClick={onSelect}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
+      style={row({
         gap: 12,
         paddingTop: 10,
         paddingBottom: 10,
@@ -231,70 +231,53 @@ function ConvertRowView({
         borderColor: theme.sep,
         borderTopWidth: rule ? 1 : 0,
         backgroundColor: selected ? theme.accTint : "transparent",
+        width: "100%",
         hover: { backgroundColor: selected ? theme.accTint : theme.quiet },
-      }}
+      })}
     >
       <Check on={selected} onClick={onSelect} />
-      <div
-        style={{
-          width: 26,
-          height: 32,
-          borderRadius: 4,
-          backgroundColor: theme.quiet2,
-          borderWidth: 1,
-          borderColor: theme.sep,
-          alignItems: "center",
-          justifyContent: "flex-end",
-          paddingBottom: 3,
-          flexShrink: 0,
-        }}
-      >
-        <T color={theme.t3} size={7} weight={600} mono>
-          {row.to || row.from}
+      <Tile label={item.to || item.from} />
+      <Press onClick={item.state === "done" ? onReveal : onSelect} style={col({ flexGrow: 1, minWidth: 0 })}>
+        <T color={item.state === "missing" ? theme.t3 : theme.t1} size="md" weight={600}>
+          {item.name}
         </T>
+      </Press>
+      <div style={row({ width: COL.conv, flexShrink: 0, justifyContent: "flex-start" })}>
+        <Press
+          onClick={item.kind === "queue" ? onToggleRoute : undefined}
+          style={row({
+            height: 22,
+            paddingLeft: 7,
+            paddingRight: 7,
+            borderRadius: 6,
+            gap: 5,
+            backgroundColor: item.state === "blocked" ? theme.warnTint : theme.quiet2,
+            flexShrink: 0,
+          })}
+        >
+          <T color={item.state === "blocked" ? theme.warnT : theme.t2} size="xs" weight={600} mono>
+            {`${item.from} → ${item.to || "Choose"}`}
+          </T>
+        </Press>
       </div>
-      <Press onClick={row.state === "done" ? onReveal : onSelect} style={{ flexGrow: 1, minWidth: 0 }}>
-        <T color={row.state === "missing" ? theme.t3 : theme.t1} size="md" weight={600}>
-          {row.name}
-        </T>
-      </Press>
-      <Press
-        onClick={row.kind === "queue" ? onToggleRoute : undefined}
-        style={{
-          width: 104,
-          height: 22,
-          paddingLeft: 7,
-          paddingRight: 7,
-          borderRadius: 6,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 5,
-          backgroundColor: row.state === "blocked" ? theme.warnTint : theme.quiet2,
-          flexShrink: 0,
-        }}
-      >
-        <T color={row.state === "blocked" ? theme.warnT : theme.t2} size="xs" weight={600} mono>
-          {`${row.from} → ${row.to || "Choose"}`}
-        </T>
-      </Press>
-      <div style={{ width: 168, flexDirection: "row", alignItems: "center", gap: 9, flexShrink: 0 }}>
-        {row.state === "running" || row.state === "queued" ? (
-          <div style={{ flexGrow: 1, height: 4, borderRadius: 999, backgroundColor: theme.quiet2, overflow: "hidden" }}>
-            <div style={{ width: `${Math.max(pct, 8)}%`, height: "100%", backgroundColor: theme.acc, borderRadius: 999 }} />
+      <div style={row({ width: COL.status, gap: 9, flexShrink: 0, justifyContent: "flex-start" })}>
+        {item.state === "running" || item.state === "queued" ? (
+          <div style={col({ flexGrow: 1, height: 4, borderRadius: 999, backgroundColor: theme.quiet2, overflow: "hidden" })}>
+            <div style={{ width: `${Math.max(pct, 8)}%`, height: 4, backgroundColor: theme.acc, borderRadius: 999 }} />
           </div>
         ) : null}
         <T color={tone} size="xs" weight={500} mono>
           {meta.label}
         </T>
       </div>
-      <div style={{ width: 64, alignItems: "flex-end", flexShrink: 0 }}>
-        <T color={theme.t2} size="xs" mono align="right">
-          {row.size || " "}
+      <div style={col({ width: COL.size, alignItems: "flex-end", flexShrink: 0 })}>
+        <T color={theme.t2} size="xs" align="right" mono>
+          {item.size || "—"}
         </T>
       </div>
-      <div style={{ width: 92, alignItems: "flex-end", flexShrink: 0 }}>
-        <T color={theme.t3} size="xs" mono align="right">
-          {row.when || " "}
+      <div style={col({ width: COL.when, alignItems: "flex-end", flexShrink: 0 })}>
+        <T color={theme.t3} size="xs" align="right" mono>
+          {item.when || " "}
         </T>
       </div>
     </Press>

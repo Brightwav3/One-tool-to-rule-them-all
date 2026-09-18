@@ -14,6 +14,15 @@ export function useTheme(): Theme {
   return theme
 }
 
+/** GPUIX ignores flexDirection unless display is flex. Default axis is column. */
+export function row(style: StyleDesc = {}): StyleDesc {
+  return { display: "flex", flexDirection: "row", alignItems: "center", ...style }
+}
+
+export function col(style: StyleDesc = {}): StyleDesc {
+  return { display: "flex", flexDirection: "column", ...style }
+}
+
 export function T({
   children,
   color,
@@ -67,6 +76,8 @@ export function Press({
       testId={testId}
       onClick={disabled ? undefined : onClick}
       style={{
+        display: "flex",
+        flexDirection: "row",
         cursor: disabled ? "default" : "pointer",
         opacity: disabled ? 0.4 : 1,
         ...style,
@@ -138,17 +149,19 @@ export function Button({
       disabled={disabled}
       onClick={onClick}
       style={{
-        minHeight: height,
+        display: "flex",
+        flexDirection: "row",
+        height,
         paddingLeft: pad,
         paddingRight: pad,
         borderRadius: theme.radius.control,
-        flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
         gap: 7,
         backgroundColor,
         borderWidth,
         borderColor,
+        flexShrink: 0,
         hover: hoverBg ? { backgroundColor: hoverBg } : undefined,
       }}
     >
@@ -218,16 +231,18 @@ export function Chip({
     <Press
       onClick={onClick}
       style={{
-        minHeight: height,
+        display: "flex",
+        flexDirection: "row",
+        height,
         paddingLeft: variant === "badge" ? 7 : 10,
         paddingRight: variant === "badge" ? 7 : 10,
         borderRadius: theme.radius.pill,
-        flexDirection: "row",
         alignItems: "center",
         gap: 6,
         backgroundColor,
         borderWidth,
         borderColor,
+        flexShrink: 0,
         hover: onClick ? { backgroundColor: on ? theme.accTint : theme.quiet } : undefined,
       }}
     >
@@ -249,17 +264,15 @@ export function Switch({ on, onClick, label }: { on: boolean; onClick: () => voi
   const knob = (
     <Press
       onClick={onClick}
-      style={{
+      style={row({
         width: 38,
         height: 22,
         borderRadius: theme.radius.pill,
         padding: 2,
-        flexDirection: "row",
-        alignItems: "center",
         justifyContent: on ? "flex-end" : "flex-start",
         backgroundColor: on ? theme.acc : theme.sep2,
         flexShrink: 0,
-      }}
+      })}
     >
       <div
         style={{
@@ -274,7 +287,7 @@ export function Switch({ on, onClick, label }: { on: boolean; onClick: () => voi
   )
   if (!label) return knob
   return (
-    <Press onClick={onClick} style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 29 }}>
+    <Press onClick={onClick} style={row({ gap: 10, minHeight: 29 })}>
       <div style={{ flexGrow: 1 }}>
         <T size="sm" weight={500}>
           {label}
@@ -282,6 +295,41 @@ export function Switch({ on, onClick, label }: { on: boolean; onClick: () => voi
       </div>
       {knob}
     </Press>
+  )
+}
+
+export function Tile({
+  label,
+  accent,
+  width = 26,
+  height = 32,
+}: {
+  label: string
+  accent?: boolean
+  width?: number
+  height?: number
+}) {
+  const theme = useTheme()
+  return (
+    <div
+      style={col({
+        width,
+        height,
+        borderRadius: 4,
+        alignItems: "center",
+        justifyContent: "flex-end",
+        paddingBottom: 3,
+        flexShrink: 0,
+        backgroundColor: accent ? theme.acc : theme.quiet2,
+        borderWidth: accent ? 0 : 1,
+        borderColor: accent ? undefined : theme.sep,
+        overflow: "hidden",
+      })}
+    >
+      <T color={accent ? theme.inverse : theme.t3} size={Math.max(6, Math.min(8, Math.round(width / 4)))} weight={600} mono>
+        {label}
+      </T>
+    </div>
   )
 }
 
@@ -324,24 +372,22 @@ export function Field({
 }) {
   const theme = useTheme()
   return (
-    <div style={{ flexDirection: "column", gap: 5, width }}>
+    <div style={col({ gap: 5, width })}>
       {label ? (
         <T color={theme.t3} size="xs" weight={600}>
           {label}
         </T>
       ) : null}
       <div
-        style={{
+        style={row({
           minHeight: 29,
           paddingLeft: 9,
           paddingRight: 9,
           borderRadius: 7,
-          flexDirection: "row",
-          alignItems: "center",
           borderWidth: 1,
           borderColor: theme.sep2,
           backgroundColor: theme.raised,
-        }}
+        })}
       >
         <input
           value={value}
@@ -367,13 +413,12 @@ export function Segment({
   const theme = useTheme()
   return (
     <div
-      style={{
-        flexDirection: "row",
+      style={row({
         gap: 2,
         padding: 2,
         borderRadius: theme.radius.control,
         backgroundColor: theme.quiet,
-      }}
+      })}
     >
       {items.map((item) => {
         const on = item.id === value
@@ -408,10 +453,11 @@ export function NavItem({ label, active, onClick }: { label: string; active: boo
       onClick={onClick}
       style={{
         minHeight: 26,
-        paddingLeft: 9,
-        paddingRight: 9,
-        borderRadius: theme.radius.control,
+        paddingLeft: 10,
+        paddingRight: 10,
+        borderRadius: theme.radius.pill,
         justifyContent: "center",
+        flexShrink: 0,
         backgroundColor: active ? theme.acc : "transparent",
         hover: active ? { backgroundColor: theme.accH } : { backgroundColor: theme.quiet },
       }}
@@ -439,6 +485,8 @@ export function Overlay({
   return (
     <div
       style={{
+        display: "flex",
+        flexDirection: "column",
         ...cover(),
         alignItems: align === "start" ? "flex-start" : "center",
         justifyContent: "center",

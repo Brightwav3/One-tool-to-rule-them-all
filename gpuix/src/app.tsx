@@ -5,7 +5,7 @@ import { Palette } from "./overlays/palette"
 import { helpersFrom, Settings } from "./overlays/settings"
 import { Toast } from "./overlays/toast"
 import { Panel, RouteSheet } from "./panel"
-import { ThemeProvider } from "./primitives"
+import { ThemeProvider, col } from "./primitives"
 import { ConvertScreen } from "./screens/convert"
 import { CreatorScreen, groupsFrom } from "./screens/creator"
 import { EditorScreen } from "./screens/editor"
@@ -28,7 +28,7 @@ export function App({ api }: { api: ConverterApi }) {
   const [sort, setSort] = useState<ConvertSort>("newest")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedHistory, setSelectedHistory] = useState<string | null>(null)
-  const [inspectorOpen, setInspectorOpen] = useState(true)
+  const [inspectorOpen, setInspectorOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [paletteQuery, setPaletteQuery] = useState("")
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -228,7 +228,7 @@ export function App({ api }: { api: ConverterApi }) {
 
   return (
     <ThemeProvider theme={theme}>
-      <div style={{ height: "100%", width: "100%" }} onKeyDown={(event) => onKey(event as { key?: string })}>
+      <div style={col({ height: "100%", width: "100%", position: "relative" })} onKeyDown={(event) => onKey(event as { key?: string })}>
         <Shell
           page={page}
           helperDot={helperDot}
@@ -279,12 +279,25 @@ export function App({ api }: { api: ConverterApi }) {
               fmt={creatorFmt}
               items={creatorItems}
               creating={creating}
+              dest={outputFolder}
               onQuery={setCreatorQuery}
               onPick={setCreatorFmt}
               onContinue={() => setCreatorStage("build")}
               onBack={() => setCreatorStage("pick")}
               onAdd={() => void addCreatorItems()}
               onCreate={() => void create()}
+              onRemove={(id) => setCreatorItems((current) => current.filter((item) => item.id !== id))}
+              onMove={(id, delta) => {
+                setCreatorItems((current) => {
+                  const index = current.findIndex((item) => item.id === id)
+                  const next = index + delta
+                  if (index < 0 || next < 0 || next >= current.length) return current
+                  const copy = [...current]
+                  const [moved] = copy.splice(index, 1)
+                  copy.splice(next, 0, moved)
+                  return copy
+                })
+              }}
             />
           ) : null}
           {page === "editor" ? <EditorScreen session={editor} onOpen={() => void openPdf()} /> : null}

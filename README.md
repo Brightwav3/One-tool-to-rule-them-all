@@ -35,6 +35,11 @@ npm install
 cd ..
 ```
 
+An experimental **GPUIX** desktop client (React over Zed GPUI, not Electron) lives in `gpuix/`. It still
+starts `converter/server.py` locally and is meant to run on **Windows (DirectX)** for existing One Tool
+users **and** **Ubuntu 24.04 LTS (Vulkan)**. The Electron Windows NSIS path in `app/` is unchanged.
+See `gpuix/README.md` and `gpuix/PLATFORMS.md`.
+
 ---
 
 ## Why

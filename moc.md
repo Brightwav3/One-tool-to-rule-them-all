@@ -10,6 +10,7 @@ are not uploaded to a service.
 | If you want to… | Start with | Then follow |
 | --- | --- | --- |
 | Run the desktop app | `app/main.js` | Electron starts `converter/server.py`, then loads the UI from the local API server. |
+| Run the experimental GPUIX client | `gpuix/app.tsx` | Bun starts the same Python API, then GPUI paints Convert / Creator / Editor. |
 | Add or change a conversion | `converter/formats.py` | The `CONVERTERS` list feeds the registry, UI capabilities, HTTP API, and agent CLI. |
 | Change converter readiness or helper discovery | `converter/registry.py` | `Helper`, `Converter`, and `Registry` compute `ready`, `helper`, and `soon` states. |
 | Change queue behaviour or the HTTP API | `converter/server.py` | `Converter` owns jobs and the single worker; `Handler` maps `/api/*` routes. |
@@ -27,6 +28,9 @@ are not uploaded to a service.
 │   ├── preload.js               Narrow, context-isolated renderer bridge (`window.appWindow`)
 │   ├── pdf_to_md.cjs            Packaged launcher for the PDF-to-Markdown worker
 │   └── package.json             Electron scripts, builder configuration, release target
+├── gpuix/                       Experimental GPUIX desktop client (React → GPUI, not Electron)
+│   ├── app.tsx                  Spawns converter/server.py, mounts the native window
+│   └── src/                     Tokens, primitives, screens; fetch the same /api/*
 ├── converter/                   Local Python conversion backend
 │   ├── server.py                Queue, persistence stores, local JSON API, static UI serving
 │   ├── registry.py              Converter data model and external-helper discovery
@@ -52,6 +56,7 @@ flowchart LR
   E -->|context-isolated IPC| P[preload.js]
   P -->|window.appWindow| U[UI renderer\nconverter/ui]
   U -->|fetch /api/*| S
+  G[GPUIX client\ngpuix/app.tsx] -->|spawns + fetch /api/*| S
   A[agent_tools.py] -->|HTTP JSON| S
   S --> R[Registry\nregistry.py + formats.py]
   S --> Q[single worker queue]
@@ -60,12 +65,15 @@ flowchart LR
   S --> D[local history/settings files]
 ```
 
-There are two supported ways into the application:
+There are three supported ways into the application:
 
 1. `npm start` in `app/` starts Electron. `app/main.js` reserves a free
    localhost port, spawns `converter/server.py`, waits for it, and points the
-   `BrowserWindow` at that backend.
-2. `python converter/server.py` starts the backend directly. A browser client
+   `BrowserWindow` at that backend. Windows users keep this path and the NSIS
+   installer (`npm run dist`).
+2. `bun run dev` in `gpuix/` starts the experimental GPUIX client (Windows
+   DirectX, Ubuntu 24.04 LTS Vulkan). Same Python API; see `gpuix/PLATFORMS.md`.
+3. `python converter/server.py` starts the backend directly. A browser client
    can use the UI and an automation client can use `agent_tools.py` against the
    same JSON API.
 

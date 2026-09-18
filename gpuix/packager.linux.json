@@ -1,0 +1,9 @@
+{
+  "productName": "One Tool",
+  "version": "0.1.0",
+  "identifier": "dev.brightwav3.onetool",
+  "binariesDir": "dist",
+  "outDir": "bundle",
+  "binaries": [{ "path": "one-tool-linux", "main": true }],
+  "formats": ["appimage"]
+}

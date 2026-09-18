@@ -1,5 +1,6 @@
 node_modules/
 dist/
+gpuix/bundle/
 out/
 __pycache__/
 *.pyc

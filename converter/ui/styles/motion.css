@@ -17,7 +17,6 @@
    arriving on screen needs slightly longer to be legible. 240ms is the ceiling, and no
    entrance overshoots — the system forbids bounce. */
 @keyframes row-in{from{opacity:0;transform:translateY(10px);filter:blur(2px)}to{opacity:1;transform:none;filter:blur(0)}}
-.q-row.is-new{animation:row-in var(--d-slow) var(--ease) backwards}
 
 /* success check — scale in, then draw the stroke */
 @keyframes tick-in{from{opacity:0;translate:0 6px}to{opacity:1;translate:0 0}}
@@ -32,7 +31,6 @@
 
 /* a file that cannot be read — a nudge, not a flourish */
 @keyframes shake{20%{transform:translateX(-2px)}40%{transform:translateX(2px)}60%{transform:translateX(-2px)}80%{transform:translateX(1px)}100%{transform:none}}
-.q-row.is-error{animation:shake 240ms var(--ease) both}
 
 /* indeterminate work only — where an honest page count genuinely does not exist */
 @keyframes shimmer{from{background-position:150% 0}to{background-position:-50% 0}}

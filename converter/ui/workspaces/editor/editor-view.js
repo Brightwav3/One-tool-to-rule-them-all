@@ -135,19 +135,19 @@ function editorGridHtml(selIds) {
     <div class="ed-selbar${selbarEnter}">
       <span class="n">${selIds.length} page${selIds.length === 1 ? '' : 's'} selected</span>
       <span class="rule"></span>
-      <button class="pbtn gh press" data-act="ed-rotate" data-deg="-90" style="color:var(--acc-text)" ${mutationDisabled}>Rotate left</button>
-      <button class="pbtn gh press" data-act="ed-rotate" data-deg="90" style="color:var(--acc-text)" ${mutationDisabled}>Rotate right</button>
-      <button class="pbtn gh press" data-act="ed-extract" style="color:var(--acc-text)">Extract to new PDF</button>
-      <button class="pbtn gh press" data-act="ed-insert" style="color:var(--acc-text)" ${mutationDisabled}>Insert after</button>
+      ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-rotate', data: { deg: '-90' }, style: 'color:var(--acc-text)', raw: mutationDisabled, html: 'Rotate left' })}
+      ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-rotate', data: { deg: '90' }, style: 'color:var(--acc-text)', raw: mutationDisabled, html: 'Rotate right' })}
+      ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-extract', style: 'color:var(--acc-text)', html: 'Extract to new PDF' })}
+      ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-insert', style: 'color:var(--acc-text)', raw: mutationDisabled, html: 'Insert after' })}
       <span style="flex:1"></span>
-      <button class="pbtn gh press" data-act="ed-delete" style="color:var(--dang-t)" ${mutationDisabled}>Delete</button>
+      ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-delete', style: 'color:var(--dang-t)', raw: mutationDisabled, html: 'Delete' })}
       <button class="press" data-act="ed-deselect" style="font:500 12px var(--ui);color:var(--acc-text)">Deselect</button>
     </div>` : `
     <div class="ed-head">
       <div style="flex:1;min-width:0"><h1 class="wk-h1">${esc(s.name)}</h1></div>
       <span style="font-size:12px;color:var(--t3)">Click a page, then <span class="kbd" data-shortcut="reader">${shortcutLabel('reader')}</span> to open it</span>
-      <button class="pbtn press" data-act="ed-select-all">Select all</button>
-      <button class="pbtn press" data-act="ed-open-another">Open another</button>
+      ${buttonHtml({ family: 'pbtn', act: 'ed-select-all', html: 'Select all' })}
+      ${buttonHtml({ family: 'pbtn', act: 'ed-open-another', html: 'Open another' })}
     </div>`;
   const footerBits = [`${s.pages.length} pages`];
   if (selIds.length) footerBits.push(`${selIds.length} selected`);
@@ -161,9 +161,9 @@ function editorGridHtml(selIds) {
     </div>
     <div class="ed-foot">
       <span style="flex:1;font-size:12.5px;color:var(--t2)">${esc(footerBits.join(' · '))}</span>
-      <button class="pbtn press ${s.edits.length ? '' : 'off'}" data-act="ed-revert" style="box-shadow:none;font-weight:500">Revert</button>
-      <button class="pbtn press" data-act="ed-save" data-copy="true">Save a copy</button>
-      <button class="pbtn pri press" data-act="ed-save">Save<span class="kbd" data-shortcut="save" style="background:none;opacity:.7">${shortcutLabel('save')}</span></button>
+      ${buttonHtml({ family: 'pbtn', off: !s.edits.length, act: 'ed-revert', style: 'box-shadow:none;font-weight:500', html: 'Revert' })}
+      ${buttonHtml({ family: 'pbtn', act: 'ed-save', data: { copy: 'true' }, html: 'Save a copy' })}
+      ${buttonHtml({ family: 'pbtn', variant: 'pri', act: 'ed-save', html: `Save<span class="kbd" data-shortcut="save" style="background:none;opacity:.7">${shortcutLabel('save')}</span>` })}
     </div>`;
 }
 /* The ghosts are the placeholder page model, drawn once and never selectable:
@@ -173,7 +173,7 @@ function editorEmptyHtml() {
   return `
     <div class="ed-head">
       <div style="flex:1;min-width:0"><h1 class="wk-h1">No document open</h1></div>
-      <button class="pbtn pri press" data-act="ed-open-doc">Open a PDF</button>
+      ${buttonHtml({ family: 'pbtn', variant: 'pri', act: 'ed-open-doc', html: 'Open a PDF' })}
     </div>
     <div class="${enterEditor("m-grid")}" style="flex:1;min-height:0;overflow:auto;padding:16px 18px">
       <div class="ed-grid" aria-hidden="true" style="opacity:.35;pointer-events:none">
@@ -193,20 +193,20 @@ function editorReaderHtml() {
   const tool = editor.TOOLS.find(t => t.id === s.tool) || editor.TOOLS[0];
   if (!page) return `<div class="page-empty">This document has no pages left.</div>`;
   return `<div class="ed-toolbar ${enterEditor("m-fade")}">
-      <span class="pchip" style="background:var(--acc-tint);color:var(--acc-text)">${esc(tool.label)}</span>
+      ${chipHtml({ family: 'pchip', style: 'background:var(--acc-tint);color:var(--acc-text)', html: esc(tool.label) })}
       <span style="flex:1;min-width:0;font-size:12px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(tool.help)}</span>
-      <button class="pbtn gh press" data-act="ed-step" data-delta="-1" aria-label="Previous page">‹</button>
+      ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-step', data: { delta: '-1' }, ariaLabel: 'Previous page', html: '‹' })}
       <span class="ed-num" style="min-width:104px">Page ${index + 1} of ${s.pages.length}</span>
-      <button class="pbtn gh press" data-act="ed-step" data-delta="1" aria-label="Next page">›</button>
+      ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-step', data: { delta: '1' }, ariaLabel: 'Next page', html: '›' })}
       <span class="rule"></span>
-      <button class="pbtn gh press" data-act="ed-zoom" data-delta="-16" aria-label="Zoom out">−</button>
+      ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-zoom', data: { delta: '-16' }, ariaLabel: 'Zoom out', html: '−' })}
       <span class="ed-num" style="min-width:38px">${s.zoom}%</span>
-      <button class="pbtn gh press" data-act="ed-zoom" data-delta="16" aria-label="Zoom in">+</button>
+      ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-zoom', data: { delta: '16' }, ariaLabel: 'Zoom in', html: '+' })}
       <span class="rule"></span>
-      <button class="pbtn gh press" data-act="ed-undo" aria-label="Undo" ${undoDisabled}>Undo</button>
-      <button class="pbtn gh press" data-act="ed-redo" aria-label="Redo" ${redoDisabled}>Redo</button>
+      ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-undo', ariaLabel: 'Undo', raw: undoDisabled, html: 'Undo' })}
+      ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-redo', ariaLabel: 'Redo', raw: redoDisabled, html: 'Redo' })}
       <span class="rule"></span>
-      <button class="pbtn gh press" data-act="ed-grid" style="color:var(--acc-text);font-weight:600">All pages<span class="kbd" data-shortcut="reader">${shortcutLabel('reader')}</span></button>
+      ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-grid', style: 'color:var(--acc-text);font-weight:600', html: `All pages<span class="kbd" data-shortcut="reader">${shortcutLabel('reader')}</span>` })}
     </div>
     <div class="ed-canvaswrap">
       <button class="pg ${hasRendering(page) ? 'pg-real ' : ''}ed-canvas ${enterEditor("m-zoom")}" data-act="ed-canvas" data-redact="${s.tool === 'redact'}" style="width:${Math.round(392 * s.zoom / 96)}px;${hasRendering(page) ? `aspect-ratio:${page.w} / ${page.h};` : ''}transform:rotate(${page.rot}deg)">
@@ -244,9 +244,9 @@ function editorGridPaneHtml() {
     </div>
     <div style="display:flex;flex-direction:column;gap:6px">
       <span class="eyebrow-p">Whole document</span>
-      <button class="pbtn press" data-act="ed-ocr" style="justify-content:space-between" title="${esc(ocrCap.detail)}" ${ocrDisabled}>Add OCR text layer<span class="pchip" style="background:${ocrApplied ? 'var(--ok-tint)' : 'var(--warn-tint)'};color:${ocrApplied ? 'var(--ok-t)' : 'var(--warn-t)'}">${ocrPending ? 'Recognizing…' : (ocrApplied ? 'Done' : (ocrCap.enabled ? 'Ready' : ocrCap.state))}</span></button>
-      <button class="pbtn press" data-act="ed-compress" style="justify-content:space-between">Compress images<span style="font:400 11px var(--mono);color:var(--t3)">−38%</span></button>
-      <button class="pbtn press" data-act="ed-numbers" style="justify-content:space-between">Add page numbers</button>
+      ${buttonHtml({ family: 'pbtn', act: 'ed-ocr', style: 'justify-content:space-between', title: esc(ocrCap.detail), raw: ocrDisabled, html: `Add OCR text layer${chipHtml({ family: 'pchip', style: `background:${ocrApplied ? 'var(--ok-tint)' : 'var(--warn-tint)'};color:${ocrApplied ? 'var(--ok-t)' : 'var(--warn-t)'}`, html: ocrPending ? 'Recognizing…' : (ocrApplied ? 'Done' : (ocrCap.enabled ? 'Ready' : ocrCap.state)) })}` })}
+      ${buttonHtml({ family: 'pbtn', act: 'ed-compress', style: 'justify-content:space-between', html: 'Compress images<span style="font:400 11px var(--mono);color:var(--t3)">−38%</span>' })}
+      ${buttonHtml({ family: 'pbtn', act: 'ed-numbers', style: 'justify-content:space-between', html: 'Add page numbers' })}
     </div>
     <div class="ed-edits">
       <span class="eyebrow-p">Edits</span>
@@ -279,10 +279,10 @@ function editorReaderPaneHtml() {
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
         <span class="eyebrow-p">Apply to</span>
-        <div class="pseg">${scopes.map(n => `<button class="press" data-act="ed-scope" data-scope="${esc(n)}" data-on="${s.scope === n}">${esc(n)}</button>`).join('')}</div>
+        ${segHtml({ act: 'ed-scope', items: scopes.map(n => ({ value: esc(n), on: s.scope === n, html: esc(n) })) })}
       </div>
       <div style="margin-top:auto;display:flex;flex-direction:column;gap:7px">
-        <button class="pbtn pri press ${total ? '' : 'off'}" data-act="ed-apply-redactions" style="justify-content:center">${total ? `Apply ${total} redaction${total > 1 ? 's' : ''}` : 'Nothing to apply'}</button>
+        ${buttonHtml({ family: 'pbtn', variant: 'pri', off: !total, act: 'ed-apply-redactions', style: 'justify-content:center', html: total ? `Apply ${total} redaction${total > 1 ? 's' : ''}` : 'Nothing to apply' })}
       </div>`;
   }
   if (s.tool === 'crop') {
@@ -295,9 +295,9 @@ function editorReaderPaneHtml() {
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
         <span class="eyebrow-p">Apply to</span>
-        <div class="pseg">${scopes.map(n => `<button class="press" data-act="ed-scope" data-scope="${n}" data-on="${s.scope === n}">${n}</button>`).join('')}</div>
+        ${segHtml({ act: 'ed-scope', items: scopes.map(n => ({ value: n, on: s.scope === n, html: n })) })}
       </div>
-      <div style="margin-top:auto"><button class="pbtn pri press" data-act="ed-crop-apply" ${disabled}>Crop ${s.scope === 'All pages' ? 'all pages' : 'this page'}</button></div>`;
+      <div style="margin-top:auto">${buttonHtml({ family: 'pbtn', variant: 'pri', act: 'ed-crop-apply', raw: disabled, html: `Crop ${s.scope === 'All pages' ? 'all pages' : 'this page'}` })}</div>`;
   }
   return `${head}
     <div style="display:flex;flex-direction:column;gap:7px">
@@ -309,9 +309,9 @@ function editorReaderPaneHtml() {
     </div>
     <div style="display:flex;flex-direction:column;gap:6px">
       <span class="eyebrow-p">Page actions</span>
-      <button class="pbtn press" data-act="ed-rotate" data-deg="90" style="justify-content:space-between" ${mutationDisabled}>Rotate right<span class="kbd">R</span></button>
-      <button class="pbtn press" data-act="ed-extract" style="justify-content:space-between">Extract this page</button>
-      <button class="pbtn press" data-act="ed-delete" style="justify-content:space-between;color:var(--dang-t)" ${mutationDisabled}>Delete page<span class="kbd">⌫</span></button>
+      ${buttonHtml({ family: 'pbtn', act: 'ed-rotate', data: { deg: '90' }, style: 'justify-content:space-between', raw: mutationDisabled, html: 'Rotate right<span class="kbd">R</span>' })}
+      ${buttonHtml({ family: 'pbtn', act: 'ed-extract', style: 'justify-content:space-between', html: 'Extract this page' })}
+      ${buttonHtml({ family: 'pbtn', act: 'ed-delete', style: 'justify-content:space-between;color:var(--dang-t)', raw: mutationDisabled, html: 'Delete page<span class="kbd">⌫</span>' })}
     </div>
     <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--sep);font-size:11px;line-height:1.5;color:var(--t3)">Press <span class="kbd" data-shortcut="reader">${shortcutLabel('reader')}</span> to go back to all pages. Arrow keys move between pages.</div>`;
 }
@@ -334,16 +334,16 @@ function renderEditorPair() {
         </div>
         <div style="flex:none;display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--sep)">
           <span style="flex:1;font-size:12px;color:var(--t2)">402 MB · ${s.edits.length ? `${s.edits.length} edits` : 'no edits'}</span>
-          <button class="pbtn press" data-act="ed-save">Save</button>
+          ${buttonHtml({ family: 'pbtn', act: 'ed-save', html: 'Save' })}
         </div>
       </div>
       <div class="ed-mid ${enterEditor("m-fade")}">
-        <button class="pbtn press ${selIds.length ? '' : 'off'}" data-act="ed-move-right" style="background:var(--surface)">Move →</button>
-        <button class="pbtn press ${bSelIds.length ? '' : 'off'}" data-act="ed-move-left" style="background:var(--surface)">← Move</button>
-        <button class="pbtn gh press ${selIds.length ? '' : 'off'}" data-act="ed-copy-right" style="font-size:11.5px;color:var(--t3)">Copy →</button>
+        ${buttonHtml({ family: 'pbtn', off: !selIds.length, act: 'ed-move-right', style: 'background:var(--surface)', html: 'Move →' })}
+        ${buttonHtml({ family: 'pbtn', off: !bSelIds.length, act: 'ed-move-left', style: 'background:var(--surface)', html: '← Move' })}
+        ${buttonHtml({ family: 'pbtn', variant: 'gh', off: !selIds.length, act: 'ed-copy-right', style: 'font-size:11.5px;color:var(--t3)', html: 'Copy →' })}
         <span class="rule"></span>
-        <button class="pbtn gh press" data-act="ed-swap" style="font-size:11.5px;color:var(--t3)">Swap sides</button>
-        <button class="pbtn gh press" data-act="ed-close-pair" style="font-size:11.5px;color:var(--t3)">Close</button>
+        ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-swap', style: 'font-size:11.5px;color:var(--t3)', html: 'Swap sides' })}
+        ${buttonHtml({ family: 'pbtn', variant: 'gh', act: 'ed-close-pair', style: 'font-size:11.5px;color:var(--t3)', html: 'Close' })}
         <span class="hint">Select pages on either side</span>
       </div>
       <div class="wk-card ${enterEditor("m-right")}" style="flex:1;margin:0 8px 8px 4px">
@@ -362,7 +362,7 @@ function renderEditorPair() {
         </div>
         <div style="flex:none;display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--sep)">
           <span class="cr-path">${esc(`${outputFolder}/${s.bName || ''}`)}</span>
-          <button class="pbtn pri press" data-act="ed-save-b">Save as new file</button>
+          ${buttonHtml({ family: 'pbtn', variant: 'pri', act: 'ed-save-b', html: 'Save as new file' })}
         </div>
       </div>
     </div>

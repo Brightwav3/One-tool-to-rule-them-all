@@ -22,8 +22,10 @@ const fidelioB = fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', '
 const fidelioW = fs.readFileSync(path.join(__dirname, '..', 'converter', 'ui', 'fidelioW.svg'), 'utf8');
 assert.match(rawIndexHtml, /<script src="\/interaction\/action-state\.js"><\/script>/);
 assert.match(rawIndexHtml, /<script src="\/interaction\/panel-resize\.js"><\/script>/);
-assert.match(rawIndexHtml, /<script src="\/interaction\/selection-state\.js"><\/script>/);
 assert.match(rawIndexHtml, /<script src="\/interaction\/shortcut-labels\.js"><\/script>/);
+assert.match(rawIndexHtml, /<script src="\/interaction\/selection-state\.js"><\/script>/);
+assert.match(rawIndexHtml, /<script src="\/components\/icon\.js"><\/script>/);
+assert.match(rawIndexHtml, /<script src="\/components\/primitives\.js"><\/script>/);
 assert.doesNotMatch(rawIndexHtml, /<script src="\/ui\/interaction\/action-state\.js"><\/script>/);
 
 assert.equal(
@@ -196,7 +198,15 @@ assert.match(indexHtml, /\.navbtn\.active\{[^}]*background:var\(--accent\)[^}]*c
 assert.match(indexHtml, /one-tool\.theme/);
 assert.match(indexHtml, /\[data-theme="dark"\]/);
 assert.match(indexHtml, /--bg:#000000;--surface:#000000;--raised:#000000;/);
-assert.match(indexHtml, /--surface-inverse:#1f2024/);
+assert.doesNotMatch(indexHtml, /--bg:#131315;--surface:#1c1c1f/);
+assert.doesNotMatch(indexHtml, /--blue-500:#2C6EF5/);
+assert.doesNotMatch(indexHtml, /--surface-inverse:#1f2024/);
+assert.match(indexHtml, /--ring:0 0 0 3px var\(--blue-100\)/);
+assert.match(indexHtml, /--ease-inout:cubic-bezier\(\.4,0,\.2,1\)/);
+assert.doesNotMatch(indexHtml, /\.q-wrap\{/);
+assert.doesNotMatch(indexHtml, /\.h-wrap\{/);
+assert.doesNotMatch(indexHtml, /\.x-wrap\{/);
+assert.doesNotMatch(indexHtml, /@keyframes p-cascade/);
 assert.match(indexHtml, /\[data-theme="dark"\] \.tip\{background:#1f2024;color:#ededed\}/);
 assert.match(mainJs, /window:set-theme/);
 assert.match(mainJs, /ipcMain\.handle\('theme:get'/);

@@ -1,7 +1,5 @@
 function contextItem(label, action, icon, options={}) {
-  return `<button class="ctx-item ${options.danger ? 'danger' : ''}" data-context-act="${action}" ${options.disabled ? 'disabled' : ''} role="menuitem">
-    <span class="ctx-icon" aria-hidden="true">${icon}</span><span>${label}</span>
-  </button>`;
+  return ctxItemHtml(label, action, icon, options);
 }
 function contextItems(target) {
   if (target.type === 'queue-file') return [

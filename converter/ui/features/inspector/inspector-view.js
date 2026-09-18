@@ -29,12 +29,12 @@ function panelFile() {
         <button class="adv-toggle" data-act="toggle-advanced"><span class="chev" aria-hidden="true" data-flipped="${advanced}" style="transform:rotate(${advanced ? 180 : 0}deg)">${chevron()}</span>Conversion options</button>
         <div class="adv ${advanced ? 'open' : ''}"><div class="adv-in"><div class="adv-pad">
           ${extra.map(o => fieldHtml(f, o)).join('')}
-          <div class="switch-row"><span>Keep original filenames</span><button class="switch ${keepNames ? 'on' : ''}" data-act="toggle-names" aria-pressed="${keepNames}"><i></i></button></div>
+          <div class="switch-row"><span>Keep original filenames</span>${switchHtml({ family: 'switch', on: keepNames, act: 'toggle-names' })}</div>
         </div></div></div></div>` : ''}
       <div class="scope"><span class="scope-label">Apply to</span><div class="scope-row"><button class="${scope === 'this' ? 'active' : ''}" data-act="set-scope" data-scope="this">This file</button><button class="${scope === 'selected' ? 'active' : ''}" data-act="set-scope" data-scope="selected">Selected files</button><button class="${scope === 'all' ? 'active' : ''}" data-act="set-scope" data-scope="all">All ${esc(f.from)}</button></div><p class="scope-note">${scope === 'this' ? 'Only this file will change.' : scope === 'selected' ? 'Changes apply to selected files.' : 'Changes apply to all matching files.'}</p></div>
       <div class="status">Changes are ready to apply.</div>
     </div>
-    <footer class="foot"><div class="actions"><button class="action revert" data-act="reset-inspector">Revert</button><button class="action apply" data-act="apply-all" ${kin < 2 ? 'disabled' : ''}>Apply changes</button></div></footer>
+    <footer class="foot"><div class="actions">${buttonHtml({ family: 'action', variant: 'revert', act: 'reset-inspector', html: 'Revert' })}${buttonHtml({ family: 'action', variant: 'apply', act: 'apply-all', raw: kin < 2 ? 'disabled' : '', html: 'Apply changes' })}</div></footer>
   </section>`;
 }
 function outputName(raw) {
@@ -97,7 +97,7 @@ function renameFieldHtml(f) {
   </div>`;
 }
 function fieldHtml(f, option) {
-  return `<div class="field"><label for="field-${esc(option.key)}">${esc(option.label)}</label>${optionControl(f, option)}</div>`;
+  return OneToolPrimitives.fieldHtml({ family: 'field', forId: `field-${esc(option.key)}`, label: esc(option.label), control: optionControl(f, option) });
 }
 function optionControl(f, option) {
   const value = f.opts?.[option.key] || '';
@@ -136,7 +136,7 @@ function panelHistory() {
   const settings = Object.entries(r.options || {});
   panelBody.innerHTML = `
     <div class="i-sec history-inspector"><b>Output details</b><span class="mono">${esc(r.from || '')} → ${esc(r.to || '')} · ${esc(fmtWhen(r.finishedAt))}</span></div>
-    <div class="i-file history-inspector">${folderIcon(r.outputPath, 'history')}<div style="min-width:0"><b style="display:block;font-size:var(--text-base);font-weight:var(--weight-medium);line-height:var(--leading-snug);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name || 'Output file')}</b><span class="badge ${meta.cls}" style="margin-top:var(--space-2)">${meta.label}</span></div></div>
+    <div class="i-file history-inspector">${folderIcon(r.outputPath, 'history')}<div style="min-width:0"><b style="display:block;font-size:var(--text-base);font-weight:var(--weight-medium);line-height:var(--leading-snug);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name || 'Output file')}</b>${chipHtml({ family: 'badge', tone: meta.cls, style: 'margin-top:var(--space-2)', html: meta.label })}</div></div>
     <div class="i-body history-inspector">
       <div class="stack"><div class="history-stat"><span class="k">Output size</span><span class="v">${esc(fmtSize(r.size) || '—')}</span></div><div class="history-stat"><span class="k">Conversion</span><span class="v">${esc(r.conv || 'Recorded run')}</span></div></div>
       ${historyRenameFieldHtml(r, state)}

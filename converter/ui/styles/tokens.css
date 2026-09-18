@@ -1,69 +1,9 @@
-/* One Tool tokens. This surface follows the prototype, not the web workspace system. */
+/* One Tool tokens. Live prototype dialect — computed style is the spec.
+   Catalogued in design-sheet.md. The unused Inter/#2C6EF5 :root and the first
+   dark block (#131315 / #2b7fff) are gone; they were overwritten at runtime.
+   --ring and --ease-inout lived only on the dead block and are folded in here
+   so inspector/overlay focus and .go transitions keep the same resolved values. */
 
-:root {
-  /* colours */
-  --gray-0:#FFFFFF; --gray-50:#FAFAFA; --gray-100:#F4F4F4; --gray-200:#EBEBEB;
-  --gray-300:#E0E0E0; --gray-400:#C7C7C7; --gray-500:#9E9E9E; --gray-600:#5D5D5D; --gray-900:#292929;
-  --blue-50:#EEF3FE; --blue-100:#D7E4FD; --blue-500:#2C6EF5; --blue-600:#1F5AD8; --blue-700:#1A4CB8;
-  --green-50:#E9F6EE; --green-500:#2E9E5B; --green-600:#248049;
-  --amber-50:#FBF2E1; --amber-500:#C9820A; --amber-600:#A66A07;
-  --red-50:#FCECEC; --red-500:#DC3B3B; --red-600:#BE2E2E;
-
-  --text-primary:var(--gray-900); --text-secondary:var(--gray-600); --text-tertiary:var(--gray-500);
-  --text-inverse:var(--gray-0); --text-accent:var(--blue-600); --text-disabled:var(--gray-400);
-  --surface-page:var(--gray-0); --surface-card:var(--gray-0); --surface-sunken:var(--gray-100);
-  --surface-hover:var(--gray-100); --surface-active:var(--gray-200); --surface-inverse:var(--gray-900);
-  --border-subtle:var(--gray-200); --border-default:var(--gray-300); --border-strong:var(--gray-400);
-  --border-focus:var(--blue-500);
-  --accent:var(--blue-500); --accent-hover:var(--blue-600); --accent-active:var(--blue-700); --accent-soft:var(--blue-50);
-  --success:var(--green-500); --success-soft:var(--green-50);
-  --warning:var(--amber-500); --warning-soft:var(--amber-50);
-  --danger:var(--red-500); --danger-hover:var(--red-600); --danger-soft:var(--red-50);
-  --ring:0 0 0 3px var(--blue-100);
-
-  /* type — only four sizes exist */
-  --font-sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-  --font-mono:ui-monospace,"SF Mono",SFMono-Regular,"Cascadia Mono",Menlo,Monaco,monospace;
-  --weight-regular:400; --weight-medium:500;
-  --text-xs:12px; --text-sm:13px; --text-base:14px; --text-2xl:24px;
-  --leading-tight:1.25; --leading-snug:1.35; --leading-normal:1.5;
-  --tracking:-0.15px;
-
-  /* spacing — 4px grid */
-  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px;
-  --space-6:24px; --space-8:32px; --space-10:40px; --space-12:48px;
-  --pad-control-x:12px; --pad-control-y:7px; --pad-card:16px; --gap-nav:4px; --gap-inline:8px;
-
-  /* radii */
-  --radius-xs:4px; --radius-nav:8px; --radius-card:16px; --radius-pill:9999px;
-
-  /* elevation */
-  --shadow-none:none;
-  --shadow-card:0 1px 2px rgba(41,41,41,.05),0 1px 3px rgba(41,41,41,.04);
-  --shadow-raised:0 4px 12px rgba(41,41,41,.08),0 1px 3px rgba(41,41,41,.05);
-  --shadow-popover:0 8px 24px rgba(41,41,41,.12),0 2px 6px rgba(41,41,41,.06);
-  --shadow-modal:0 24px 64px rgba(41,41,41,.18),0 8px 20px rgba(41,41,41,.08);
-
-  /* Motion — the transitions.dev scale from Motion Showcase.dc.html.
-     Fidelio's 120-160ms guidance is scoped to background/border/opacity hover states,
-     which is --d-quick below. Structural motion (panel, page, modal, popover, toast)
-     uses the showcase scale, or a 308px panel slide reads as a jump rather than a move.
-     Three rules: opens are slower than closes; reversible motions are symmetric;
-     overshoot is for entrances only. */
-  --d-quick:150ms; --d-fast:250ms; --d-medium:350ms; --d-slow:400ms; --d-vslow:500ms; --stagger:50ms;
-  --ease:cubic-bezier(.22,1,.36,1); --ease-bounce:cubic-bezier(.34,1.36,.64,1); --ease-spring:cubic-bezier(.34,1.45,.64,1);
-  --ease-inout:cubic-bezier(.4,0,.2,1);
-  --scrim:rgba(41,41,41,.32);
-}
-
-@media (prefers-contrast:more){
-  :root{--border-subtle:var(--gray-400);--border-default:var(--gray-500);--text-secondary:#3d3d3d;--text-tertiary:#5d5d5d}
-}
-
-/* Prototype token block: keep these values verbatim so the renderer and the design
-   reference share the same native desktop scale. The compatibility aliases below
-   keep the backend-connected renderer class names readable without changing the
-   visual source of truth. */
 :root{
   --bg:#f2f2f4;--surface:#ffffff;--raised:#ffffff;
   --quiet:rgba(60,60,67,.055);--quiet2:rgba(60,60,67,.10);--quiet3:rgba(60,60,67,.15);
@@ -81,6 +21,7 @@
   --page:#e8e6e1;
   --d-quick:150ms;--d-fast:250ms;--d-medium:350ms;--d-slow:400ms;--d-vslow:500ms;--d-stagger:50ms;
   --ease:cubic-bezier(.22,1,.36,1);--ease-bounce:cubic-bezier(.34,1.36,.64,1);--ease-spring:cubic-bezier(.34,1.45,.64,1);
+  --ease-inout:cubic-bezier(.4,0,.2,1);
   --surface-page:var(--page);--surface-card:var(--surface);--surface-sunken:var(--bg);--surface-hover:var(--quiet);--surface-active:var(--quiet2);--surface-inverse:var(--t1);
   --text-primary:var(--t1);--text-secondary:var(--t2);--text-tertiary:var(--t3);--text-inverse:#fff;--text-accent:var(--acc-text);--text-disabled:var(--t4);
   --border-subtle:var(--sep);--border-default:var(--sep2);--border-strong:var(--t3);--border-focus:var(--acc);
@@ -93,10 +34,7 @@
   --shadow-card:var(--sh1);--shadow-raised:var(--sh2);--shadow-popover:var(--sh2);--shadow-modal:var(--sh3);--scrim:rgba(20,20,22,.32);
   --dropdown-open-dur:250ms;--dropdown-close-dur:150ms;--dropdown-pre-scale:.97;--dropdown-closing-scale:.99;--dropdown-ease:cubic-bezier(.22,1,.36,1);
   --gray-0:var(--surface);--gray-200:var(--quiet2);--gray-300:var(--sep2);--gray-400:var(--t3);--green-600:var(--ok-t);--amber-600:var(--warn-t);--blue-100:var(--acc-tint2);
-}
-[data-theme="dark"]{
-  --bg:#131315;--surface:#1c1c1f;--raised:#232326;--quiet:rgba(235,235,245,.06);--quiet2:rgba(235,235,245,.11);--quiet3:rgba(235,235,245,.16);--sep:rgba(235,235,245,.11);--sep2:rgba(235,235,245,.22);--t1:#f5f5f7;--t2:rgba(235,235,245,.70);--t3:rgba(235,235,245,.48);--t4:rgba(235,235,245,.30);--acc:#2b7fff;--acc-h:#4d9bff;--acc-text:#7fbaff;--acc-tint:rgba(43,127,255,.16);--acc-tint2:rgba(43,127,255,.28);--ok:#30d158;--ok-t:#5cd97e;--ok-tint:rgba(48,209,88,.14);--warn:#ff9f0a;--warn-t:#ffb545;--warn-tint:rgba(255,159,10,.14);--dang:#ff453a;--dang-t:#ff7d74;--dang-tint:rgba(255,69,58,.14);--page:#0a0a0b;
-  --surface-page:var(--page);--surface-card:var(--surface);--surface-sunken:var(--bg);--surface-hover:var(--quiet);--surface-active:var(--quiet2);--surface-inverse:#1f2024;--text-primary:var(--t1);--text-secondary:var(--t2);--text-tertiary:var(--t3);--text-disabled:var(--t4);--border-subtle:var(--sep);--border-default:var(--sep2);--border-strong:var(--t3);--accent:var(--acc);--accent-hover:var(--acc-h);--accent-soft:var(--acc-tint);--success:var(--ok);--success-soft:var(--ok-tint);--warning:var(--warn);--warning-soft:var(--warn-tint);--danger:var(--dang);--danger-hover:var(--dang-t);--danger-soft:var(--dang-tint);--gray-0:var(--surface);--gray-200:var(--quiet2);--gray-300:var(--sep2);--gray-400:var(--t3);--green-600:var(--ok-t);--amber-600:var(--warn-t);--blue-100:var(--acc-tint2);
+  --ring:0 0 0 3px var(--blue-100);
 }
 [data-theme="dark"]{
   --bg:#000000;--surface:#000000;--raised:#000000;--quiet:rgba(237,237,237,.06);--quiet2:rgba(237,237,237,.11);--quiet3:rgba(237,237,237,.16);--sep:rgba(237,237,237,.12);--sep2:rgba(237,237,237,.24);--t1:#ededed;--t2:rgba(237,237,237,.70);--t3:rgba(237,237,237,.50);--t4:rgba(237,237,237,.32);--acc:#006efe;--acc-h:#2b80ff;--acc-text:#006efe;--acc-tint:rgba(0,110,254,.18);--acc-tint2:rgba(0,110,254,.30);--ok:#00ad3a;--ok-t:#2bd466;--ok-tint:rgba(0,173,58,.16);--warn:#ffad1f;--warn-t:#ffc15c;--warn-tint:rgba(255,173,31,.16);--dang:#f13342;--dang-t:#ff6874;--dang-tint:rgba(241,51,66,.16);--page:#000000;
@@ -124,4 +62,3 @@ button{border:0;background:none;color:inherit;cursor:pointer}
 ::-webkit-scrollbar-thumb{background:var(--border-default);background-clip:content-box;border:3px solid transparent;border-radius:var(--radius-pill);min-height:32px;transition:background-color var(--d-quick) var(--ease)}
 ::-webkit-scrollbar-thumb:hover{background:var(--border-strong);background-clip:content-box}
 ::-webkit-scrollbar-thumb:active{background:var(--text-tertiary);background-clip:content-box}
-

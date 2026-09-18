@@ -1033,28 +1033,101 @@ def extract_with_7zip(source: Path, target: Path, password: str = "") -> None:
         raise
 
 
+def _cbz_needs_7zip_fallback(exc: BaseException) -> bool:
+    """True when Python's zipfile cannot read this comic archive."""
+    if isinstance(exc, (zipfile.BadZipFile, NotImplementedError)):
+        return True
+    return isinstance(exc, RuntimeError) and "encrypted" in str(exc).casefold()
+
+
+def _cbz_not_zip_message() -> ValueError:
+    return ValueError(
+        "this file is not a readable ZIP comic archive. "
+        "If it is a renamed CBR or uses an uncommon ZIP codec, install 7-Zip and try again."
+    )
+
+
+def _list_archive_names_with_7zip(source: Path) -> list[str]:
+    result = run([which("7z", "7za", "7zz"), "l", "-ba", "--", str(source)], "7-Zip")
+    names: list[str] = []
+    for line in (result.stdout or "").splitlines():
+        match = re.match(
+            r"^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+(\S+)\s+\d+\s+\d+\s+(.*)$",
+            line,
+        )
+        if not match:
+            continue
+        attr, name = match.group(1), match.group(2).replace("\\", "/")
+        if "D" in attr or name.endswith("/"):
+            continue
+        names.append(name)
+    return names
+
+
+def _extract_comic_images(source: Path, dest: Path, password: str = "") -> list[Path]:
+    extract_with_7zip(source, dest, password)
+    pages = images_in(dest)
+    if not pages:
+        raise ValueError("the archive holds no readable comic pages")
+    return pages
+
+
+def _count_comic_pages_with_7zip(source: Path) -> int:
+    try:
+        names = _list_archive_names_with_7zip(source)
+    except ValueError as exc:
+        raise _cbz_not_zip_message() from exc
+    images = [
+        name for name in names
+        if Path(name).suffix.casefold() in IMAGE_SUFFIXES and not cbz_to_epub.is_junk_entry(name)
+    ]
+    if names and not images:
+        raise ValueError("the archive holds no readable comic pages")
+    if images:
+        return len(images)
+    with tempfile.TemporaryDirectory(prefix="onetool-cbz-probe-") as tmp:
+        return len(_extract_comic_images(source, Path(tmp)))
+
+
+def _cbz_from_extracted_pages(source: Path, opts: dict, write_pages) -> int:
+    try:
+        with tempfile.TemporaryDirectory(prefix="onetool-cbz-extract-") as tmp:
+            pages = _extract_comic_images(source, Path(tmp), opts.get("password") or "")
+            return write_pages(pages)
+    except ValueError as exc:
+        if re.search(r"none of .*\b7z", str(exc), re.I):
+            raise _cbz_not_zip_message() from exc
+        raise
+
+
 # --------------------------------------------------------------------------- #
 # Comics
 # --------------------------------------------------------------------------- #
 
 
 def cbz_to_epub_convert(source: Path, out: Path, opts: dict, progress) -> int:
+    title = opts.get("title") or source.stem
+    creator = opts.get("creator") or "Unknown"
+
+    def write_pages(pages: list[Path]) -> int:
+        return cbz_to_epub.convert_paths(pages, out, title, creator, progress=progress)
+
     if opts.get("password"):
-        with tempfile.TemporaryDirectory(prefix="onetool-cbz-epub-") as tmp:
-            room = Path(tmp)
-            extract_with_7zip(source, room, opts["password"])
-            pages = images_in(room)
-            if not pages:
-                raise ValueError("the archive holds no readable comic pages")
-            return cbz_to_epub.convert_paths(pages, out, opts.get("title") or source.stem, opts.get("creator") or "Unknown", progress=progress)
-    return cbz_to_epub.convert(
-        source, out, opts.get("title") or None, opts.get("creator") or "Unknown", progress=progress
-    )
+        return _cbz_from_extracted_pages(source, opts, write_pages)
+    try:
+        return cbz_to_epub.convert(source, out, opts.get("title") or None, creator, progress=progress)
+    except (zipfile.BadZipFile, NotImplementedError, RuntimeError) as exc:
+        if not _cbz_needs_7zip_fallback(exc):
+            raise
+        return _cbz_from_extracted_pages(source, opts, write_pages)
 
 
 def cbz_probe(source: Path) -> int:
-    with zipfile.ZipFile(source, "r") as archive:
-        return len(cbz_to_epub.list_images(archive))
+    try:
+        with zipfile.ZipFile(source, "r") as archive:
+            return len(cbz_to_epub.list_images(archive))
+    except zipfile.BadZipFile:
+        return _count_comic_pages_with_7zip(source)
 
 
 def images_to_pdf_convert(pages: list[Path], out: Path, opts: dict, progress, phase: str = "writing") -> int:
@@ -1087,19 +1160,19 @@ def images_to_pdf_convert(pages: list[Path], out: Path, opts: dict, progress, ph
 
 
 def cbz_to_pdf_convert(source: Path, out: Path, opts: dict, progress) -> int:
-    with tempfile.TemporaryDirectory(prefix="onetool-cbz-pdf-") as tmp:
-        room = Path(tmp)
-        if opts.get("password"):
-            extract_with_7zip(source, room, opts["password"])
-            pages = images_in(room)
-            if not pages:
-                raise ValueError("the archive holds no readable comic pages")
-            return _direct_pdf_from_paths(pages, out, opts, progress)
+    def write_pages(pages: list[Path]) -> int:
+        return _direct_pdf_from_paths(pages, out, opts, progress)
+
+    if opts.get("password"):
+        return _cbz_from_extracted_pages(source, opts, write_pages)
+    try:
         with zipfile.ZipFile(source, "r") as archive:
             names = [image.name for image in cbz_to_epub.list_images(archive)]
-            if not names:
-                raise ValueError("the archive holds no readable comic pages")
             return _direct_pdf_from_archive(archive, names, out, opts, progress)
+    except (zipfile.BadZipFile, NotImplementedError, RuntimeError) as exc:
+        if not _cbz_needs_7zip_fallback(exc):
+            raise
+        return _cbz_from_extracted_pages(source, opts, write_pages)
 
 
 def cbr_to_epub_convert(source: Path, out: Path, opts: dict, progress) -> int:
@@ -1129,15 +1202,19 @@ def cbr_to_pdf_convert(source: Path, out: Path, opts: dict, progress) -> int:
 
 
 def epub_to_cbz_convert(source: Path, out: Path, opts: dict, progress) -> int:
+    direct = _epub_image_pdf_sources(source)
     with zipfile.ZipFile(source, "r") as book:
-        names = [
-            n for n in book.namelist()
-            if Path(n).suffix.casefold() in IMAGE_SUFFIXES
-            and not cbz_to_epub.is_junk_entry(n)
-        ]
+        if direct:
+            names = [page.name for page in direct[0]]
+        else:
+            names = [
+                n for n in book.namelist()
+                if Path(n).suffix.casefold() in IMAGE_SUFFIXES
+                and not cbz_to_epub.is_junk_entry(n)
+            ]
+            names.sort(key=natural)
         if not names:
             raise ValueError("this EPUB has no image resources to pack")
-        names.sort(key=natural)
         out.parent.mkdir(parents=True, exist_ok=True)
         with _atomic_output(out) as partial:
             with zipfile.ZipFile(partial, "w", compression=zipfile.ZIP_DEFLATED) as archive:
@@ -1682,6 +1759,29 @@ def repack_convert(source: Path, out: Path, opts: dict, progress) -> int:
         return zip_files(members, room, out, progress)
 
 
+def comic_repack_convert(source: Path, out: Path, opts: dict, progress) -> int:
+    """Repack a RAR/7z comic as CBZ in natural reading order, without junk files.
+
+    Generic archive repack keeps every member in filesystem order. Comic readers
+    often use ZIP order, so pages must be written sorted, and __MACOSX / Thumbs.db
+    entries are not pages.
+    """
+    progress(0, 0)
+    with tempfile.TemporaryDirectory(prefix="onetool-comic-pack-") as tmp:
+        room = Path(tmp)
+        extract_with_7zip(source, room, opts["password"]) if opts.get("password") else extract_with_7zip(source, room)
+        members = [
+            path for path in room.rglob("*")
+            if path.is_file() and not cbz_to_epub.is_junk_entry(path.relative_to(room).as_posix())
+        ]
+        members.sort(key=lambda path: natural(path.relative_to(room).as_posix()))
+        if not members:
+            raise ValueError("the archive is empty")
+        if not any(path.suffix.casefold() in IMAGE_SUFFIXES for path in members):
+            raise ValueError("the archive holds no readable comic pages")
+        return zip_files(members, room, out, progress)
+
+
 # --------------------------------------------------------------------------- #
 # Creator — many items into one container
 # --------------------------------------------------------------------------- #
@@ -2135,25 +2235,27 @@ CONVERTERS = [
     ),
     Converter(
         id="cbz-pdf", src="CBZ", dst="PDF", category="Comics", kind="comic", glyph="CB", ext=".pdf",
-        title="Comic archive â†’ PDF", sub="direct JPEG/PNG path; fallback for other images",
+        title="Comic archive → PDF", sub="direct JPEG/PNG path; fallback for other images",
         drop_title="Drop .cbz files here", drop_sub="JPEG pages are embedded without recompression",
         blurb="Turn a comic archive into a shareable PDF without rerasterising JPEG pages.", options=PDF_IMAGE_OPTS,
-        extensions=(".cbz", ".zip"), helper=IMAGEMAGICK, dependencies=("ImageMagick", "Python standard library"),
+        extensions=(".cbz", ".zip"),
+        dependencies=("Python standard library; ImageMagick for GIF/WebP/AVIF and incompatible PNGs",),
         convert=cbz_to_pdf_convert,
     ),
     Converter(
         id="cbr-pdf", src="CBR", dst="PDF", category="Comics", kind="comic", glyph="CB", ext=".pdf",
-        title="Comic archive â†’ PDF", sub="RAR-packed; direct JPEG/PNG path",
+        title="Comic archive → PDF", sub="RAR-packed; direct JPEG/PNG path",
         drop_title="Drop .cbr files here", drop_sub="unpacked with 7-Zip, then embedded without JPEG recompression",
         blurb="Make a PDF from a RAR comic archive using the fastest compatible path.", options=PDF_IMAGE_OPTS,
-        extensions=(".cbr", ".rar"), helper=SEVEN_ZIP, requirements=(SEVEN_ZIP, IMAGEMAGICK),
-        dependencies=("7-Zip", "ImageMagick", "Python standard library"), convert=cbr_to_pdf_convert,
+        extensions=(".cbr", ".rar"), helper=SEVEN_ZIP,
+        dependencies=("7-Zip", "Python standard library; ImageMagick for GIF/WebP/AVIF and incompatible PNGs"),
+        convert=cbr_to_pdf_convert,
     ),
     Converter(
         id="cbr-cbz", src="CBR", dst="CBZ", category="Comics", kind="comic", glyph="CB", ext=".cbz",
         title="CBR -> CBZ", sub="repacked without changing comic pages",
         blurb="Convert a RAR comic archive into the ZIP-based CBZ format.",
-        extensions=(".cbr",), helper=SEVEN_ZIP, dependencies=("7-Zip", "Python standard library"), convert=repack_convert,
+        extensions=(".cbr",), helper=SEVEN_ZIP, dependencies=("7-Zip", "Python standard library"), convert=comic_repack_convert,
     ),
     Converter(
         id="pdf-cbz", src="PDF", dst="CBZ", category="Comics", kind="doc", glyph="PD", ext=".cbz",
@@ -2161,7 +2263,9 @@ CONVERTERS = [
         drop_title="Drop .pdf files here", drop_sub="one image per page, packed into a .cbz",
         blurb="Rasterise a PDF into a comic archive.",
         options=(Option("dpi", "DPI", "300"), Option("format", "Page format", "jpg")),
-        extensions=(".pdf",), helper=POPPLER_RENDER, dependencies=("Poppler pdftoppm", "Python standard library"), convert=pdf_to_cbz_convert,
+        extensions=(".pdf",),
+        dependencies=("Python standard library; Poppler pdftoppm for pages that are not embedded JPEGs",),
+        convert=pdf_to_cbz_convert,
     ),
     Converter(
         id="heic-jpg", src="HEIC", dst="JPG", category="Images", kind="image", glyph="IM", ext=".jpg",
@@ -2492,7 +2596,7 @@ CONVERTERS = [
         id="rar-cbz", src="RAR", dst="CBZ", category="Comics", kind="comic", glyph="CB", ext=".cbz",
         title="RAR -> CBZ", sub="repacked as a comic archive",
         blurb="Turn a RAR-packed comic into a CBZ archive.",
-        extensions=(".rar",), helper=SEVEN_ZIP, dependencies=("7-Zip", "Python standard library"), convert=repack_convert,
+        extensions=(".rar",), helper=SEVEN_ZIP, dependencies=("7-Zip", "Python standard library"), convert=comic_repack_convert,
     ),
     Converter(
         id="7z-zip", src="7Z", dst="ZIP", category="Archives", kind="doc", glyph="AR", ext=".zip",
@@ -2505,7 +2609,7 @@ CONVERTERS = [
         id="7z-cbz", src="7Z", dst="CBZ", category="Comics", kind="comic", glyph="CB", ext=".cbz",
         title="7Z -> CBZ", sub="repacked as a comic archive",
         blurb="Turn a 7Z-packed comic into a CBZ archive.",
-        extensions=(".7z",), helper=SEVEN_ZIP, dependencies=("7-Zip", "Python standard library"), convert=repack_convert,
+        extensions=(".7z",), helper=SEVEN_ZIP, dependencies=("7-Zip", "Python standard library"), convert=comic_repack_convert,
     ),
     Converter(
         id="mov-mp4", src="MOV", dst="MP4", category="Video", kind="doc", glyph="VI", ext=".mp4",

@@ -238,10 +238,13 @@ def convert_paths(
     creator: str = "Unknown",
     progress: "Callable[[int, int], None] | None" = None,
 ) -> int:
-    """Write an EPUB directly from extracted page files without an intermediate CBZ."""
-    paths = sorted(page_paths, key=lambda path: natural_key(str(path)))
+    """Write an EPUB from page files in the order they were given.
+
+    Callers that need filename order (extracted CBR folders, loose dumps) sort
+    first. Creator builds pass the list the user arranged and must keep it.
+    """
     images: list[ComicImage] = []
-    for path in paths:
+    for path in page_paths:
         suffix = path.suffix.casefold()
         if suffix not in SUPPORTED_IMAGES:
             continue

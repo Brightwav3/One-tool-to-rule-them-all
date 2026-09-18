@@ -141,12 +141,13 @@ class ServerUxTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "while it is running"):
                 queue.route(job.id, "cbz-pdf")
 
-    def test_pdf_to_cbz_declares_every_poppler_binary_used_by_the_fallback(self):
+    def test_pdf_to_cbz_fallback_binaries_are_registered_on_the_poppler_helper(self):
         converter = server.REGISTRY.get("pdf-cbz")
 
         self.assertIsNotNone(converter)
-        self.assertEqual(converter.helper.name, "Poppler (pdftoppm)")
-        self.assertEqual(set(converter.helper.required), {"pdftoppm", "pdfinfo"})
+        self.assertIsNone(converter.helper)
+        self.assertEqual(set(server.registry.POPPLER_RENDER.required), {"pdftoppm", "pdfinfo"})
+        self.assertIn("pdfimages", {name.removesuffix(".exe") for name in server.registry.POPPLER_RENDER.binaries})
 
     def test_requirement_helpers_expose_install_metadata(self):
         tool = server.REGISTRY.get("md-pdf").as_dict()

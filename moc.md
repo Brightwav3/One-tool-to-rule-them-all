@@ -30,7 +30,14 @@ are not uploaded to a service.
 ├── converter/                   Local Python conversion backend
 │   ├── server.py                Queue, persistence stores, local JSON API, static UI serving
 │   ├── registry.py              Converter data model and external-helper discovery
-│   ├── formats.py               Converter declarations and conversion implementations
+│   ├── formats.py               CONVERTERS/REGISTRY facade (re-exports sibling bodies)
+│   ├── convert_io.py            Shared plumbing: run/which/zip/atomic output/Magick
+│   ├── convert_comics.py        CBZ/CBR/EPUB convert bodies
+│   ├── convert_pdf.py           PDF raster convert bodies
+│   ├── convert_docs.py          LibreOffice, Calibre, PDF text/Markdown
+│   ├── convert_images.py        Raster/vector/video and image-to-PDF bodies
+│   ├── convert_creator.py       Creator containers and archive repack
+│   ├── direct_pdf.py            Stdlib JPEG/PNG PDF embed and JPEG-from-PDF extract
 │   ├── cbz_to_epub.py           Standalone stdlib CBZ-to-EPUB converter and CLI
 │   ├── agent_tools.py           Machine-readable command-line client for the local API
 │   ├── pdf_to_md.cjs            Persistent Node/pdf-inspector worker protocol
@@ -55,7 +62,7 @@ flowchart LR
   A[agent_tools.py] -->|HTTP JSON| S
   S --> R[Registry\nregistry.py + formats.py]
   S --> Q[single worker queue]
-  Q --> C[Converter functions\nformats.py / cbz_to_epub.py]
+  Q --> C[Converter functions\nformats.py facade + sibling modules]
   C --> H[optional local helpers\n7-Zip, Poppler, ffmpeg, etc.]
   S --> D[local history/settings files]
 ```
@@ -101,20 +108,31 @@ computed state.
 
 ### `converter/formats.py`
 
-This is the main conversion catalogue and implementation module. It contains
-the `CONVERTERS` list, then creates the shared `REGISTRY` from it. Most work on
-a file type belongs here:
-
-- archive/comic routes and safe archive handling;
-- direct PDF paths for compatible JPEG/PNG data and bounded fallbacks;
-- PDF page rendering, image/document/ebook conversion helpers;
-- creator/container writers for ZIP, TGZ, 7Z, EPUB, PDF, TIFF, and comics;
-- the persistent PDF-to-Markdown Node worker wrapper;
-- atomic-output and partial-output cleanup utilities.
+This is the conversion catalogue and facade. It contains the `CONVERTERS`
+list, then creates the shared `REGISTRY` from it. Convert bodies live in
+sibling modules (`convert_io.py`, family modules, `direct_pdf.py`,
+`cbz_to_epub.py`) and are re-exported here so `import formats` and test
+patches on this module stay stable. Register a format only here.
 
 Each converter function receives a source, output path, option dictionary, and
 progress callback. A converter must report progress through that callback and
 must not update UI state directly.
+
+### Sibling convert modules
+
+Keep these as flat scripts on the same `sys.path`. Do not turn `formats.py`
+into a package.
+
+| Module | Bodies |
+| --- | --- |
+| `convert_io.py` | Shared `run`/`which`/`zip_files`/`_atomic_output`/Magick helpers |
+| `convert_comics.py` | CBZ/CBR/EPUB |
+| `convert_pdf.py` | PDF raster (Poppler, pdfimages) |
+| `convert_docs.py` | LibreOffice, Calibre, PDF→TXT/MD worker |
+| `convert_images.py` | Raster/vector/video and image→PDF |
+| `convert_creator.py` | Creator `items_to_*` and archive repack |
+| `direct_pdf.py` | Stdlib JPEG/PNG PDF embed and JPEG extract |
+
 
 ### `converter/cbz_to_epub.py`
 
@@ -167,9 +185,9 @@ from `--url` or `ONETOOL_URL`.
 ### `converter/pdf_to_md.cjs`
 
 This is the Node-side worker for PDF-to-Markdown, backed by
-`@firecrawl/pdf-inspector`. `formats.py` keeps one persistent worker process
+`@firecrawl/pdf-inspector`. `convert_docs.py` keeps one persistent worker process
 for batch work, serialises calls to it, restarts it once after a crash, and
-atomically commits the resulting Markdown output.
+atomically commits the resulting Markdown output. `formats.py` re-exports `PdfMarkdownWorker`.
 
 ## Desktop shell
 
@@ -333,10 +351,11 @@ visual screenshots for checks that need the actual Electron window.
 
 ### Add a new one-file conversion
 
-1. Implement the converter/probe function in `converter/formats.py`.
-2. Add a `Converter(...)` declaration to `CONVERTERS`, including source
-   extensions, output extension, required helper, options, and conversion
-   callback.
+1. Implement the converter/probe function in a sibling module under `converter/`
+   (`convert_comics.py`, `convert_images.py`, `direct_pdf.py`, …).
+2. Re-export it from `converter/formats.py` and add a `Converter(...)`
+   declaration to `CONVERTERS`, including source extensions, output extension,
+   required helper, options, and conversion callback.
 3. Add or reuse a `Helper` in `converter/registry.py` when an external tool is
    required.
 4. Add focused tests under `tests/` for routing, readiness, and the conversion
@@ -346,7 +365,7 @@ visual screenshots for checks that need the actual Electron window.
 
 ### Add a new Creator output
 
-1. Add the multi-source writer and options in `converter/formats.py`.
+1. Add the multi-source writer in `convert_creator.py` and register it in `formats.py`.
 2. Declare the converter with `multi=True` so it is grouped into Creator
    capabilities rather than ordinary Convert routes.
 3. Test `/api/probe` and `/api/create` behaviour in `tests/test_creator.py`.

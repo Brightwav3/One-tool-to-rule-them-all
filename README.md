@@ -242,7 +242,14 @@ unsupported PNG pages use the ImageMagick fallback one page at a time.
 ```
 converter/
   registry.py          the converter model — state is computed, never asserted
-  formats.py           every conversion the backend knows about
+  formats.py           catalogue + REGISTRY facade (re-exports sibling convert bodies)
+  convert_io.py        shared run/which/zip/atomic-output/Magick plumbing
+  convert_comics.py    CBZ/CBR/EPUB convert bodies
+  convert_pdf.py       PDF raster convert bodies
+  convert_docs.py      LibreOffice, Calibre, PDF text/Markdown
+  convert_images.py    raster/vector/video and image→PDF
+  convert_creator.py   Creator containers and archive repack
+  direct_pdf.py        stdlib JPEG/PNG PDF embed and JPEG-from-PDF extract
   cbz_to_epub.py       the comics converter — pure stdlib, importable, scriptable
   server.py            local JSON HTTP API, job queue
   agent_tools.py       structured JSON command-line tools for local agents
@@ -254,7 +261,7 @@ app/
   package.json         Electron and packaging configuration
 ```
 
-**Adding a format is one entry in `formats.py`.** The registry, queue, API, and agent tools consume the
+**Adding a format is one convert body in a sibling module plus one `Converter(...)` entry in `formats.py`.** The registry, queue, API, and agent tools consume the
 same converter model. Every backend layer works without a UI.
 
 ## Under the hood

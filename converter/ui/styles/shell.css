@@ -49,6 +49,7 @@ body.is-mac .topbar{padding-left:82px}
 .tiphost:hover .tip{opacity:1;transform:none;transition-delay:80ms}
 .tip .kbd{background:rgba(255,255,255,.16);color:rgba(255,255,255,.72)}
 .topbar>.tiphost{flex:none}
+.topbar>.tiphost .tip{left:0;right:auto}
 .wincontrols{position:fixed;top:0;right:var(--space-3);height:44px;display:none;align-items:center;gap:2px;z-index:2147483647;pointer-events:auto!important;-webkit-app-region:no-drag!important}
 .is-electron:not(.is-mac) .wincontrols{display:flex}
 .wincontrols button{width:30px;height:26px;display:grid;place-items:center;border-radius:var(--radius-xs);color:var(--text-tertiary);-webkit-app-region:no-drag!important;pointer-events:auto!important;cursor:pointer}

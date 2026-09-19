@@ -1,4 +1,5 @@
 import base64
+import re
 import struct
 import tempfile
 import unittest
@@ -50,6 +51,18 @@ class DirectPdfTests(unittest.TestCase):
             self.assertTrue(data.rstrip().endswith(b"%%EOF"))
             self.assertEqual(data.count(b"/Type /Page /Parent"), 2)
             self.assertIn(JPEG_1X1, data)
+
+    def test_cbz_pdf_uses_the_selected_dpi_for_page_size(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = self.make_cbz(root, {"page-001.jpg": JPEG_1X1})
+            page_sizes = []
+            for dpi in ("72", "144"):
+                output = root / f"book-{dpi}.pdf"
+                formats.cbz_to_pdf_convert(source, output, {"dpi": dpi}, lambda *_args: None)
+                page_sizes.append(re.search(rb"/MediaBox \[([^]]+)\]", output.read_bytes()).group(1))
+
+            self.assertEqual(page_sizes, [b"0 0 1 1", b"0 0 0.5 0.5"])
 
     @unittest.skipUnless(formats.find_magick(), "ImageMagick is required for PNG conversion")
     def test_png_pages_are_converted_then_written_by_direct_pdf_writer(self):

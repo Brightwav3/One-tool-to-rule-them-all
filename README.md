@@ -4,7 +4,7 @@
 
 **Files in. The format you actually wanted out. Nothing leaves your machine.**
 
-[Download the Windows installer](https://github.com/Brightwav3/One-tool-to-rule-them-all/releases/download/v2.2.0/OneTool-Web-Setup-2.2.0.exe)
+[Download the Windows installer](https://github.com/Brightwav3/One-tool-to-rule-them-all/releases/download/v2.2.1/OneTool-Web-Setup-2.2.1.exe)
 
 One Tool is a local-first Electron app and conversion backend. The desktop UI, queue, history, JSON API,
 conversion engines, and agent-facing command-line tools all run on your machine. No cloud service is
@@ -45,14 +45,13 @@ them want your files on their server.
 
 This is one window that does all of it, on your machine, and tells you the truth about what it can do.
 
-## PDF Editor
+## Editor status
 
-The Editor opens local PDFs for structural edits, rotation, crop, undo/redo, and optional OCR text layers. FreeDF is vendored as the MIT-licensed `freedf` distribution (import package `pdfengine`) behind One Tool's adapter boundary. Poppler provides page previews; Tesseract provides OCR when installed. The Editor toolbar uses the supplied SVG sprite at `converter/ui/icons.svg`. The live Electron golden trace records 9 requests, 0 toasts, 57 renders, 0 errors, and a final 523-element editor DOM (`238ec99f5a4b2a00` structure, `199440d0cc893000` computed style).
+The PDF Editor is temporarily hidden from the main navigation while conversion work continues. Its code remains in the repository, but it is not part of the visible workflow in this build.
 
 ## What it converts
 
-Fifty-five conversions are declared. **Fifty-three are implemented**; two are named for later so you can
-see where it is going.
+Sixty-five conversion routes are declared. **Sixty-three are implemented**; the two remaining routes are marked as coming soon.
 
 | | Conversion | Needs |
 | --- | --- | --- |
@@ -60,35 +59,41 @@ see where it is going.
 | | CBR → EPUB | 7-Zip |
 | | CBZ → PDF | Python standard library; ImageMagick fallback |
 | | CBR → PDF | 7-Zip + Python standard library; ImageMagick fallback |
+| | CBR → CBZ | 7-Zip |
 | | PDF → CBZ | Python standard library for safe JPEG extraction; Poppler fallback |
-| **Images** | HEIC → JPG | ffmpeg |
-| | PNG → WebP | ffmpeg |
-| | PNG → PDF | Python standard library; ImageMagick fallback |
-| | JPG → PDF | Python standard library; ImageMagick fallback |
-| | SVG → PNG | ImageMagick |
+| | RAR / 7z → CBZ | 7-Zip |
+| **Images** | HEIC → JPG / PNG / WebP / PDF | ffmpeg or ImageMagick |
+| | PNG → WebP / JPG / PDF | ffmpeg or ImageMagick; direct PDF writer where possible |
+| | JPG → PNG / WebP / PDF | ffmpeg or ImageMagick; direct PDF writer where possible |
+| | WebP → JPG / PNG / PDF | ffmpeg or ImageMagick; direct PDF writer where possible |
 | | PDF → JPG / PNG | Poppler — one chosen page, whole documents go to CBZ |
 | | GIF → JPG / PNG / PDF | ImageMagick or ffmpeg — first frame |
 | | AVIF → JPG / PNG / PDF | ImageMagick or ffmpeg |
 | | BMP → JPG / PNG / PDF | ImageMagick or ffmpeg |
 | | TIFF → JPG / PNG / PDF | ImageMagick or ffmpeg — first page |
-| | RAW → DNG | *not built yet* |
-| **Documents** | DOCX → PDF | LibreOffice |
-| | DOCX/ODT → EPUB | LibreOffice |
-| | DOCX/ODT → TXT | LibreOffice |
+| | SVG → PNG / JPG / PDF | ImageMagick |
+| | RAW → DNG | *coming soon* |
+| **Documents** | DOC / DOCX / ODT → PDF | LibreOffice |
+| | DOC / DOCX / ODT → EPUB | LibreOffice |
+| | DOC / DOCX / ODT → TXT | LibreOffice |
 | | PDF → TXT | Poppler |
 | | PDF -> Markdown | Firecrawl pdf-inspector, optional Node.js worker |
-| | MD → PDF | *not built yet* |
+| | MD → PDF | *coming soon* |
 | **Ebooks** | EPUB → CBZ | *nothing* |
 | | EPUB → MOBI | Calibre |
+| | EPUB → TXT | Python standard library |
 | | EPUB → PDF | Python standard library for image-only EPUBs; Calibre fallback |
-| | AZW3 → EPUB | Calibre |
+| | MOBI → EPUB / PDF | Calibre |
+| | AZW3 → EPUB / PDF | Calibre |
 | **Archives** | RAR → ZIP | 7-Zip |
 | | 7z → ZIP | 7-Zip |
+| | Creator items → ZIP / TGZ / 7z | Python standard library; 7-Zip for 7z |
+| **Creator** | Items → CBZ / CB7 / EPUB / PDF / TIFF | Python standard library; 7-Zip or ImageMagick where needed |
 | **Video** | MOV → MP4 | ffmpeg |
 
 ### Dependency matrix
 
-This detailed matrix is the authoritative dependency list; it also includes the local PDF -> Markdown converter.
+This matrix summarizes key runtime dependencies. The live registry is the source of truth for each route's current helper requirements.
 
 For PDF -> Markdown, the bundled Firecrawl `pdf-inspector` was selected from its published 200-PDF benchmark:
 0.875 overall quality, 0.915 reading-order accuracy, 0.814 table accuracy and 0.470 seconds per document
@@ -112,16 +117,17 @@ See the [pdf-inspector benchmark](https://github.com/firecrawl/pdf-inspector#ben
 | GIF/AVIF/BMP/TIFF -> JPG/PNG | ImageMagick or ffmpeg |
 | GIF/AVIF/BMP/TIFF -> PDF | ImageMagick or ffmpeg, then the direct PDF writer |
 | RAW -> DNG | Future: LibRaw or Exiv2 |
-| DOCX -> PDF | LibreOffice |
-| DOCX/ODT -> EPUB | LibreOffice Writer EPUB export |
-| DOCX/ODT -> TXT | LibreOffice |
+| DOC/DOCX/ODT -> PDF | LibreOffice |
+| DOC/DOCX/ODT -> EPUB | LibreOffice Writer EPUB export |
+| DOC/DOCX/ODT -> TXT | LibreOffice |
 | PDF -> TXT | Poppler + Python standard library |
 | PDF -> MD | Node.js + Firecrawl pdf-inspector |
 | MD -> PDF | Future: Pandoc + a PDF renderer |
 | EPUB -> CBZ | Python standard library |
 | EPUB -> MOBI | Calibre ebook-convert |
+| MOBI -> EPUB/PDF | Calibre ebook-convert |
 | EPUB -> PDF | Python standard library for image-only EPUBs; Calibre fallback |
-| AZW3 -> EPUB | Calibre ebook-convert |
+| AZW3 -> EPUB/PDF | Calibre ebook-convert |
 | RAR -> ZIP | 7-Zip + Python standard library |
 | 7Z -> ZIP | 7-Zip + Python standard library |
 | MOV -> MP4 | ffmpeg |
@@ -242,7 +248,17 @@ unsupported PNG pages use the ImageMagick fallback one page at a time.
 ```
 converter/
   registry.py          the converter model — state is computed, never asserted
-  formats.py           every conversion the backend knows about
+  formats.py           compatibility facade for existing imports
+  formats_registry.py  converter declarations and shared registry
+  formats_common.py    shared helpers and image/archive primitives
+  formats_archives.py  archive repacking
+  formats_comics.py    CBZ/CBR/PDF comic routes
+  formats_creator.py   multi-file container writers
+  formats_documents.py document and ebook conversions
+  formats_images.py    raster, vector, and RAW image conversions
+  formats_pdf_convert.py PDF to other formats
+  formats_pdf_extract.py PDF text and Markdown extraction
+  formats_pdf_writer.py direct PDF output
   cbz_to_epub.py       the comics converter — pure stdlib, importable, scriptable
   server.py            local JSON HTTP API, job queue
   agent_tools.py       structured JSON command-line tools for local agents
@@ -254,8 +270,9 @@ app/
   package.json         Electron and packaging configuration
 ```
 
-**Adding a format is one entry in `formats.py`.** The registry, queue, API, and agent tools consume the
-same converter model. Every backend layer works without a UI.
+**Adding a conversion** means implementing it in the matching `formats_*.py` module and declaring its
+route in `formats_registry.py`. `formats.py` remains as a compatibility facade for older imports. The
+registry, queue, API, and agent tools consume the same converter model. Every backend layer works without a UI.
 
 ## Under the hood
 

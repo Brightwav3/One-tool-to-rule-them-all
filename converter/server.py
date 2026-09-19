@@ -433,6 +433,11 @@ class Job:
         elif converter.probe:
             try:
                 self.units = converter.probe(self.source)
+            except registry.MissingHelperError as exc:
+                self.fail(
+                    f"{exc.helper.name} isn't installed",
+                    f"{converter.label} needs {exc.helper.name}: {exc}",
+                )
             except ValueError as exc:
                 self.fail("This file can't be converted", str(exc))
             except (OSError, zipfile.BadZipFile) as exc:

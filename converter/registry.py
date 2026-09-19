@@ -157,6 +157,14 @@ class Helper:
         }
 
 
+class MissingHelperError(ValueError):
+    """A source-specific conversion path needs an optional external helper."""
+
+    def __init__(self, helper: Helper, message: str):
+        self.helper = helper
+        super().__init__(message)
+
+
 PACKAGED = "bundled with One Tool"
 
 

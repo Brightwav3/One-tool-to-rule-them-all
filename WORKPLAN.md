@@ -1,4 +1,6 @@
-# Making Creator and Editor real
+# Historical plan: making Creator and Editor real
+
+> **Status (2026-09-19):** This plan describes an older state of the project. Creator outputs and the PDF Editor backend are now implemented. The Editor is temporarily hidden from the main navigation. Use [README.md](README.md) for current user-facing behavior and [moc.md](moc.md) for the current architecture.
 
 Both screens are complete as interfaces and hold their state honestly. Neither
 writes a file. This is what it takes to change that, grounded in what the repo

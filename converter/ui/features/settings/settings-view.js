@@ -109,7 +109,7 @@ function renderSettings() {
       <div class="set-ver">One Tool ${esc(APP_VERSION)}</div>
     </div>
     <div class="set-main">
-      <div class="set-head"><span style="flex:1">${esc(q ? 'Search results' : tabName)}</span><button class="btn btn-sm press set-close" data-act="close-settings" aria-label="Close settings">✕</button></div>
+      <div class="set-head"><span style="flex:1">${esc(q ? 'Search results' : tabName)}</span>${buttonHtml({ family: 'btn', size: 'sm', extra: 'set-close', act: 'close-settings', ariaLabel: 'Close settings', html: '✕' })}</div>
       <div class="set-pane${settingsEntering ? ' s-fade' : ''}">
         ${showHelpers ? settingsHelpersHtml() : (sections.length ? sections.map(settingsSectionHtml).join('') : `<div class="set-empty">Nothing matches “${esc(setQuery)}”.</div>`)}
       </div>
@@ -128,15 +128,15 @@ function settingsRowHtml(row) {
   const value = settingValue(row);
   let control = '';
   if (row.kind === 'switch') {
-    control = `<button class="sw" role="switch" aria-checked="${value}" aria-label="${esc(row.lab)}" data-act="settings-toggle" data-id="${row.id}" data-on="${value}"><i></i></button>`;
+    control = switchHtml({ family: 'sw', on: value, ariaLabel: esc(row.lab), act: 'settings-toggle', id: row.id });
   } else if (row.kind === 'select') {
     const open = setOpenSel === row.id;
     control = `<span class="set-selwrap">
       <button class="sel press" data-act="settings-menu" data-id="${row.id}" aria-haspopup="menu" aria-expanded="${open}">${esc(value)}<span class="car" aria-hidden="true">▼</span></button>
-      ${open ? `<span class="set-menu${openMenuSeen === row.id ? '' : ' s-fade'}" role="menu">${row.opts.map(o => `<button role="menuitem" data-act="settings-pick" data-id="${row.id}" data-value="${esc(o)}" data-on="${o === value}"><span class="tk" aria-hidden="true">${o === value ? '✓' : ''}</span><span class="nm">${esc(o)}</span></button>`).join('')}</span>` : ''}
+      ${open ? `<span class="set-menu${openMenuSeen === row.id ? '' : ' s-fade'}" role="menu">${row.opts.map(o => menuItemHtml({ act: 'settings-pick', id: row.id, value: esc(o), on: o === value, html: esc(o) })).join('')}</span>` : ''}
     </span>`;
   } else {
-    control = `<button class="btn btn-secondary btn-sm press" data-act="settings-action" data-id="${row.id}">${esc(value)}</button>`;
+    control = buttonHtml({ family: 'btn', variant: 'secondary', size: 'sm', act: 'settings-action', data: { id: row.id }, html: esc(value) });
   }
   return `<div class="set-row">
     <div style="flex:1;min-width:0"><div class="lab">${esc(row.lab)}</div><div class="sub">${esc(row.sub)}</div></div>
@@ -149,7 +149,7 @@ function settingsHelpersHtml() {
   const missing = names.filter(name => !helperFound(name)).length;
   const headline = missing ? `${names.length - missing} of ${names.length} installed · ${missing} missing` : `All ${names.length} installed`;
   return `<div class="set-hhead">
-      <div class="set-hhead-row"><b>${headline}</b><button class="btn btn-secondary btn-sm press" data-act="recheck">Re-scan this machine</button></div>
+      <div class="set-hhead-row"><b>${headline}</b>${buttonHtml({ family: 'btn', variant: 'secondary', size: 'sm', act: 'recheck', html: 'Re-scan this machine' })}</div>
       <p class="set-hblurb">Free, standard tools. Install one and every conversion that needs it turns on at once. They stay on your machine and are only launched when a conversion needs them.</p>
     </div>
     <div class="set-hlist">${names.map(settingsHelperHtml).join('')}</div>`;
@@ -167,8 +167,8 @@ function settingsHelperHtml(name) {
       <span class="set-h-chev" aria-hidden="true">${open ? '⌄' : '›'}</span>
       <span class="set-h-dot" data-state="${state}" aria-hidden="true"></span>
       <span class="set-h-name"><b>${esc(name)}</b><span>${unlocks.length} conversion${unlocks.length === 1 ? '' : 's'}</span></span>
-      <span class="set-chip" data-state="${state}">${label}</span>
-      ${canDownload ? `<button class="btn btn-primary btn-sm press" data-act="download-helper" data-url="${esc(data.download)}" data-name="${esc(name)}">Download helper</button>` : ''}
+      ${chipHtml({ family: 'set-chip', state, html: label })}
+      ${canDownload ? buttonHtml({ family: 'btn', variant: 'primary', size: 'sm', act: 'download-helper', data: { url: esc(data.download), name: esc(name) }, html: 'Download helper' }) : ''}
     </div>
     ${open ? `<div class="set-h-body${openHelperSeen === name ? '' : ' s-fade'}">
       <div class="set-h-grp">
@@ -177,9 +177,9 @@ function settingsHelperHtml(name) {
       </div>
       ${data.cmd ? `<div class="set-h-grp">
         <span class="col">Or install it yourself</span>
-        <div class="set-cmd"><code>${esc(data.cmd)}</code><button class="btn btn-sm press set-copy" data-act="settings-copy" data-helper="${esc(name)}" data-command="${esc(data.cmd)}">${setCopied === name ? 'Copied' : 'Copy'}</button></div>
+        <div class="set-cmd"><code>${esc(data.cmd)}</code>${buttonHtml({ family: 'btn', size: 'sm', extra: 'set-copy', act: 'settings-copy', data: { helper: esc(name), command: esc(data.cmd) }, html: setCopied === name ? 'Copied' : 'Copy' })}</div>
       </div>` : ''}
-      ${data.url ? `<div><button class="btn btn-secondary btn-sm press" data-act="open-url" data-url="${esc(data.url)}">Official page</button></div>` : ''}
+      ${data.url ? `<div>${buttonHtml({ family: 'btn', variant: 'secondary', size: 'sm', act: 'open-url', data: { url: esc(data.url) }, html: 'Official page' })}</div>` : ''}
     </div>` : ''}
   </div>`;
 }

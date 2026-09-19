@@ -26,14 +26,17 @@ function destinationHtml() {
 function routePopover(f, open) {
   const candidates = routeCandidates(f);
   const body = candidates.length
-    ? candidates.map(t => `<button class="opt press ${t.id === f.conv ? 'current' : ''}" data-act="choose-route" data-id="${esc(f.id)}" data-converter="${esc(t.id)}" ${t.state === 'soon' ? 'disabled' : ''}>
-        <span class="ck">${t.id === f.conv ? tickIcon(11) : ''}</span><span class="nm">${esc(t.to)}</span><span class="st ${routeStateClass(t)}">${routeStateLabel(t)}</span></button>`).join('')
+    ? candidates.map(t => optHtml({
+        current: t.id === f.conv, act: 'choose-route', dataId: esc(f.id), converter: esc(t.id),
+        disabled: t.state === 'soon', check: t.id === f.conv ? tickIcon(11) : '',
+        name: esc(t.to), stateClass: routeStateClass(t), stateLabel: routeStateLabel(t),
+      })).join('')
     : `<p style="margin:0;padding:var(--space-3);font-size:var(--text-sm);color:var(--text-tertiary)">No route from ${esc(f.from)}.</p>`;
   return `<span class="pop" data-open="${open}">
     <span class="pop-card">
       <span class="pop-title">Choose output format</span>
       <span class="pop-body">${body}</span>
-      <span class="pop-foot"><span class="note">Only formats ${esc(f.from)} can become.</span><button class="btn btn-accent btn-sm press" data-act="open-sheet" data-id="${esc(f.id)}">Browse all ${destCount()}</button></span>
+      <span class="pop-foot"><span class="note">Only formats ${esc(f.from)} can become.</span>${buttonHtml({ family: 'btn', variant: 'accent', size: 'sm', act: 'open-sheet', data: { id: esc(f.id) }, html: `Browse all ${destCount()}` })}</span>
     </span>
     <span class="scope-card"><span class="eyebrow" style="flex:none">Scope</span><button class="scope press" data-act="cycle-scope">${esc(scopeLabel(f))}<span class="chev" aria-hidden="true">${chevron()}</span></button></span>
   </span>`;

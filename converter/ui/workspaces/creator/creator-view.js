@@ -35,7 +35,7 @@ function creatorPickHtml() {
         <h1 class="wk-h1">What are you making?</h1>
         <p class="wk-sub">Pick a container. Everything after that depends on it.</p>
       </div>
-      <div class="inp" style="width:210px"><span style="font-size:11px;color:var(--t3)">&#8981;</span><input id="crQuery" data-live="true" value="${esc(s.query)}" placeholder="Filter containers" aria-label="Filter containers"></div>
+      ${inpHtml({ style: 'width:210px', html: `<span style="font-size:11px;color:var(--t3)">&#8981;</span><input id="crQuery" data-live="true" value="${esc(s.query)}" placeholder="Filter containers" aria-label="Filter containers">` })}
     </div>
     <div class="cr-groups">
       ${groups.map(g => `<div class="cr-grouphead"><span class="eyebrow-p">${esc(g.name)}</span><span style="font:400 11px var(--mono);color:var(--t4)">${g.items.length}</span><span class="rule"></span></div>
@@ -44,7 +44,7 @@ function creatorPickHtml() {
     </div>
     <div class="ed-foot">
       <span style="flex:1;font-size:12.5px;color:var(--t2)">${esc(creator.format().title)} selected · next you choose what goes in it</span>
-      <button class="pbtn pri press" data-act="cr-continue">Continue<span class="kbd" style="background:none;opacity:.7">⏎</span></button>
+      ${buttonHtml({ family: 'pbtn', variant: 'pri', act: 'cr-continue', html: 'Continue<span class="kbd" style="background:none;opacity:.7">⏎</span>' })}
     </div>`;
 }
 /* A container that needs a helper you do not have is shown, badged and still
@@ -56,7 +56,7 @@ function creatorCellHtml(f) {
   return `<button class="fcell press" data-act="cr-format" data-format="${f.id}" data-on="${on}" data-dis="${Boolean(f.dis)}">
     <span class="t"><span class="ptile ${on ? 'acc' : ''}" style="width:22px;height:27px">${esc(f.id)}</span><b>${esc(f.title)}</b></span>
     <span class="d">${esc(f.desc)}</span>
-    ${badge ? `<span class="badge">${esc(badge)}</span>` : ''}
+    ${badge ? chipHtml({ family: 'badge', html: esc(badge) }) : ''}
   </button>`;
 }
 function creatorBuildHtml() {
@@ -76,8 +76,8 @@ function creatorBuildHtml() {
     <div class="cr-listhead">
       <div style="flex:1;min-width:0"><h1 class="wk-h1">Contents</h1>
         <p class="wk-sub">${items.length} items · ${creator.totalUnits()} ${esc(f.unit.toLowerCase())} · ${s.sort === 'manual' ? 'in the order below' : `sorted by ${esc(s.sort)}`}</p></div>
-      <button class="pbtn press" data-act="cr-sort">${sortLabel}<span style="font-size:9px;color:var(--t3)">▾</span></button>
-      <button class="pbtn pri press" data-act="cr-add">Add items<span class="kbd" style="background:none;opacity:.7">${shortcutLabel('open')}</span></button>
+      ${buttonHtml({ family: 'pbtn', act: 'cr-sort', html: `${sortLabel}<span style="font-size:9px;color:var(--t3)">▾</span>` })}
+      ${buttonHtml({ family: 'pbtn', variant: 'pri', act: 'cr-add', html: `Add items<span class="kbd" style="background:none;opacity:.7">${shortcutLabel('open')}</span>` })}
     </div>
     <div class="cr-list">
       <div class="cr-cols">
@@ -99,7 +99,7 @@ function creatorBuildHtml() {
       ${blocked ? `<span class="cr-blocked">${esc(s.fmt)} needs ${esc(f.needs)}<button class="press" data-act="select-helper" data-helper="${esc(f.needs)}">Install</button></span>` : ''}
       ${s.job === 'running' ? `<span class="cr-prog"><span class="track"><span class="fill" style="width:${s.pct}%"></span></span><span style="font:500 11.5px var(--mono);color:var(--acc-text)">${s.pct}%</span></span>` : ''}
       ${s.job === 'done' ? `<span class="cr-done">Written · ${esc(crFmtSize(size))}</span>` : ''}
-      <button class="pbtn pri press ${creator.canCreate(installed) ? '' : 'off'}" data-act="cr-create">${s.job === 'running' ? 'Creating…' : s.job === 'done' ? 'Create again' : 'Create file'}<span class="kbd" style="background:none;opacity:.7">⏎</span></button>
+      ${buttonHtml({ family: 'pbtn', variant: 'pri', off: !creator.canCreate(installed), act: 'cr-create', html: `${s.job === 'running' ? 'Creating…' : s.job === 'done' ? 'Create again' : 'Create file'}<span class="kbd" style="background:none;opacity:.7">⏎</span>` })}
     </div>`;
 }
 function creatorRowHtml(item, index) {
@@ -123,7 +123,7 @@ function creatorEmptyHtml() {
     <div class="box">${esc(fmt)}</div>
     <div style="font-size:13.5px;font-weight:600">Nothing in this ${esc(fmt)} yet</div>
     <div style="font-size:12.5px;color:var(--t2);text-align:center;max-width:280px;text-wrap:pretty">Add images, folders or existing archives. They go in the order you see here.</div>
-    <button class="pbtn pri press" data-act="cr-add" style="margin-top:4px">Choose files</button>
+    ${buttonHtml({ family: 'pbtn', variant: 'pri', act: 'cr-add', style: 'margin-top:4px', html: 'Choose files' })}
   </div>`;
 }
 function creatorOutputHtml() {
@@ -135,10 +135,10 @@ function creatorOutputHtml() {
       <div style="font-size:12px;color:var(--t3);margin-top:2px">One file from ${s.items.length} items</div>
     </div>
     <div class="fld"><span class="lbl">File name</span>
-      <div class="inp"><input id="crName" data-live="true" value="${esc(s.name)}" style="font:500 11.5px var(--mono)" aria-label="File name"><span class="cr-mono" style="color:var(--t3)">${esc(f.ext || `.${s.fmt.toLowerCase()}`)}</span></div>
+      ${inpHtml({ html: `<input id="crName" data-live="true" value="${esc(s.name)}" style="font:500 11.5px var(--mono)" aria-label="File name"><span class="cr-mono" style="color:var(--t3)">${esc(f.ext || `.${s.fmt.toLowerCase()}`)}</span>` })}
     </div>
     <div class="fld"><span class="lbl">Save to</span>
-      <div class="inp"><span style="flex:1;min-width:0;font:500 11.5px var(--mono);color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.dest)}</span><button class="press" data-act="cr-dest" style="font:600 11.5px var(--ui);color:var(--acc-text)">Change</button></div>
+      ${inpHtml({ html: `<span style="flex:1;min-width:0;font:500 11.5px var(--mono);color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.dest)}</span><button class="press" data-act="cr-dest" style="font:600 11.5px var(--ui);color:var(--acc-text)">Change</button>` })}
     </div>
     <div class="fld"><span class="lbl">${esc(s.fmt)} options</span>
       ${f.opts.length ? f.opts.map(creatorOptionHtml).join('') : '<span style="font-size:11.5px;color:var(--t3)">This container has no options.</span>'}
@@ -155,23 +155,20 @@ function creatorOptionHtml(key) {
   if (opt.kind === 'text') {
     return `<div style="display:flex;flex-direction:column;gap:5px;padding-top:4px">
       <span style="font-size:12px;color:var(--t2)">${esc(opt.label)}</span>
-      <div class="inp"><input id="crOpt-${esc(key)}" data-live="true" data-cr-opt="${esc(key)}" type="${opt.secret ? 'password' : 'text'}"
+      ${inpHtml({ html: `<input id="crOpt-${esc(key)}" data-live="true" data-cr-opt="${esc(key)}" type="${opt.secret ? 'password' : 'text'}"
         value="${esc(value == null ? '' : String(value))}" placeholder="${esc(opt.placeholder || '')}"
-        style="font:500 11.5px var(--mono)" aria-label="${esc(opt.label)}"></div>
+        style="font:500 11.5px var(--mono)" aria-label="${esc(opt.label)}">` })}
       ${opt.hint ? `<span style="font-size:11px;line-height:1.5;color:var(--t3)">${esc(opt.hint)}</span>` : ''}
     </div>`;
   }
   if (opt.kind === 'seg') {
     return `<div style="display:flex;flex-direction:column;gap:5px;padding-top:4px">
       <span style="font-size:12px;color:var(--t2)">${esc(opt.label)}</span>
-      <div class="pseg">${opt.choices.map(c => `<button class="press" data-act="cr-opt" data-key="${key}" data-value="${esc(c)}" data-on="${c === value}">${esc(c)}</button>`).join('')}</div>
+      ${segHtml({ act: 'cr-opt', key, itemAttr: 'value', items: opt.choices.map(c => ({ value: esc(c), on: c === value, html: esc(c) })) })}
     </div>`;
   }
   return `<div style="display:flex;flex-direction:column;gap:5px;padding-top:4px">
-    <button class="press" data-act="cr-toggle" data-key="${key}" role="switch" aria-checked="${Boolean(value)}" style="display:flex;align-items:center;gap:10px;width:100%;min-height:29px;padding:0 9px;border-radius:7px;box-shadow:inset 0 0 0 1px var(--sep2)">
-      <span style="flex:1;font:500 12px var(--ui);color:var(--t1);text-align:left">${esc(opt.label)}</span>
-      <span style="width:30px;height:18px;flex:none;border-radius:999px;padding:2px;display:flex;justify-content:${value ? 'flex-end' : 'flex-start'};background:${value ? 'var(--acc)' : 'var(--sep2)'};transition:background var(--d-quick) ease"><span style="width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)"></span></span>
-    </button>
+    ${switchHtml({ family: 'cr-toggle', act: 'cr-toggle', key, on: Boolean(value), html: esc(opt.label) })}
     ${value && opt.hint ? `<span style="font-size:11px;line-height:1.5;color:var(--t3)">${esc(opt.hint)}</span>` : ''}
   </div>`;
 }

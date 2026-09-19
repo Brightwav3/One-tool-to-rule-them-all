@@ -1,0 +1,506 @@
+"""Converter metadata and the public conversion registry."""
+from __future__ import annotations
+
+from formats_common import *
+from formats_comics import *
+from formats_pdf_convert import *
+from formats_documents import *
+from formats_archives import *
+from formats_creator import *
+from formats_images import *
+
+TITLE_OPTS = (Option("title", "Title", "from filename"), Option("creator", "Creator", "Unknown"))
+PDF_IMAGE_OPTS = (Option("dpi", "DPI", "150"), Option("quality", "JPEG quality", "90"))
+RASTER_IMAGE_OPTS = (Option("quality", "Quality", "90"), Option("resize", "Max edge (px)", "original"))
+PDF_PAGE_IMAGE_OPTS = (Option("page", "Page", "1"), Option("dpi", "DPI", "150"))
+
+# Creator option sets. Every key here is read by a builder — nothing is declared
+# that the container would then ignore.
+CREATE_COMPRESS = Option("compress", "Compression", "Normal")
+CREATE_FLATTEN = Option("flatten", "Flatten folders", "off")
+CREATE_RENUMBER = Option("rename", "Renumber pages", "on")
+CREATE_COMICINFO = Option("meta", "Write ComicInfo.xml", "on")
+CREATE_PASSWORD = Option("password", "Password", "none")
+CREATE_ARCHIVE_OPTS = (CREATE_COMPRESS, CREATE_FLATTEN)
+CREATE_COMIC_OPTS = (CREATE_COMPRESS, CREATE_RENUMBER, CREATE_COMICINFO)
+CREATE_BOOK_OPTS = TITLE_OPTS + (CREATE_RENUMBER,)
+CREATE_PAGE_OPTS = (CREATE_COMPRESS, CREATE_RENUMBER) + PDF_IMAGE_OPTS
+CREATE_TIFF_OPTS = (CREATE_COMPRESS, CREATE_RENUMBER)
+
+CONVERTERS = [
+    Converter(
+        id="cbz-epub", src="CBZ", dst="EPUB", category="Comics", kind="comic", glyph="CB", ext=".epub",
+        title="Comic archive → EPUB", sub="one reading page per image, sorted naturally",
+        drop_title="Drop .cbz files here",
+        drop_sub="jpg, png, gif, webp and avif pages are read; anything else is ignored",
+        blurb="One EPUB page per image, cover from page 1.",
+        options=TITLE_OPTS, extensions=(".cbz", ".zip"), dependencies=("Python standard library",),
+        convert=cbz_to_epub_convert, probe=cbz_probe,
+    ),
+    Converter(
+        id="cbr-epub", src="CBR", dst="EPUB", category="Comics", kind="comic", glyph="CB", ext=".epub",
+        title="Comic archive → EPUB", sub="RAR-packed comics",
+        drop_title="Drop .cbr files here", drop_sub="unpacked with 7-Zip, then converted page by page",
+        blurb="Same as CBZ, for RAR-packed comics.",
+        options=TITLE_OPTS, extensions=(".cbr", ".rar"), helper=SEVEN_ZIP, dependencies=("7-Zip", "Python standard library"),
+        convert=cbr_to_epub_convert,
+    ),
+    Converter(
+        id="cbz-pdf", src="CBZ", dst="PDF", category="Comics", kind="comic", glyph="CB", ext=".pdf",
+        title="Comic archive â†’ PDF", sub="direct JPEG/PNG path; fallback for other images",
+        drop_title="Drop .cbz files here", drop_sub="JPEG pages are embedded without recompression",
+        blurb="Turn a comic archive into a shareable PDF without rerasterising JPEG pages.", options=PDF_IMAGE_OPTS,
+        extensions=(".cbz", ".zip"),
+        dependencies=("Python standard library; ImageMagick for GIF, WebP, or AVIF pages",),
+        convert=cbz_to_pdf_convert, probe=cbz_pdf_probe,
+    ),
+    Converter(
+        id="cbr-pdf", src="CBR", dst="PDF", category="Comics", kind="comic", glyph="CB", ext=".pdf",
+        title="Comic archive â†’ PDF", sub="RAR-packed; direct JPEG/PNG path",
+        drop_title="Drop .cbr files here", drop_sub="unpacked with 7-Zip, then embedded without JPEG recompression",
+        blurb="Make a PDF from a RAR comic archive using the fastest compatible path.", options=PDF_IMAGE_OPTS,
+        extensions=(".cbr", ".rar"), helper=SEVEN_ZIP, requirements=(SEVEN_ZIP, IMAGEMAGICK),
+        dependencies=("7-Zip", "ImageMagick", "Python standard library"), convert=cbr_to_pdf_convert,
+    ),
+    Converter(
+        id="cbr-cbz", src="CBR", dst="CBZ", category="Comics", kind="comic", glyph="CB", ext=".cbz",
+        title="CBR -> CBZ", sub="repacked without changing comic pages",
+        blurb="Convert a RAR comic archive into the ZIP-based CBZ format.",
+        extensions=(".cbr",), helper=SEVEN_ZIP, dependencies=("7-Zip", "Python standard library"), convert=repack_convert,
+    ),
+    Converter(
+        id="pdf-cbz", src="PDF", dst="CBZ", category="Comics", kind="doc", glyph="PD", ext=".cbz",
+        title="PDF → comic archive", sub="each page rendered as an image",
+        drop_title="Drop .pdf files here", drop_sub="one image per page, packed into a .cbz",
+        blurb="Rasterise a PDF into a comic archive.",
+        options=(Option("dpi", "DPI", "300"), Option("format", "Page format", "jpg")),
+        extensions=(".pdf",), helper=POPPLER_RENDER, dependencies=("Poppler pdftoppm", "Python standard library"), convert=pdf_to_cbz_convert,
+    ),
+    Converter(
+        id="heic-jpg", src="HEIC", dst="JPG", category="Images", kind="image", glyph="IM", ext=".jpg",
+        title="HEIC → JPG", sub="batch photo conversion",
+        drop_title="Drop .heic photos here", drop_sub="drop a whole folder — they convert one after another",
+        blurb="iPhone photos into something everything opens.",
+        options=(Option("quality", "Quality", "85"), Option("resize", "Max edge (px)", "original")),
+        extensions=(".heic", ".heif"), helper=FFMPEG, helper_alternatives=(IMAGEMAGICK,),
+        dependencies=("ffmpeg or ImageMagick",), convert=heic_to_jpg_convert,
+    ),
+    Converter(
+        id="heic-png", src="HEIC", dst="PNG", category="Images", kind="image", glyph="IM", ext=".png",
+        title="HEIC -> PNG", sub="lossless-compatible raster output",
+        blurb="Convert HEIC photos into PNG files.", options=RASTER_IMAGE_OPTS,
+        extensions=(".heic", ".heif"), helper=FFMPEG, helper_alternatives=(IMAGEMAGICK,),
+        dependencies=("ffmpeg or ImageMagick",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="heic-webp", src="HEIC", dst="WebP", category="Images", kind="image", glyph="IM", ext=".webp",
+        title="HEIC -> WebP", sub="smaller web images",
+        blurb="Convert HEIC photos into compact WebP files.", options=RASTER_IMAGE_OPTS,
+        extensions=(".heic", ".heif"), helper=FFMPEG, helper_alternatives=(IMAGEMAGICK,),
+        dependencies=("ffmpeg or ImageMagick",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="heic-pdf", src="HEIC", dst="PDF", category="Images", kind="image", glyph="IM", ext=".pdf",
+        title="HEIC -> PDF", sub="one photo, one PDF page",
+        blurb="Put an HEIC photo into a portable PDF.", options=PDF_IMAGE_OPTS,
+        extensions=(".heic", ".heif"), helper=FFMPEG, helper_alternatives=(IMAGEMAGICK,),
+        dependencies=("ffmpeg or ImageMagick",), convert=raster_image_to_pdf_convert,
+    ),
+    Converter(
+        id="png-webp", src="PNG", dst="WebP", category="Images", kind="image", glyph="IM", ext=".webp",
+        title="PNG → WebP", sub="smaller files, same pixels",
+        drop_title="Drop .png files here", drop_sub="lossless by default",
+        blurb="Shrink PNGs without visible loss.",
+        options=(Option("quality", "Quality", "lossless"), Option("resize", "Max edge (px)", "original")),
+        extensions=(".png",), helper=FFMPEG, helper_alternatives=(IMAGEMAGICK,),
+        dependencies=("ffmpeg or ImageMagick",), convert=png_to_webp_convert,
+    ),
+    Converter(
+        id="png-jpg", src="PNG", dst="JPG", category="Images", kind="image", glyph="IM", ext=".jpg",
+        title="PNG -> JPG", sub="flattened against white",
+        drop_title="Drop .png files here", drop_sub="transparent pixels become white",
+        blurb="Convert a PNG into a widely compatible JPEG photo.", options=RASTER_IMAGE_OPTS,
+        extensions=(".png",), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="jpg-png", src="JPG", dst="PNG", category="Images", kind="image", glyph="IM", ext=".png",
+        title="JPG -> PNG", sub="lossless raster output",
+        drop_title="Drop .jpg or .jpeg files here", drop_sub="one image per output file",
+        blurb="Turn a JPEG into a lossless PNG.", options=(Option("resize", "Max edge (px)", "original"),),
+        extensions=(".jpg", ".jpeg"), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="jpg-webp", src="JPG", dst="WebP", category="Images", kind="image", glyph="IM", ext=".webp",
+        title="JPG -> WebP", sub="smaller web images",
+        drop_title="Drop .jpg or .jpeg files here", drop_sub="quality is adjustable",
+        blurb="Make a compact WebP from a JPEG.", options=RASTER_IMAGE_OPTS,
+        extensions=(".jpg", ".jpeg"), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="webp-jpg", src="WebP", dst="JPG", category="Images", kind="image", glyph="IM", ext=".jpg",
+        title="WebP -> JPG", sub="compatible photo output",
+        drop_title="Drop .webp files here", drop_sub="transparent pixels become white",
+        blurb="Convert WebP images into JPEGs.", options=RASTER_IMAGE_OPTS,
+        extensions=(".webp",), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="webp-png", src="WebP", dst="PNG", category="Images", kind="image", glyph="IM", ext=".png",
+        title="WebP -> PNG", sub="lossless raster output",
+        drop_title="Drop .webp files here", drop_sub="one image per output file",
+        blurb="Turn a WebP into a lossless PNG.", options=(Option("resize", "Max edge (px)", "original"),),
+        extensions=(".webp",), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="webp-pdf", src="WebP", dst="PDF", category="Images", kind="image", glyph="IM", ext=".pdf",
+        title="WebP -> PDF", sub="one image, one PDF page",
+        blurb="Put a WebP image into a portable PDF.", options=PDF_IMAGE_OPTS,
+        extensions=(".webp",), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_to_pdf_convert,
+    ),
+    Converter(
+        id="png-pdf", src="PNG", dst="PDF", category="Images", kind="image", glyph="IM", ext=".pdf",
+        title="PNG â†’ PDF", sub="one image, one PDF page",
+        blurb="Wrap an image in a clean PDF.", options=PDF_IMAGE_OPTS, extensions=(".png",),
+        dependencies=("Python standard library; ImageMagick for incompatible PNGs",), convert=image_to_pdf_convert,
+    ),
+    Converter(
+        id="jpg-pdf", src="JPG", dst="PDF", category="Images", kind="image", glyph="IM", ext=".pdf",
+        title="JPG â†’ PDF", sub="one image, one PDF page",
+        blurb="Turn a photograph into a PDF.", options=PDF_IMAGE_OPTS, extensions=(".jpg", ".jpeg"),
+        dependencies=("Python standard library",), convert=image_to_pdf_convert,
+    ),
+    Converter(
+        id="pdf-jpg", src="PDF", dst="JPG", category="Images", kind="doc", glyph="PD", ext=".jpg",
+        title="PDF → JPG", sub="one page rendered as a photo",
+        drop_title="Drop .pdf files here", drop_sub="page 1 unless you choose another",
+        blurb="Render a single PDF page as a JPEG. For every page at once, use PDF → comic archive.",
+        options=PDF_PAGE_IMAGE_OPTS, extensions=(".pdf",), helper=POPPLER_RENDER,
+        dependencies=("Poppler pdftoppm",), convert=pdf_to_image_convert,
+    ),
+    Converter(
+        id="pdf-png", src="PDF", dst="PNG", category="Images", kind="doc", glyph="PD", ext=".png",
+        title="PDF → PNG", sub="one page rendered losslessly",
+        drop_title="Drop .pdf files here", drop_sub="page 1 unless you choose another",
+        blurb="Render a single PDF page as a lossless PNG. For every page at once, use PDF → comic archive.",
+        options=PDF_PAGE_IMAGE_OPTS, extensions=(".pdf",), helper=POPPLER_RENDER,
+        dependencies=("Poppler pdftoppm",), convert=pdf_to_image_convert,
+    ),
+    Converter(
+        id="gif-jpg", src="GIF", dst="JPG", category="Images", kind="image", glyph="IM", ext=".jpg",
+        title="GIF → JPG", sub="first frame, flattened against white",
+        drop_title="Drop .gif files here", drop_sub="animations keep their first frame only",
+        blurb="Take the opening frame of a GIF as a JPEG.", options=RASTER_IMAGE_OPTS,
+        extensions=(".gif",), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="gif-png", src="GIF", dst="PNG", category="Images", kind="image", glyph="IM", ext=".png",
+        title="GIF → PNG", sub="first frame, transparency kept",
+        drop_title="Drop .gif files here", drop_sub="animations keep their first frame only",
+        blurb="Take the opening frame of a GIF as a lossless PNG.",
+        options=(Option("resize", "Max edge (px)", "original"),),
+        extensions=(".gif",), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="gif-pdf", src="GIF", dst="PDF", category="Images", kind="image", glyph="IM", ext=".pdf",
+        title="GIF → PDF", sub="first frame, one PDF page",
+        blurb="Put the opening frame of a GIF into a PDF.", options=PDF_IMAGE_OPTS,
+        extensions=(".gif",), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_to_pdf_convert,
+    ),
+    Converter(
+        id="avif-jpg", src="AVIF", dst="JPG", category="Images", kind="image", glyph="IM", ext=".jpg",
+        title="AVIF → JPG", sub="compatible photo output",
+        drop_title="Drop .avif files here", drop_sub="transparent pixels become white",
+        blurb="Convert AVIF images into JPEGs everything opens.", options=RASTER_IMAGE_OPTS,
+        extensions=(".avif",), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="avif-png", src="AVIF", dst="PNG", category="Images", kind="image", glyph="IM", ext=".png",
+        title="AVIF → PNG", sub="lossless raster output",
+        drop_title="Drop .avif files here", drop_sub="one image per output file",
+        blurb="Turn an AVIF into a lossless PNG.",
+        options=(Option("resize", "Max edge (px)", "original"),),
+        extensions=(".avif",), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="avif-pdf", src="AVIF", dst="PDF", category="Images", kind="image", glyph="IM", ext=".pdf",
+        title="AVIF → PDF", sub="one image, one PDF page",
+        blurb="Put an AVIF image into a portable PDF.", options=PDF_IMAGE_OPTS,
+        extensions=(".avif",), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_to_pdf_convert,
+    ),
+    Converter(
+        id="bmp-jpg", src="BMP", dst="JPG", category="Images", kind="image", glyph="IM", ext=".jpg",
+        title="BMP → JPG", sub="much smaller, same picture",
+        drop_title="Drop .bmp files here", drop_sub="uncompressed bitmaps shrink a lot",
+        blurb="Compress an uncompressed bitmap into a JPEG.", options=RASTER_IMAGE_OPTS,
+        extensions=(".bmp",), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="bmp-png", src="BMP", dst="PNG", category="Images", kind="image", glyph="IM", ext=".png",
+        title="BMP → PNG", sub="smaller with nothing lost",
+        drop_title="Drop .bmp files here", drop_sub="lossless, just packed properly",
+        blurb="Pack a bitmap into a lossless PNG.",
+        options=(Option("resize", "Max edge (px)", "original"),),
+        extensions=(".bmp",), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="bmp-pdf", src="BMP", dst="PDF", category="Images", kind="image", glyph="IM", ext=".pdf",
+        title="BMP → PDF", sub="one image, one PDF page",
+        blurb="Put a bitmap into a portable PDF.", options=PDF_IMAGE_OPTS,
+        extensions=(".bmp",), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_to_pdf_convert,
+    ),
+    Converter(
+        id="tiff-jpg", src="TIFF", dst="JPG", category="Images", kind="image", glyph="IM", ext=".jpg",
+        title="TIFF → JPG", sub="first page, flattened against white",
+        drop_title="Drop .tif or .tiff files here", drop_sub="multi-page scans keep their first page",
+        blurb="Turn a scan into a JPEG that opens anywhere.", options=RASTER_IMAGE_OPTS,
+        extensions=(".tiff", ".tif"), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="tiff-png", src="TIFF", dst="PNG", category="Images", kind="image", glyph="IM", ext=".png",
+        title="TIFF → PNG", sub="first page, nothing lost",
+        drop_title="Drop .tif or .tiff files here", drop_sub="multi-page scans keep their first page",
+        blurb="Convert a scan into a lossless PNG.",
+        options=(Option("resize", "Max edge (px)", "original"),),
+        extensions=(".tiff", ".tif"), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="tiff-pdf", src="TIFF", dst="PDF", category="Images", kind="image", glyph="IM", ext=".pdf",
+        title="TIFF → PDF", sub="first page, one PDF page",
+        blurb="Put a scanned page into a portable PDF.", options=PDF_IMAGE_OPTS,
+        extensions=(".tiff", ".tif"), helper=IMAGEMAGICK, helper_alternatives=(FFMPEG,),
+        dependencies=("ImageMagick or ffmpeg",), convert=raster_image_to_pdf_convert,
+    ),
+    Converter(
+        id="svg-png", src="SVG", dst="PNG", category="Images", kind="image", glyph="IM", ext=".png",
+        title="SVG → PNG", sub="rendered at any scale",
+        drop_title="Drop .svg files here", drop_sub="vector rendered to raster",
+        blurb="Render vectors at 1x, 2x or 3x.",
+        options=(Option("scale", "Scale", "2x"), Option("bg", "Background", "transparent")),
+        extensions=(".svg",), helper=IMAGEMAGICK, dependencies=("ImageMagick",), convert=svg_to_png_convert,
+    ),
+    Converter(
+        id="svg-jpg", src="SVG", dst="JPG", category="Images", kind="image", glyph="IM", ext=".jpg",
+        title="SVG -> JPG", sub="rasterised photo output",
+        blurb="Render a vector image into a compatible JPEG.", options=RASTER_IMAGE_OPTS,
+        extensions=(".svg",), helper=IMAGEMAGICK, dependencies=("ImageMagick",), convert=raster_image_convert,
+    ),
+    Converter(
+        id="svg-pdf", src="SVG", dst="PDF", category="Images", kind="image", glyph="IM", ext=".pdf",
+        title="SVG -> PDF", sub="rendered vector page",
+        blurb="Put a vector image into a portable PDF.", options=PDF_IMAGE_OPTS,
+        extensions=(".svg",), helper=IMAGEMAGICK, dependencies=("ImageMagick",), convert=svg_to_pdf_convert,
+    ),
+    Converter(
+        id="raw-dng", src="RAW", dst="DNG", category="Images", kind="image", glyph="IM", ext=".dng",
+        blurb="Camera RAW into a standard negative.", extensions=(".cr2", ".nef", ".arw"), helper=RAW_TOOLS,
+        dependencies=("Future: LibRaw or Exiv2",),
+    ),
+    Converter(
+        id="docx-pdf", src="DOCX", dst="PDF", category="Documents", kind="doc", glyph="DO", ext=".pdf",
+        title="DOCX → PDF", sub="layout preserved, fonts embedded",
+        drop_title="Drop .docx files here", drop_sub="large files are fine — they convert one at a time",
+        blurb="Word files into a fixed page.",
+        extensions=(".docx", ".doc", ".odt"), helper=LIBREOFFICE, dependencies=("LibreOffice",), convert=docx_to_pdf_convert,
+    ),
+    Converter(
+        id="docx-epub", src="DOCX", dst="EPUB", category="Documents", kind="doc", glyph="DO", ext=".epub",
+        title="Document â†’ EPUB", sub="reflowable e-book export",
+        drop_title="Drop .docx files here", drop_sub="DOC, DOCX and ODT are exported by LibreOffice",
+        blurb="Make a reflowable EPUB from a document.", extensions=(".docx", ".doc", ".odt"),
+        helper=LIBREOFFICE, dependencies=("LibreOffice",), convert=docx_to_epub_convert,
+    ),
+    Converter(
+        id="docx-txt", src="DOCX", dst="TXT", category="Documents", kind="doc", glyph="DO", ext=".txt",
+        title="Document â†’ text", sub="plain text export",
+        blurb="Pull readable text out of a document.", extensions=(".docx", ".doc", ".odt"),
+        helper=LIBREOFFICE, dependencies=("LibreOffice",), convert=docx_to_txt_convert,
+    ),
+    Converter(
+        id="md-pdf", src="MD", dst="PDF", category="Documents", kind="doc", glyph="DO", ext=".pdf",
+        blurb="Notes into a printable page.", extensions=(".md",), helper=PANDOC,
+        requirements=(PANDOC, PDF_RENDERER),
+        dependencies=("Future: Pandoc + a PDF renderer",),
+    ),
+    Converter(
+        id="pdf-txt", src="PDF", dst="TXT", category="Documents", kind="doc", glyph="DO", ext=".txt",
+        title="PDF → text", sub="plain text extraction",
+        drop_title="Drop .pdf files here", drop_sub="text layer only — scans need OCR",
+        blurb="Pull plain text out of a PDF.",
+        extensions=(".pdf",), helper=POPPLER_TEXT, dependencies=("Poppler pdftotext", "Python standard library"), convert=pdf_to_txt_convert,
+    ),
+    Converter(
+        id="pdf-md", src="PDF", dst="MD", category="Documents", kind="doc", glyph="DO", ext=".md",
+        title="PDF → Markdown", sub="layout-aware local extraction",
+        drop_title="Drop .pdf files here", drop_sub="native-text PDFs become structured Markdown; scans need OCR",
+        blurb="Extract headings, lists, links, tables and reading order locally.",
+        extensions=(".pdf",), dependencies=("Node.js + Firecrawl pdf-inspector (optional)",), convert=pdf_to_md_convert,
+    ),
+    Converter(
+        id="pdf-epub", src="PDF", dst="EPUB", category="Documents", kind="doc", glyph="DO", ext=".epub",
+        title="PDF -> EPUB", sub="reflowable ebook export",
+        blurb="Convert a PDF into an EPUB using Calibre.", extensions=(".pdf",), helper=CALIBRE,
+        dependencies=("Calibre ebook-convert",), convert=calibre_convert,
+    ),
+    Converter(
+        id="epub-cbz", src="EPUB", dst="CBZ", category="Ebooks", kind="doc", glyph="EB", ext=".cbz",
+        title="EPUB → comic archive", sub="images pulled back out in reading order",
+        drop_title="Drop .epub files here", drop_sub="only the image resources are packed",
+        blurb="Go back the other way.",
+        extensions=(".epub",), convert=epub_to_cbz_convert,
+    ),
+    Converter(
+        id="epub-mobi", src="EPUB", dst="MOBI", category="Ebooks", kind="doc", glyph="EB", ext=".mobi",
+        title="EPUB â†’ MOBI", sub="for older Kindles",
+        blurb="Convert an EPUB for older Kindle devices.", extensions=(".epub",), helper=CALIBRE,
+        dependencies=("Calibre ebook-convert",), convert=calibre_convert,
+    ),
+    Converter(
+        id="epub-txt", src="EPUB", dst="TXT", category="Ebooks", kind="doc", glyph="EB", ext=".txt",
+        title="EPUB -> TXT", sub="plain text extraction",
+        blurb="Extract readable text from an EPUB.", extensions=(".epub",),
+        dependencies=("Python standard library",), convert=epub_to_txt_convert,
+    ),
+    Converter(
+        id="mobi-epub", src="MOBI", dst="EPUB", category="Ebooks", kind="doc", glyph="EB", ext=".epub",
+        title="MOBI → EPUB", sub="open ebook format",
+        blurb="Convert a MOBI book into an EPUB using Calibre.", extensions=(".mobi",), helper=CALIBRE,
+        dependencies=("Calibre ebook-convert",), convert=calibre_convert,
+    ),
+    Converter(
+        id="mobi-pdf", src="MOBI", dst="PDF", category="Ebooks", kind="doc", glyph="EB", ext=".pdf",
+        title="MOBI → PDF", sub="printable ebook copy",
+        blurb="Make a PDF from a MOBI book using Calibre.", extensions=(".mobi",), helper=CALIBRE,
+        dependencies=("Calibre ebook-convert",), convert=calibre_convert,
+    ),
+    Converter(
+        id="azw3-epub", src="AZW3", dst="EPUB", category="Ebooks", kind="doc", glyph="EB", ext=".epub",
+        title="AZW3 â†’ EPUB", sub="open Kindle books",
+        blurb="Turn a Kindle book into open EPUB.", extensions=(".azw3",), helper=CALIBRE,
+        dependencies=("Calibre ebook-convert",), convert=calibre_convert,
+    ),
+    Converter(
+        id="azw3-pdf", src="AZW3", dst="PDF", category="Ebooks", kind="doc", glyph="EB", ext=".pdf",
+        title="AZW3 -> PDF", sub="printable Kindle export",
+        blurb="Make a PDF from a Kindle AZW3 book.", extensions=(".azw3",), helper=CALIBRE,
+        dependencies=("Calibre ebook-convert",), convert=calibre_convert,
+    ),
+    Converter(
+        id="epub-pdf", src="EPUB", dst="PDF", category="Ebooks", kind="doc", glyph="EB", ext=".pdf",
+        title="EPUB â†’ PDF", sub="fixed-layout copy",
+        blurb="Make a printable PDF from an image-only EPUB.", extensions=(".epub",),
+        dependencies=("Python standard library; Calibre fallback",), convert=epub_to_pdf_convert,
+    ),
+    Converter(
+        id="rar-zip", src="RAR", dst="ZIP", category="Archives", kind="doc", glyph="AR", ext=".zip",
+        title="RAR → ZIP", sub="repacked, contents untouched",
+        drop_title="Drop .rar files here", drop_sub="unpacked with 7-Zip and re-zipped",
+        blurb="Repack RAR as plain ZIP.",
+        extensions=(".rar",), helper=SEVEN_ZIP, dependencies=("7-Zip", "Python standard library"), convert=repack_convert,
+    ),
+    Converter(
+        id="rar-cbz", src="RAR", dst="CBZ", category="Comics", kind="comic", glyph="CB", ext=".cbz",
+        title="RAR -> CBZ", sub="repacked as a comic archive",
+        blurb="Turn a RAR-packed comic into a CBZ archive.",
+        extensions=(".rar",), helper=SEVEN_ZIP, dependencies=("7-Zip", "Python standard library"), convert=repack_convert,
+    ),
+    Converter(
+        id="7z-zip", src="7Z", dst="ZIP", category="Archives", kind="doc", glyph="AR", ext=".zip",
+        title="7z → ZIP", sub="repacked for wider compatibility",
+        drop_title="Drop .7z files here", drop_sub="unpacked with 7-Zip and re-zipped",
+        blurb="Wider compatibility.",
+        extensions=(".7z",), helper=SEVEN_ZIP, dependencies=("7-Zip", "Python standard library"), convert=repack_convert,
+    ),
+    Converter(
+        id="7z-cbz", src="7Z", dst="CBZ", category="Comics", kind="comic", glyph="CB", ext=".cbz",
+        title="7Z -> CBZ", sub="repacked as a comic archive",
+        blurb="Turn a 7Z-packed comic into a CBZ archive.",
+        extensions=(".7z",), helper=SEVEN_ZIP, dependencies=("7-Zip", "Python standard library"), convert=repack_convert,
+    ),
+    Converter(
+        id="mov-mp4", src="MOV", dst="MP4", category="Video", kind="doc", glyph="VI", ext=".mp4",
+        title="MOV → MP4", sub="stream copy when possible",
+        drop_title="Drop .mov files here", drop_sub="copied without re-encoding where the codecs allow",
+        blurb="Re-wrap or re-encode video.",
+        options=(Option("codec", "Codec", "copy"), Option("crf", "Quality (CRF)", "20")),
+        extensions=(".mov",), helper=FFMPEG, dependencies=("ffmpeg",), convert=mov_to_mp4_convert,
+    ),
+
+    # Creator — many items into one container. These claim no extensions, so a
+    # dropped file can never route to them; the Creator asks for them by id.
+    Converter(
+        id="items-zip", src="Items", dst="ZIP", category="Archives", kind="doc", glyph="ZI", ext=".zip",
+        title="Items → ZIP", sub="one archive from everything on the list",
+        blurb="Pack the chosen files and folders into a ZIP archive.",
+        options=CREATE_ARCHIVE_OPTS,
+        dependencies=("Python standard library",), multi=True, convert=items_to_zip_convert,
+    ),
+    Converter(
+        id="items-cbz", src="Items", dst="CBZ", category="Comics", kind="comic", glyph="CB", ext=".cbz",
+        title="Items → CBZ", sub="a comic archive in reading order",
+        blurb="Pack images into a CBZ comic archive.",
+        options=CREATE_COMIC_OPTS,
+        dependencies=("Python standard library",), multi=True, convert=items_to_zip_convert,
+    ),
+    Converter(
+        id="items-tgz", src="Items", dst="TGZ", category="Archives", kind="doc", glyph="TG", ext=".tar.gz",
+        title="Items → TAR.GZ", sub="gzip-compressed tar",
+        blurb="Pack the chosen files and folders into a gzipped tar archive.",
+        options=CREATE_ARCHIVE_OPTS,
+        dependencies=("Python standard library",), multi=True, convert=items_to_tgz_convert,
+    ),
+    Converter(
+        id="items-7z", src="Items", dst="7Z", category="Archives", kind="doc", glyph="7Z", ext=".7z",
+        title="Items → 7Z", sub="7-Zip's own format",
+        blurb="Pack the chosen files and folders into a 7z archive.",
+        options=CREATE_ARCHIVE_OPTS + (CREATE_PASSWORD,),
+        helper=SEVEN_ZIP, dependencies=("7-Zip",), multi=True, convert=items_to_7z_convert,
+    ),
+    Converter(
+        id="items-cb7", src="Items", dst="CB7", category="Comics", kind="comic", glyph="CB", ext=".cb7",
+        title="Items → CB7", sub="a 7z-packed comic archive",
+        blurb="Pack images into a CB7 comic archive.",
+        options=CREATE_COMIC_OPTS + (CREATE_PASSWORD,),
+        helper=SEVEN_ZIP, dependencies=("7-Zip",), multi=True, convert=items_to_7z_convert,
+    ),
+    Converter(
+        id="items-epub", src="Items", dst="EPUB", category="Comics", kind="comic", glyph="EP", ext=".epub",
+        title="Items → EPUB", sub="fixed-layout, one page per image",
+        blurb="Build a fixed-layout EPUB from images.",
+        options=CREATE_BOOK_OPTS,
+        multi=True, convert=items_to_epub_convert,
+    ),
+    Converter(
+        id="items-pdf", src="Items", dst="PDF", category="Documents", kind="doc", glyph="PD", ext=".pdf",
+        title="Items → PDF", sub="JPEG and PNG pages embedded without re-encoding",
+        blurb="Build a PDF from images.",
+        options=CREATE_PAGE_OPTS,
+        multi=True, convert=items_to_pdf_convert,
+    ),
+    Converter(
+        id="items-tiff", src="Items", dst="TIFF", category="Documents", kind="image", glyph="TI", ext=".tiff",
+        title="Items → multi-page TIFF", sub="one frame per image",
+        blurb="Build a single multi-page TIFF from images.",
+        options=CREATE_TIFF_OPTS,
+        helper=IMAGEMAGICK, dependencies=("ImageMagick",), multi=True, convert=items_to_tiff_convert,
+    ),
+]
+
+REGISTRY = Registry(CONVERTERS)
+
+__all__ = ["TITLE_OPTS", "PDF_IMAGE_OPTS", "RASTER_IMAGE_OPTS", "PDF_PAGE_IMAGE_OPTS", "CREATE_COMPRESS", "CREATE_FLATTEN", "CREATE_RENUMBER", "CREATE_COMICINFO", "CREATE_PASSWORD", "CREATE_ARCHIVE_OPTS", "CREATE_COMIC_OPTS", "CREATE_BOOK_OPTS", "CREATE_PAGE_OPTS", "CREATE_TIFF_OPTS", "CONVERTERS", "REGISTRY"]

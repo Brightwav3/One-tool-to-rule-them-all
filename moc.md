@@ -10,7 +10,7 @@ are not uploaded to a service.
 | If you want to… | Start with | Then follow |
 | --- | --- | --- |
 | Run the desktop app | `app/main.js` | Electron starts `converter/server.py`, then loads the UI from the local API server. |
-| Add or change a conversion | `converter/formats.py` | The `CONVERTERS` list feeds the registry, UI capabilities, HTTP API, and agent CLI. |
+| Add or change a conversion | `converter/formats_registry.py` and the matching `converter/formats_*.py` module | Implementations live in focused modules; declarations feed the registry, UI, API, and agent CLI. |
 | Change converter readiness or helper discovery | `converter/registry.py` | `Helper`, `Converter`, and `Registry` compute `ready`, `helper`, and `soon` states. |
 | Change queue behaviour or the HTTP API | `converter/server.py` | `Converter` owns jobs and the single worker; `Handler` maps `/api/*` routes. |
 | Change the conversion screen | `converter/ui/workspaces/convert/` | Rendering is in `convert-view.js`; queue-specific state/selectors are nearby. |
@@ -30,7 +30,17 @@ are not uploaded to a service.
 ├── converter/                   Local Python conversion backend
 │   ├── server.py                Queue, persistence stores, local JSON API, static UI serving
 │   ├── registry.py              Converter data model and external-helper discovery
-│   ├── formats.py               Converter declarations and conversion implementations
+│   ├── formats.py               Compatibility facade for existing imports
+│   ├── formats_registry.py      Converter declarations and shared registry
+│   ├── formats_common.py        Shared helpers and archive/image primitives
+│   ├── formats_archives.py      Archive repacking routes
+│   ├── formats_comics.py        Comic archive and PDF conversion routes
+│   ├── formats_creator.py       Multi-file container writers
+│   ├── formats_documents.py     Document and ebook conversions
+│   ├── formats_images.py        Image conversion routes
+│   ├── formats_pdf_convert.py   PDF conversion routes
+│   ├── formats_pdf_extract.py   PDF text and Markdown extraction
+│   ├── formats_pdf_writer.py    Direct PDF output
 │   ├── cbz_to_epub.py           Standalone stdlib CBZ-to-EPUB converter and CLI
 │   ├── agent_tools.py           Machine-readable command-line client for the local API
 │   ├── pdf_to_md.cjs            Persistent Node/pdf-inspector worker protocol
@@ -40,7 +50,7 @@ are not uploaded to a service.
 │   └── ui/                      Browser smoke/trace scripts and recorded baselines
 ├── docs/                        UI decomposition notes, progress log, and visual baselines
 ├── README.md                    User-facing installation, capabilities, and operational guide
-├── WORKPLAN.md                  Design/implementation plan for Creator and Editor
+├── WORKPLAN.md                  Historical Creator/Editor implementation plan
 └── LICENSE                      MIT license
 ```
 
@@ -53,9 +63,9 @@ flowchart LR
   P -->|window.appWindow| U[UI renderer\nconverter/ui]
   U -->|fetch /api/*| S
   A[agent_tools.py] -->|HTTP JSON| S
-  S --> R[Registry\nregistry.py + formats.py]
+  S --> R[Registry\nregistry.py + formats_registry.py]
   S --> Q[single worker queue]
-  Q --> C[Converter functions\nformats.py / cbz_to_epub.py]
+  Q --> C[Converter functions\nformats_*.py / cbz_to_epub.py]
   C --> H[optional local helpers\n7-Zip, Poppler, ffmpeg, etc.]
   S --> D[local history/settings files]
 ```
@@ -99,28 +109,26 @@ Do not hard-code availability in the UI or the API. Add the helper requirement
 and implementation to the registry data, then let every caller consume the
 computed state.
 
+### `converter/formats_registry.py` and `converter/formats_*.py`
+
+`formats_registry.py` declares the available routes and creates the shared
+`REGISTRY`. Implementations are split by responsibility: comics, archives,
+documents, images, creator outputs, shared helpers, and separate PDF convert,
+extract, and writer modules. Each converter function receives a source, output
+path, option dictionary, and progress callback. It reports progress through
+that callback and does not update UI state directly.
+
 ### `converter/formats.py`
 
-This is the main conversion catalogue and implementation module. It contains
-the `CONVERTERS` list, then creates the shared `REGISTRY` from it. Most work on
-a file type belongs here:
-
-- archive/comic routes and safe archive handling;
-- direct PDF paths for compatible JPEG/PNG data and bounded fallbacks;
-- PDF page rendering, image/document/ebook conversion helpers;
-- creator/container writers for ZIP, TGZ, 7Z, EPUB, PDF, TIFF, and comics;
-- the persistent PDF-to-Markdown Node worker wrapper;
-- atomic-output and partial-output cleanup utilities.
-
-Each converter function receives a source, output path, option dictionary, and
-progress callback. A converter must report progress through that callback and
-must not update UI state directly.
+This small compatibility facade re-exports the focused modules so older imports
+continue to work. New converter code belongs in the matching focused module;
+new route declarations belong in `formats_registry.py`.
 
 ### `converter/cbz_to_epub.py`
 
 This is the dependency-free, importable CBZ-to-EPUB implementation. It safely
 lists archive images, sorts pages naturally, writes a valid EPUB atomically,
-and provides a direct command-line interface. `formats.py` uses it for the
+and provides a direct command-line interface. `formats_comics.py` uses it for the
 registered CBZ route rather than duplicating its archive logic.
 
 ### `converter/server.py`
@@ -167,7 +175,7 @@ from `--url` or `ONETOOL_URL`.
 ### `converter/pdf_to_md.cjs`
 
 This is the Node-side worker for PDF-to-Markdown, backed by
-`@firecrawl/pdf-inspector`. `formats.py` keeps one persistent worker process
+`@firecrawl/pdf-inspector`. `formats_documents.py` keeps one persistent worker process
 for batch work, serialises calls to it, restarts it once after a crash, and
 atomically commits the resulting Markdown output.
 
@@ -272,7 +280,7 @@ Creator is a separate workspace because it builds a new file from multiple
 items rather than converting one input. The UI probes selected items through
 `/api/probe`, chooses a `multi` converter, and submits `/api/create`. The
 server creates one multi-source `Job`; the normal queue then runs its converter
-from `formats.py` and records the outcome in the same history store.
+from `formats_creator.py` and records the outcome in the same history store.
 
 #### Desktop-only action
 
@@ -333,8 +341,8 @@ visual screenshots for checks that need the actual Electron window.
 
 ### Add a new one-file conversion
 
-1. Implement the converter/probe function in `converter/formats.py`.
-2. Add a `Converter(...)` declaration to `CONVERTERS`, including source
+1. Implement the converter/probe function in the matching `converter/formats_*.py` module.
+2. Add a `Converter(...)` declaration to `CONVERTERS` in `formats_registry.py`, including source
    extensions, output extension, required helper, options, and conversion
    callback.
 3. Add or reuse a `Helper` in `converter/registry.py` when an external tool is
@@ -346,7 +354,7 @@ visual screenshots for checks that need the actual Electron window.
 
 ### Add a new Creator output
 
-1. Add the multi-source writer and options in `converter/formats.py`.
+1. Add the multi-source writer and options in `converter/formats_creator.py`.
 2. Declare the converter with `multi=True` so it is grouped into Creator
    capabilities rather than ordinary Convert routes.
 3. Test `/api/probe` and `/api/create` behaviour in `tests/test_creator.py`.
@@ -373,5 +381,5 @@ visual screenshots for checks that need the actual Electron window.
   architectural work.
 - `docs/ui-inventory.md` is the baseline inventory of UI actions, globals, and
   functions used by the decomposition effort.
-- `WORKPLAN.md` records the design and implementation order for Creator and
-  Editor work.
+- `WORKPLAN.md` preserves the historical Creator and Editor implementation
+  plan; its current status is summarized at the top of the file.

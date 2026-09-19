@@ -58,6 +58,27 @@ class ServerUxTests(unittest.TestCase):
             self.assertTrue(queue.jobs[second.id].out.endswith("two.epub"))
             self.assertGreater(queue.snapshot()[0]["sourceSize"], 0)
 
+    def test_cbz_pdf_only_needs_imagemagick_for_non_direct_image_types(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            jpeg_cbz = root / "jpeg.cbz"
+            with zipfile.ZipFile(jpeg_cbz, "w") as archive:
+                archive.writestr("page-1.jpg", b"jpeg")
+            webp_cbz = root / "webp.cbz"
+            with zipfile.ZipFile(webp_cbz, "w") as archive:
+                archive.writestr("page-1.webp", b"webp")
+
+            converter = server.REGISTRY.get("cbz-pdf")
+            with mock.patch.object(server.formats, "find_magick", return_value=None):
+                jpeg_job = server.Job("1", jpeg_cbz, converter, output_folder=root)
+                webp_job = server.Job("2", webp_cbz, converter, output_folder=root)
+
+            self.assertEqual(jpeg_job.status, "idle")
+            self.assertEqual(jpeg_job.units, 1)
+            self.assertEqual(webp_job.status, "error")
+            self.assertEqual(webp_job.error_title, "ImageMagick isn't installed")
+            self.assertIn("needs ImageMagick", webp_job.error)
+
     def test_rename_changes_the_output_and_keeps_the_route_extension(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

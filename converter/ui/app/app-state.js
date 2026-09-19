@@ -31,7 +31,7 @@ let panelWidth = 308, panelResizeSession = null;
    in localStorage rather than in the backend's per-file state. Helpers is a
    category in here now; the installer list is still driven by the live registry. */
 const SETTINGS_STORAGE = 'one-tool.settings';
-const APP_VERSION = '3.2';
+const APP_VERSION = '2.2.1';
 let settingsOpen=false, setTab='general', setQuery='', setVals={}, setOpenSel=null, setOpenHelper=null, setCopied=null;
 let setCopiedTimer=null, installingHelper=null;
 setVals = readSettings();

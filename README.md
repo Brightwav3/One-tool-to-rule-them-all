@@ -1,308 +1,272 @@
 <div align="center">
 
-# One tool to rule them all
+<img src="app/build/icon.png" width="128" height="128" alt="One Tool icon">
 
-**Files in. The format you actually wanted out. Nothing leaves your machine.**
+# One Tool
 
-[Download the Windows installer](https://github.com/Brightwav3/One-tool-to-rule-them-all/releases/download/v2.2.1/OneTool-Web-Setup-2.2.1.exe)
+**Local-first file conversion for comics, images, documents, ebooks, archives and video.**
 
-One Tool is a local-first Electron app and conversion backend. The desktop UI, queue, history, JSON API,
-conversion engines, and agent-facing command-line tools all run on your machine. No cloud service is
-required and files are never uploaded.
+Files in. The format you actually wanted out. Nothing leaves your machine.
+
+[![Release](https://img.shields.io/github/v/release/Brightwav3/One-tool-to-rule-them-all?include_prereleases&label=release)](https://github.com/Brightwav3/One-tool-to-rule-them-all/releases)
+[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-555)](#install)
+[![Electron](https://img.shields.io/badge/shell-Electron-47848F?logo=electron&logoColor=white)](app/package.json)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](#requirements)
+[![Python deps: none](https://img.shields.io/badge/python%20deps-stdlib%20only-2ea44f)](converter)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/Brightwav3/One-tool-to-rule-them-all?style=flat&logo=github)](https://github.com/Brightwav3/One-tool-to-rule-them-all/stargazers)
+
+[Features](#features) · [Conversions](#supported-conversions) · [Install](#install) · [API & CLI](#api-and-command-line) · [Architecture](#architecture) · [Privacy](#privacy)
 
 </div>
 
----
-
-## Install
-
-The app needs **Python 3.10 or newer**, **Node.js 18 or newer**, and **npm**. Python dependencies are
-standard-library only.
-
-Install the Electron dependencies:
-
-```bash
-cd app
-npm install
-cd ..
-```
-
-PDF → Markdown additionally needs **Node 18+** and the optional worker dependency:
-
-```bash
-cd converter
-npm install
-cd ..
-```
+<p align="center">
+  <img src="docs/baseline/convert-done.png" width="820" alt="One Tool convert queue with four finished PDF to CBZ conversions and the file inspector">
+</p>
 
 ---
 
 ## Why
 
-Every file conversion sends you somewhere different: a sketchy upload site for HEIC photos, a 200 MB
-Java app for comics, a command-line incantation for PDFs that you look up every single time. All of
-them want your files on their server.
+Every file conversion sends you somewhere different: an upload site for HEIC photos, a 200 MB Java app
+for comics, a command-line incantation for PDFs you look up every time. Most of them want your files on
+their server.
 
-This is one window that does all of it, on your machine, and tells you the truth about what it can do.
+One Tool is a single window that handles all of it locally, and tells you exactly what it can and
+cannot do on your machine right now.
 
-## Editor status
+## Features
 
-The PDF Editor is temporarily hidden from the main navigation while conversion work continues. Its code remains in the repository, but it is not part of the visible workflow in this build.
+- 🗂️ **Mixed queue.** Drop a CBZ, three HEICs and a PDF at once. Each file is routed by extension and labelled with its conversion.
+- ✅ **Honest readiness.** Every route's state is computed from what's installed: **Ready**, **Needs a helper** (with the exact install command for your platform), or **Soon**. Nothing is offered that can't run.
+- 📈 **Live progress.** Page-by-page where the format allows it, not a spinner.
+- 🎛️ **Per-file options.** Title and creator for comics, quality and max edge for photos, DPI for PDFs — whatever each converter declares.
+- ✏️ **Rename before converting.** From the inspector, the context menu, or by double-clicking a row. The extension follows the route; your source file is never touched.
+- 🧯 **Isolated errors.** A bad file gets its own message on its own card. The queue keeps going.
+- 🌊 **Streaming.** A 400 MB archive never sits in RAM; pages are copied one at a time.
+- 🕘 **Session history.** Every run is recorded, with an operation to put its files back in the queue.
+- 🤖 **Agent-ready.** A JSON CLI and local HTTP API expose the same queue to scripts and AI agents.
 
-## What it converts
+## Supported conversions
 
-Sixty-five conversion routes are declared. **Sixty-three are implemented**; the two remaining routes are marked as coming soon.
+**65 routes are declared; 63 are implemented.** The remaining two are clearly marked as coming soon.
 
-| | Conversion | Needs |
+| Category | Conversion | Needs |
 | --- | --- | --- |
 | **Comics** | CBZ → EPUB | *nothing* |
 | | CBR → EPUB | 7-Zip |
-| | CBZ → PDF | Python standard library; ImageMagick fallback |
-| | CBR → PDF | 7-Zip + Python standard library; ImageMagick fallback |
+| | CBZ → PDF | Python stdlib; ImageMagick fallback |
+| | CBR → PDF | 7-Zip + Python stdlib; ImageMagick fallback |
 | | CBR → CBZ | 7-Zip |
-| | PDF → CBZ | Python standard library for safe JPEG extraction; Poppler fallback |
+| | PDF → CBZ | Python stdlib for safe JPEG extraction; Poppler fallback |
 | | RAR / 7z → CBZ | 7-Zip |
 | **Images** | HEIC → JPG / PNG / WebP / PDF | ffmpeg or ImageMagick |
 | | PNG → WebP / JPG / PDF | ffmpeg or ImageMagick; direct PDF writer where possible |
 | | JPG → PNG / WebP / PDF | ffmpeg or ImageMagick; direct PDF writer where possible |
 | | WebP → JPG / PNG / PDF | ffmpeg or ImageMagick; direct PDF writer where possible |
-| | PDF → JPG / PNG | Poppler — one chosen page, whole documents go to CBZ |
+| | PDF → JPG / PNG | Poppler — one chosen page (whole documents go to CBZ) |
 | | GIF → JPG / PNG / PDF | ImageMagick or ffmpeg — first frame |
 | | AVIF → JPG / PNG / PDF | ImageMagick or ffmpeg |
 | | BMP → JPG / PNG / PDF | ImageMagick or ffmpeg |
 | | TIFF → JPG / PNG / PDF | ImageMagick or ffmpeg — first page |
 | | SVG → PNG / JPG / PDF | ImageMagick |
 | | RAW → DNG | *coming soon* |
-| **Documents** | DOC / DOCX / ODT → PDF | LibreOffice |
-| | DOC / DOCX / ODT → EPUB | LibreOffice |
-| | DOC / DOCX / ODT → TXT | LibreOffice |
+| **Documents** | DOC / DOCX / ODT → PDF / EPUB / TXT | LibreOffice |
 | | PDF → TXT | Poppler |
-| | PDF -> Markdown | Firecrawl pdf-inspector, optional Node.js worker |
+| | PDF → Markdown | Node.js + Firecrawl pdf-inspector |
 | | MD → PDF | *coming soon* |
 | **Ebooks** | EPUB → CBZ | *nothing* |
 | | EPUB → MOBI | Calibre |
-| | EPUB → TXT | Python standard library |
-| | EPUB → PDF | Python standard library for image-only EPUBs; Calibre fallback |
-| | MOBI → EPUB / PDF | Calibre |
-| | AZW3 → EPUB / PDF | Calibre |
-| **Archives** | RAR → ZIP | 7-Zip |
-| | 7z → ZIP | 7-Zip |
-| | Creator items → ZIP / TGZ / 7z | Python standard library; 7-Zip for 7z |
-| **Creator** | Items → CBZ / CB7 / EPUB / PDF / TIFF | Python standard library; 7-Zip or ImageMagick where needed |
+| | EPUB → TXT | Python stdlib |
+| | EPUB → PDF | Python stdlib for image-only EPUBs; Calibre fallback |
+| | MOBI / AZW3 → EPUB / PDF | Calibre |
+| **Archives** | RAR / 7z → ZIP | 7-Zip |
+| | Creator items → ZIP / TGZ / 7z | Python stdlib; 7-Zip for 7z |
+| **Creator** | Items → CBZ / CB7 / EPUB / PDF / TIFF | Python stdlib; 7-Zip or ImageMagick where needed |
 | **Video** | MOV → MP4 | ffmpeg |
 
-### Dependency matrix
+The live registry is the source of truth for each route's current helper requirements.
 
-This matrix summarizes key runtime dependencies. The live registry is the source of truth for each route's current helper requirements.
+> [!NOTE]
+> PDF → Markdown uses Firecrawl's [pdf-inspector](https://github.com/firecrawl/pdf-inspector#benchmark),
+> chosen from its published 200-PDF benchmark (0.875 overall quality, 0.915 reading order, 0.814 tables,
+> 0.47 s/document with OCR disabled). Scanned PDFs still need OCR. It runs natively on Apple Silicon and
+> via WebAssembly on Intel.
 
-For PDF -> Markdown, the bundled Firecrawl `pdf-inspector` was selected from its published 200-PDF benchmark:
-0.875 overall quality, 0.915 reading-order accuracy, 0.814 table accuracy and 0.470 seconds per document
-with OCR disabled. These are the project's own benchmark results, so scanned PDFs still need OCR.
+> [!NOTE]
+> The PDF Editor is temporarily hidden from the main navigation while conversion work continues. Its code
+> remains in the repository.
 
-See the [pdf-inspector benchmark](https://github.com/firecrawl/pdf-inspector#benchmark) for the corpus and methodology.
+## Install
 
-| Conversion | Runtime dependency |
-| --- | --- |
-| CBZ -> EPUB | Python standard library |
-| CBR -> EPUB | 7-Zip + Python standard library |
-| CBZ -> PDF | Python standard library; ImageMagick for PNG/other raster pages |
-| CBR -> PDF | 7-Zip + Python standard library; ImageMagick for PNG/other raster pages |
-| PDF -> CBZ | Python standard library for safe JPEG extraction; Poppler fallback |
-| HEIC -> JPG | ffmpeg or ImageMagick |
-| PNG -> WebP | ffmpeg or ImageMagick |
-| PNG -> PDF | Python standard library; ImageMagick fallback |
-| JPG -> PDF | Python standard library; ImageMagick fallback |
-| SVG -> PNG | ImageMagick |
-| PDF -> JPG/PNG | Poppler pdftoppm |
-| GIF/AVIF/BMP/TIFF -> JPG/PNG | ImageMagick or ffmpeg |
-| GIF/AVIF/BMP/TIFF -> PDF | ImageMagick or ffmpeg, then the direct PDF writer |
-| RAW -> DNG | Future: LibRaw or Exiv2 |
-| DOC/DOCX/ODT -> PDF | LibreOffice |
-| DOC/DOCX/ODT -> EPUB | LibreOffice Writer EPUB export |
-| DOC/DOCX/ODT -> TXT | LibreOffice |
-| PDF -> TXT | Poppler + Python standard library |
-| PDF -> MD | Node.js + Firecrawl pdf-inspector |
-| MD -> PDF | Future: Pandoc + a PDF renderer |
-| EPUB -> CBZ | Python standard library |
-| EPUB -> MOBI | Calibre ebook-convert |
-| MOBI -> EPUB/PDF | Calibre ebook-convert |
-| EPUB -> PDF | Python standard library for image-only EPUBs; Calibre fallback |
-| AZW3 -> EPUB/PDF | Calibre ebook-convert |
-| RAR -> ZIP | 7-Zip + Python standard library |
-| 7Z -> ZIP | 7-Zip + Python standard library |
-| MOV -> MP4 | ffmpeg |
+### Windows
 
-The backend never downloads or executes helper installers. Install missing helpers separately, set the
-documented `ONETOOL_<HELPER>` override when needed, and call the `recheck` API or agent command.
+Download the [Windows installer](https://github.com/Brightwav3/One-tool-to-rule-them-all/releases/download/v2.2.1/OneTool-Web-Setup-2.2.1.exe)
+from [Releases](https://github.com/Brightwav3/One-tool-to-rule-them-all/releases) and run it.
 
-On Windows, every helper uses the same resolver: PATH, standard `Program Files` and per-user folders,
-WinGet/Scoop/Chocolatey locations, and its explicit `ONETOOL_<HELPER>` override. If an installer changed
-PATH, restart the backend before checking again. Overrides include `ONETOOL_7Z`,
-`ONETOOL_POPPLER`, `ONETOOL_FFMPEG`, `ONETOOL_IMAGEMAGICK`, `ONETOOL_LIBREOFFICE`,
-`ONETOOL_CALIBRE`, `ONETOOL_RAW_TOOL`, `ONETOOL_PANDOC`, and `ONETOOL_PDF_RENDERER`.
-The override may point to the executable or to the folder containing it; downloading an installer alone
-does not count as an installed helper until it has been installed or extracted.
+### macOS
 
-### The app never lies about what it can do
-
-Most converters let you queue a job and *then* fail. This one computes each conversion's state from
-what's actually installed on your machine, every time you look:
-
-- **Ready** — works right now.
-- **Needs a helper** — the conversion is built, but an external program is missing. The app names it,
-  gives you the exact install command **for your platform**, and re-checks on request.
-- **Soon** — declared but not implemented, and clearly marked as such.
-
-A conversion you can't run is never offered as though you can. Helpers are free, standard tools you may
-well already have; they stay on your machine and are only launched for that conversion.
-
-## What you get
-
-| | |
-| --- | --- |
-| **Mixed queue** | Queue a CBZ, three HEICs and a PDF in one request. Each is routed by extension and labelled with where it went. |
-| **Live progress** | Page-by-page where the format allows it, not a spinner that lies to you. |
-| **Per-file options** | Title and creator for comics, quality and max edge for photos, DPI for PDFs — whatever that converter declares. |
-| **Rename before you convert** | Name the output in the inspector, from the right-click menu, or by double-clicking a queued row. The extension follows the route, and the file you dropped is never touched. |
-| **Honest errors** | A bad file gets its own message on its own card. The queue keeps going. |
-| **Streaming** | A 400 MB archive never sits in RAM. Pages are copied one at a time. |
-| **Session history** | Every run, with an API operation to put its files back in the queue. |
-| **Truly offline** | The backend binds to `127.0.0.1`. Nothing is uploaded to a remote service, tracked, or phoned home. |
-
-Comic pages sort naturally, so `page2.jpg` lands before `page10.jpg` — the way you'd expect and the way
-most tools get wrong. Unsafe archive paths are rejected outright.
-
-## Quick start
-
-### Desktop app
+Build a universal DMG and ZIP (Intel + Apple Silicon):
 
 ```bash
-cd app
-npm start
+brew install node
+npm --prefix app install
+npm --prefix converter install
+npm --prefix app run dist:mac
 ```
 
-The Electron shell starts the local backend automatically. The app stores conversion history and
-settings locally.
+The build lands in `dist/`. On first launch the app looks for Python 3.10+ in Homebrew, python.org,
+common version managers and `PATH`; if none is found, it downloads the official macOS installer and
+guides you through it. Missing optional helpers can be installed individually with Homebrew from
+**Settings → Helpers** (the app links to Homebrew's setup page but never installs Homebrew itself).
 
-### The backend API
+> [!IMPORTANT]
+> Builds without a Developer ID certificate are unsigned. Public distribution requires Developer ID
+> signing and notarization, and in-app updates require a signed app. See
+> [Electron's macOS signing guide](https://www.electron.build/mac/).
+
+### Requirements
+
+- **Python 3.10+** — the backend uses the standard library only, no third-party packages
+- **Node 18+** — the Electron shell and the optional PDF → Markdown worker
+- **Optional helpers**, only for the conversions that name them: 7-Zip, Poppler, ffmpeg, ImageMagick, LibreOffice, Calibre
+
+<details>
+<summary><b>Helper detection and overrides</b></summary>
+
+<br>
+
+The conversion backend never downloads or executes helper installers. On macOS, the desktop shell can
+run the fixed Homebrew commands listed for each helper from **Settings → Helpers**. Otherwise, install
+helpers yourself and call the `recheck` API or agent command.
+
+On Windows, every helper is resolved from `PATH`, standard `Program Files` and per-user folders,
+WinGet/Scoop/Chocolatey locations, and an explicit `ONETOOL_<HELPER>` override. If an installer changed
+`PATH`, restart the backend before re-checking.
+
+Available overrides: `ONETOOL_7Z`, `ONETOOL_POPPLER`, `ONETOOL_FFMPEG`, `ONETOOL_IMAGEMAGICK`,
+`ONETOOL_LIBREOFFICE`, `ONETOOL_CALIBRE`, `ONETOOL_RAW_TOOL`, `ONETOOL_PANDOC`, `ONETOOL_PDF_RENDERER`.
+An override may point to the executable or its folder. A downloaded installer does not count until it
+has been installed or extracted.
+
+</details>
+
+## Development
+
+```bash
+git clone https://github.com/Brightwav3/One-tool-to-rule-them-all.git
+cd One-tool-to-rule-them-all
+npm --prefix app install
+npm --prefix converter install   # optional: PDF → Markdown worker
+npm --prefix app start
+```
+
+The Electron shell starts the local backend automatically. History and settings are stored locally.
+
+## API and command line
+
+### HTTP API
 
 ```bash
 python converter/server.py
 ```
 
-The server listens on `http://127.0.0.1:8756` and exposes JSON endpoints only. It never opens a browser.
+Listens on `http://127.0.0.1:8756` and exposes JSON endpoints only. Clients pass local paths through
+`/api/add-path` or stream bytes through `/api/upload`; no graphical picker is required.
 
-### The command line
+### Standalone comics converter
 
-The comics converter is also a standalone script with no dependencies at all:
-
-```bash
-python converter/cbz_to_epub.py "My Comic v01.cbz"
-```
+`cbz_to_epub.py` has no dependencies at all and exits `0` on success, `1` on failure:
 
 ```bash
 python converter/cbz_to_epub.py "My Comic v01.cbz" out.epub --title "My Comic, Vol. 1" --creator "A. N. Author"
 ```
 
-Exit code `0` on success, `1` on failure — so it drops straight into a script.
-
 ### Agent tools
 
-Agents can use the same local queue through `converter/agent_tools.py`. It returns one JSON document
-per command and never uploads files. Use `--start` when the backend is not already running; it starts
-a private localhost backend for that command and shuts it down afterward.
+`converter/agent_tools.py` drives the same local queue and prints one JSON document per command.
+`--start` spins up a private localhost backend for that command and shuts it down afterward.
 
 ```bash
-# Machine-readable converter capabilities and readiness
+# Converter capabilities and readiness
 python converter/agent_tools.py --start tools
 
-# Convert one or more files and wait for final results
+# Convert and wait for results
 python converter/agent_tools.py --start convert input.pdf --converter pdf-md --output-dir out
 
-# Set converter options declared by the selected converter
+# Pass converter-declared options
 python converter/agent_tools.py --start convert comic.cbz --converter cbz-epub \
   --option title="My Comic" --option creator="A. N. Author"
 
-# For multiple commands, keep the local backend running in another terminal
-python converter/server.py --port 8756
-python converter/agent_tools.py convert input.png --converter png-webp --no-wait
-python converter/agent_tools.py wait 1
-```
-
-To use an already-running backend, pass its URL or set `ONETOOL_URL`:
-
-```bash
+# Reuse a running backend (or set ONETOOL_URL)
 python converter/agent_tools.py --url http://127.0.0.1:8756 status
 ```
 
-The available operations are `tools`, `status`, `convert`, `wait`, `recheck`, and `specs`.
-`specs` prints JSON tool definitions suitable for an agent runtime. Converter IDs and option keys
-come from the live registry, so agents can inspect readiness before starting work.
+Operations: `tools`, `status`, `convert`, `wait`, `recheck`, `specs`. `specs` prints JSON tool
+definitions for agent runtimes. Converter IDs and option keys come from the live registry.
 
-Agent conversions use the same fast comic PDF path as the backend: JPEG pages are embedded
-directly from the archive, compatible PNG pages use FlateDecode embedding, and WebP, GIF, AVIF or
-unsupported PNG pages use the ImageMagick fallback one page at a time.
-
-## How it's put together
+## Architecture
 
 ```
 converter/
-  registry.py          the converter model — state is computed, never asserted
-  formats.py           compatibility facade for existing imports
-  formats_registry.py  converter declarations and shared registry
-  formats_common.py    shared helpers and image/archive primitives
-  formats_archives.py  archive repacking
-  formats_comics.py    CBZ/CBR/PDF comic routes
-  formats_creator.py   multi-file container writers
-  formats_documents.py document and ebook conversions
-  formats_images.py    raster, vector, and RAW image conversions
-  formats_pdf_convert.py PDF to other formats
-  formats_pdf_extract.py PDF text and Markdown extraction
-  formats_pdf_writer.py direct PDF output
-  cbz_to_epub.py       the comics converter — pure stdlib, importable, scriptable
-  server.py            local JSON HTTP API, job queue
-  agent_tools.py       structured JSON command-line tools for local agents
-  pdf_to_md.cjs        optional Node worker for PDF → Markdown
-  package.json         optional Node runtime dependency manifest
+├── registry.py             # converter model — state is computed, never asserted
+├── formats_registry.py     # route declarations and shared registry
+├── formats_common.py       # shared helpers, image/archive primitives
+├── formats_archives.py     # archive repacking
+├── formats_comics.py       # CBZ/CBR/PDF comic routes
+├── formats_creator.py      # multi-file container writers
+├── formats_documents.py    # document and ebook conversions
+├── formats_images.py       # raster, vector and RAW image conversions
+├── formats_pdf_convert.py  # PDF to other formats
+├── formats_pdf_extract.py  # PDF text and Markdown extraction
+├── formats_pdf_writer.py   # direct PDF output
+├── formats.py              # compatibility facade for older imports
+├── cbz_to_epub.py          # standalone stdlib comics converter
+├── server.py               # local JSON HTTP API and job queue
+├── agent_tools.py          # JSON command-line tools for agents
+└── pdf_to_md.cjs           # optional Node worker for PDF → Markdown
 app/
-  main.js              Electron main process and window shell
-  preload.js           restricted renderer bridge
-  package.json         Electron and packaging configuration
+├── main.js                 # Electron main process and window shell
+├── preload.js              # restricted renderer bridge
+└── package.json            # Electron and packaging config
 ```
 
 **Adding a conversion** means implementing it in the matching `formats_*.py` module and declaring its
-route in `formats_registry.py`. `formats.py` remains as a compatibility facade for older imports. The
-registry, queue, API, and agent tools consume the same converter model. Every backend layer works without a UI.
+route in `formats_registry.py`. The registry, queue, API and agent tools all consume the same model,
+and every backend layer works without a UI. See [docs/architecture.md](docs/architecture.md) for more.
 
-## Under the hood
+<details>
+<summary><b>Under the hood</b></summary>
+
+<br>
 
 - **Conversions stream.** Pages are copied archive-to-archive a megabyte at a time with a
-  `progress(done, total)` callback. Memory stays flat regardless of file size.
-- **Comic PDFs have a fast path.** JPEG pages are read one at a time and embedded into the PDF without
-  decoding or recompression. Compatible non-interlaced PNG pages use PDF FlateDecode embedding with
-  alpha masks where needed. WebP, GIF, AVIF and incompatible PNG pages fall back to ImageMagick one
-  page at a time, keeping the command line bounded and the backend responsive.
-- **Scan PDFs have a safe extraction path.** Classic-xref PDFs with one validated DCTDecode JPEG per
-  image-only page copy those JPEG streams directly into a CBZ in page-tree order. Malformed offsets,
-  unsupported filters, mixed-content pages and invalid JPEGs fall back to bounded Poppler rasterization.
-- **PDF Markdown uses one persistent worker.** Batch jobs reuse a serialized Node/pdf-inspector process;
-  a crashed worker is restarted once and each output is committed atomically.
-- **Inputs are explicit.** Clients pass local paths through `/api/add-path` or stream bytes through
-  `/api/upload`; the backend never needs a graphical picker.
+  `progress(done, total)` callback, so memory stays flat regardless of file size.
+- **Comic PDFs have a fast path.** JPEG pages are embedded without decoding or recompression.
+  Compatible non-interlaced PNGs use FlateDecode with alpha masks where needed. WebP, GIF, AVIF and
+  incompatible PNGs fall back to ImageMagick one page at a time.
+- **Scan PDFs extract safely.** Classic-xref PDFs with one validated DCTDecode JPEG per image-only page
+  are copied straight into a CBZ in page-tree order. Anything malformed or mixed falls back to bounded
+  Poppler rasterization.
+- **PDF → Markdown uses one persistent worker.** Batches reuse a serialized Node process; a crashed
+  worker is restarted once, and each output is committed atomically.
+- **Natural sorting and safe paths.** `page2.jpg` comes before `page10.jpg`, and unsafe archive paths
+  are rejected outright.
 
-## Requirements
-
-- **Python 3.10 or newer** — the backend itself has no third-party Python packages, ever
-- **Node 18+** — Electron and the optional PDF → Markdown worker
-- Optional helpers, only for the conversions that name them: 7-Zip, Poppler, ffmpeg, ImageMagick,
-  LibreOffice, and Calibre
+</details>
 
 ## Roadmap
 
-- [x] A converter registry — formats declare themselves, the API follows
+- [x] Converter registry — formats declare themselves, the API follows
 - [x] Mixed queues with automatic routing
 - [x] Helper detection with per-platform install instructions
-- [ ] The two remaining declared conversions (RAW → DNG and MD → PDF)
+- [ ] RAW → DNG
+- [ ] MD → PDF
+
+## Privacy
+
+One Tool has no analytics or telemetry. The backend binds to `127.0.0.1`, files are never uploaded,
+and helpers are only launched locally for the conversion that needs them.
 
 ## Support
 
@@ -310,4 +274,4 @@ If this saved you time, you can [buy me a coffee ☕](https://buymeacoffee.com/b
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE) © 2026 Brightwav3

@@ -304,6 +304,10 @@ registry, queue, API, and agent tools consume the same converter model. Every ba
 - [x] Helper detection with per-platform install instructions
 - [ ] The two remaining declared conversions (RAW → DNG and MD → PDF)
 
+## Support
+
+If this saved you time, you can [buy me a coffee ☕](https://buymeacoffee.com/brightwave).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
